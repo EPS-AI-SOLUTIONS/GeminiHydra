@@ -6,10 +6,20 @@
   "main": "src/server.js",
   "scripts": {
     "start": "node src/server.js",
-    "test": "node --test"
+    "test": "node --test",
+    "lint": "eslint .",
+    "format": "prettier --check .",
+    "format:write": "prettier --write .",
+    "prepare": "husky install"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.23.0"
+  },
+  "devDependencies": {
+    "eslint": "^9.0.0",
+    "husky": "^9.0.0",
+    "prettier": "^3.2.5",
+    "vitest": "^1.6.0"
   },
   "engines": {
     "node": ">=20"

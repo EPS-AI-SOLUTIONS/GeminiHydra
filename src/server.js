@@ -19,13 +19,12 @@ import {
 
 import { generate, checkHealth, listModels, pullModel } from './ollama-client.js';
 import { speculativeGenerate, modelRace, consensusGenerate } from './speculative.js';
-import { selfCorrect, generateWithCorrection, detectLanguage, extractCodeBlocks } from './self-correction.js';
+import { selfCorrect, generateWithCorrection } from './self-correction.js';
 import { getCache, setCache, getCacheStats } from './cache.js';
+import { CONFIG } from './config.js';
+import { createLogger } from './logger.js';
 import {
   optimizePrompt,
-  getPromptCategory,
-  getPromptClarity,
-  getPromptLanguage,
   getBetterPrompt,
   testPromptQuality,
   optimizePromptBatch,
@@ -33,24 +32,19 @@ import {
   getSuggestions,
   getSmartSuggestions,
   getAutoCompletions,
-  detectLanguageFromContext,
   getPromptTemplate,
   autoFixPrompt
 } from './prompt-optimizer.js';
 import {
-  fetchGeminiModels,
   getGeminiModels,
   getModelDetails,
-  loadModelsCache,
   filterModelsByCapability,
   getRecommendedModels,
   getModelsSummary,
   initializeModels
 } from './gemini-models.js';
 import {
-  PromptQueue,
   Priority,
-  Status,
   getQueue,
   enqueue,
   enqueueBatch,
@@ -59,12 +53,17 @@ import {
   pauseQueue,
   resumeQueue
 } from './prompt-queue.js';
+import { TOOLS } from './tools.js';
+import { resolveNodeEngines, resolveServerVersion } from './version.js';
+
+const logger = createLogger('server');
+const SERVER_VERSION = resolveServerVersion();
 
 // Server instance
 const server = new Server(
   {
     name: 'ollama-hydra',
-    version: '2.0.0',
+    version: SERVER_VERSION,
   },
   {
     capabilities: {
@@ -73,463 +72,97 @@ const server = new Server(
   }
 );
 
-// Tool definitions
-const TOOLS = [
-  // === GENERATION TOOLS ===
-  {
-    name: 'ollama_generate',
-    description: 'Generate text using Ollama. Supports local models like llama3.2, qwen2.5-coder, phi3.',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        prompt: { type: 'string', description: 'The prompt to generate from' },
-        model: { type: 'string', description: 'Model name (default: llama3.2:3b)', default: 'llama3.2:3b' },
-        temperature: { type: 'number', description: 'Temperature 0-1 (default: 0.3)', default: 0.3 },
-        maxTokens: { type: 'number', description: 'Max tokens to generate', default: 2048 },
-        useCache: { type: 'boolean', description: 'Use response cache', default: true },
-        optimize: { type: 'boolean', description: 'Optimize prompt before sending', default: false }
-      },
-      required: ['prompt']
-    }
-  },
-  {
-    name: 'ollama_smart',
-    description: 'Smart generation with automatic prompt optimization, speculative decoding, and caching.',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        prompt: { type: 'string', description: 'The prompt to process' },
-        model: { type: 'string', description: 'Model (default: auto-select based on task)' }
-      },
-      required: ['prompt']
-    }
-  },
-  {
-    name: 'ollama_speculative',
-    description: 'Speculative decoding - race fast model (1b) vs accurate model (3b). Returns first valid response.',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        prompt: { type: 'string', description: 'The prompt to generate from' },
-        fastModel: { type: 'string', description: 'Fast model (default: llama3.2:1b)' },
-        accurateModel: { type: 'string', description: 'Accurate model (default: llama3.2:3b)' },
-        timeout: { type: 'number', description: 'Timeout in ms (default: 30000)' }
-      },
-      required: ['prompt']
-    }
-  },
-  {
-    name: 'ollama_race',
-    description: 'Race multiple models - first valid response wins.',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        prompt: { type: 'string', description: 'The prompt to generate from' },
-        models: {
-          type: 'array',
-          items: { type: 'string' },
-          description: 'Models to race (default: [llama3.2:1b, phi3:mini, llama3.2:3b])'
-        },
-        firstWins: { type: 'boolean', description: 'Return first valid (true) or best (false)', default: true }
-      },
-      required: ['prompt']
-    }
-  },
-  {
-    name: 'ollama_consensus',
-    description: 'Run multiple models and check for agreement/consensus.',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        prompt: { type: 'string', description: 'The prompt to generate from' },
-        models: {
-          type: 'array',
-          items: { type: 'string' },
-          description: 'Models to use (default: [llama3.2:3b, phi3:mini])'
-        }
-      },
-      required: ['prompt']
-    }
-  },
+const toolByName = new Map(TOOLS.map(tool => [tool.name, tool]));
+const modelCache = { models: null, updatedAt: 0 };
 
-  // === CODE TOOLS ===
-  {
-    name: 'ollama_code',
-    description: 'Generate code with automatic self-correction and validation.',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        prompt: { type: 'string', description: 'Code generation prompt' },
-        language: { type: 'string', description: 'Programming language (auto-detected if not specified)' },
-        model: { type: 'string', description: 'Generator model (default: llama3.2:3b)' },
-        coderModel: { type: 'string', description: 'Validator model (default: qwen2.5-coder:1.5b)' }
-      },
-      required: ['prompt']
-    }
-  },
-  {
-    name: 'ollama_validate',
-    description: 'Validate and fix code syntax using self-correction loop.',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        code: { type: 'string', description: 'Code to validate' },
-        language: { type: 'string', description: 'Programming language (auto-detected if not specified)' },
-        maxAttempts: { type: 'number', description: 'Max correction attempts (default: 3)' }
-      },
-      required: ['code']
-    }
-  },
+const createErrorResponse = (code, message, tool) => {
+  return {
+    content: [
+      {
+        type: 'text',
+        text: JSON.stringify({ error: message, code, tool })
+      }
+    ],
+    isError: true
+  };
+};
 
-  // === PROMPT OPTIMIZATION TOOLS ===
-  {
-    name: 'prompt_optimize',
-    description: 'Analyze and enhance a prompt for better AI responses. Returns optimized prompt with enhancements.',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        prompt: { type: 'string', description: 'The prompt to optimize' },
-        model: { type: 'string', description: 'Target model for optimization' },
-        category: {
-          type: 'string',
-          enum: ['auto', 'code', 'analysis', 'question', 'creative', 'task', 'summary', 'debug', 'optimize'],
-          description: 'Force specific category (default: auto-detect)'
-        },
-        addExamples: { type: 'boolean', description: 'Add few-shot examples if available', default: false }
-      },
-      required: ['prompt']
-    }
-  },
-  {
-    name: 'prompt_analyze',
-    description: 'Analyze a prompt without modifying it. Returns category, clarity score, language, and suggestions.',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        prompt: { type: 'string', description: 'The prompt to analyze' }
-      },
-      required: ['prompt']
-    }
-  },
-  {
-    name: 'prompt_quality',
-    description: 'Test prompt quality and get a detailed report with issues and suggestions.',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        prompt: { type: 'string', description: 'The prompt to test' }
-      },
-      required: ['prompt']
-    }
-  },
-  {
-    name: 'prompt_suggest',
-    description: 'Get improvement suggestions for a prompt without applying them.',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        prompt: { type: 'string', description: 'The prompt to get suggestions for' },
-        model: { type: 'string', description: 'Target model for suggestions' }
-      },
-      required: ['prompt']
-    }
-  },
-  {
-    name: 'prompt_batch_optimize',
-    description: 'Optimize multiple prompts at once.',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        prompts: {
-          type: 'array',
-          items: { type: 'string' },
-          description: 'Array of prompts to optimize'
-        },
-        model: { type: 'string', description: 'Target model for optimization' }
-      },
-      required: ['prompts']
-    }
-  },
-  {
-    name: 'prompt_smart_suggest',
-    description: 'Get intelligent context-aware suggestions for improving a prompt.',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        prompt: { type: 'string', description: 'The prompt to get smart suggestions for' }
-      },
-      required: ['prompt']
-    }
-  },
-  {
-    name: 'prompt_autocomplete',
-    description: 'Get auto-completions for a partial prompt.',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        partial: { type: 'string', description: 'The partial prompt to complete' }
-      },
-      required: ['partial']
-    }
-  },
-  {
-    name: 'prompt_autofix',
-    description: 'Automatically fix common issues in a prompt.',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        prompt: { type: 'string', description: 'The prompt to auto-fix' }
-      },
-      required: ['prompt']
-    }
-  },
-  {
-    name: 'prompt_template',
-    description: 'Get a prompt template for a specific category.',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        category: {
-          type: 'string',
-          enum: ['code', 'api', 'debug', 'refactor', 'testing', 'database', 'devops'],
-          description: 'The category of prompt template'
-        },
-        variant: {
-          type: 'string',
-          description: 'Template variant (basic, withTests, withDocs, etc.)',
-          default: 'basic'
-        }
-      },
-      required: ['category']
-    }
-  },
-
-  // === BATCH & UTILITY TOOLS ===
-  {
-    name: 'ollama_batch',
-    description: 'Process multiple prompts in parallel.',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        prompts: {
-          type: 'array',
-          items: { type: 'string' },
-          description: 'Array of prompts to process'
-        },
-        model: { type: 'string', description: 'Model to use (default: llama3.2:3b)' },
-        maxConcurrent: { type: 'number', description: 'Max concurrent requests (default: 4)' },
-        optimize: { type: 'boolean', description: 'Optimize prompts before processing', default: false }
-      },
-      required: ['prompts']
-    }
-  },
-  {
-    name: 'ollama_status',
-    description: 'Check Ollama status, available models, and cache statistics.',
-    inputSchema: {
-      type: 'object',
-      properties: {},
-      required: []
-    }
-  },
-  {
-    name: 'ollama_pull',
-    description: 'Pull/download a model from Ollama registry.',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        model: { type: 'string', description: 'Model name to pull (e.g., llama3.2:3b)' }
-      },
-      required: ['model']
-    }
-  },
-  {
-    name: 'ollama_cache_clear',
-    description: 'Clear the response cache.',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        olderThan: { type: 'number', description: 'Clear entries older than N seconds' }
-      },
-      required: []
-    }
-  },
-
-  // === GEMINI MODELS TOOLS ===
-  {
-    name: 'gemini_models',
-    description: 'Get list of available Gemini models from API. Fetches and caches model information.',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        forceRefresh: { type: 'boolean', description: 'Force fresh fetch from API (ignore cache)', default: false },
-        apiKey: { type: 'string', description: 'Optional API key (uses env GEMINI_API_KEY if not provided)' }
-      },
-      required: []
-    }
-  },
-  {
-    name: 'gemini_model_details',
-    description: 'Get detailed information about a specific Gemini model.',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        model: { type: 'string', description: 'Model name (e.g., gemini-2.5-pro, gemini-2.5-flash)' },
-        apiKey: { type: 'string', description: 'Optional API key' }
-      },
-      required: ['model']
-    }
-  },
-  {
-    name: 'gemini_models_summary',
-    description: 'Get a summary of available Gemini models - counts by family, capabilities, largest context.',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        forceRefresh: { type: 'boolean', description: 'Force fresh fetch', default: false }
-      },
-      required: []
-    }
-  },
-  {
-    name: 'gemini_models_recommend',
-    description: 'Get recommended Gemini models for different use cases (code, fast, pro, experimental).',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        forceRefresh: { type: 'boolean', description: 'Force fresh fetch', default: false }
-      },
-      required: []
-    }
-  },
-  {
-    name: 'gemini_models_filter',
-    description: 'Filter Gemini models by capability (generateContent, countTokens, embedContent, etc.).',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        capability: {
-          type: 'string',
-          enum: ['generateContent', 'countTokens', 'embedContent', 'generateAnswer', 'batchEmbedContents'],
-          description: 'The capability to filter by'
-        },
-        forceRefresh: { type: 'boolean', description: 'Force fresh fetch', default: false }
-      },
-      required: ['capability']
-    }
-  },
-
-  // === QUEUE MANAGEMENT TOOLS ===
-  {
-    name: 'queue_enqueue',
-    description: 'Add a prompt to the processing queue with priority scheduling.',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        prompt: { type: 'string', description: 'The prompt to queue' },
-        model: { type: 'string', description: 'Model to use (default: llama3.2:3b)' },
-        priority: {
-          type: 'string',
-          enum: ['urgent', 'high', 'normal', 'low', 'background'],
-          description: 'Priority level (default: normal)'
-        },
-        metadata: { type: 'object', description: 'Optional metadata to attach' }
-      },
-      required: ['prompt']
-    }
-  },
-  {
-    name: 'queue_batch',
-    description: 'Add multiple prompts to the queue at once.',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        prompts: {
-          type: 'array',
-          items: { type: 'string' },
-          description: 'Array of prompts to queue'
-        },
-        model: { type: 'string', description: 'Model to use for all prompts' },
-        priority: {
-          type: 'string',
-          enum: ['urgent', 'high', 'normal', 'low', 'background'],
-          description: 'Priority level for all items'
-        }
-      },
-      required: ['prompts']
-    }
-  },
-  {
-    name: 'queue_status',
-    description: 'Get current queue status including items count, running, completed, and statistics.',
-    inputSchema: {
-      type: 'object',
-      properties: {},
-      required: []
-    }
-  },
-  {
-    name: 'queue_item',
-    description: 'Get status of a specific queued item by ID.',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        id: { type: 'number', description: 'The item ID to check' }
-      },
-      required: ['id']
-    }
-  },
-  {
-    name: 'queue_cancel',
-    description: 'Cancel a queued or running item.',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        id: { type: 'number', description: 'The item ID to cancel' }
-      },
-      required: ['id']
-    }
-  },
-  {
-    name: 'queue_cancel_all',
-    description: 'Cancel all queued and running items.',
-    inputSchema: {
-      type: 'object',
-      properties: {},
-      required: []
-    }
-  },
-  {
-    name: 'queue_pause',
-    description: 'Pause queue processing (running items will complete).',
-    inputSchema: {
-      type: 'object',
-      properties: {},
-      required: []
-    }
-  },
-  {
-    name: 'queue_resume',
-    description: 'Resume queue processing.',
-    inputSchema: {
-      type: 'object',
-      properties: {},
-      required: []
-    }
-  },
-  {
-    name: 'queue_wait',
-    description: 'Wait for a specific item to complete and return its result.',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        id: { type: 'number', description: 'The item ID to wait for' },
-        timeout: { type: 'number', description: 'Timeout in ms (default: 60000)' }
-      },
-      required: ['id']
+const validateToolArgs = (tool, args) => {
+  const errors = [];
+  if (!tool?.inputSchema) return errors;
+  const { required = [], properties = {} } = tool.inputSchema;
+  for (const key of required) {
+    if (args[key] === undefined) {
+      errors.push(`Brakuje wymaganego pola: ${key}`);
     }
   }
-];
+  for (const [key, value] of Object.entries(args)) {
+    const schema = properties[key];
+    if (!schema || value === null) continue;
+    const expected = schema.type;
+    if (expected === 'array' && !Array.isArray(value)) {
+      errors.push(`Pole ${key} powinno być tablicą`);
+    } else if (expected === 'number' && typeof value !== 'number') {
+      errors.push(`Pole ${key} powinno być liczbą`);
+    } else if (expected === 'string' && typeof value !== 'string') {
+      errors.push(`Pole ${key} powinno być tekstem`);
+    } else if (expected === 'boolean' && typeof value !== 'boolean') {
+      errors.push(`Pole ${key} powinno być wartością true/false`);
+    } else if (expected === 'object' && (typeof value !== 'object' || Array.isArray(value))) {
+      errors.push(`Pole ${key} powinno być obiektem`);
+    }
+  }
+  return errors;
+};
+
+const getCachedModels = async () => {
+  const now = Date.now();
+  if (modelCache.models && now - modelCache.updatedAt < CONFIG.MODEL_CACHE_TTL_MS) {
+    return modelCache.models;
+  }
+
+  const health = await checkHealth();
+  if (!health.available) {
+    modelCache.models = [];
+    modelCache.updatedAt = now;
+    return modelCache.models;
+  }
+
+  modelCache.models = await listModels();
+  modelCache.updatedAt = now;
+  return modelCache.models;
+};
+
+const resolveModelOrFallback = async (requestedModel) => {
+  if (!requestedModel) {
+    return { model: CONFIG.DEFAULT_MODEL, fallbackUsed: false };
+  }
+  const models = await getCachedModels();
+  const available = models.map(model => model.name ?? model.model).filter(Boolean);
+  if (available.includes(requestedModel)) {
+    return { model: requestedModel, fallbackUsed: false };
+  }
+  logger.warn('Requested model not available, falling back', {
+    requestedModel,
+    fallbackModel: CONFIG.DEFAULT_MODEL
+  });
+  return { model: CONFIG.DEFAULT_MODEL, fallbackUsed: true };
+};
+
+const getMajorVersion = (version) => {
+  const match = `${version}`.match(/(\d+)/);
+  return match ? Number.parseInt(match[1], 10) : null;
+};
+
+const detectPromptRisk = (prompt) => {
+  if (!prompt) return [];
+  const checks = [
+    { pattern: /ignore (all|previous|earlier) instructions/i, message: 'Wykryto możliwą próbę obejścia instrukcji.' },
+    { pattern: /system prompt/i, message: 'Wykryto prośbę o ujawnienie promptu systemowego.' },
+    { pattern: /exfiltrate|leak|steal/i, message: 'Wykryto możliwą próbę eksfiltracji danych.' }
+  ];
+  return checks.filter(({ pattern }) => pattern.test(prompt)).map(({ message }) => message);
+};
 
 // List tools handler
 server.setRequestHandler(ListToolsRequestSchema, async () => {
@@ -538,57 +171,83 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
 
 // Call tool handler
 server.setRequestHandler(CallToolRequestSchema, async (request) => {
-  const { name, arguments: args } = request.params;
+  const { name, arguments: args } = request.params ?? {};
+  const startedAt = Date.now();
+  const safeArgs = args ?? {};
+  const tool = toolByName.get(name);
 
   try {
+    if (!tool) {
+      return createErrorResponse('HYDRA_TOOL_UNKNOWN', 'Nieznane narzędzie.', name);
+    }
+
+    const validationErrors = validateToolArgs(tool, safeArgs);
+    if (validationErrors.length > 0) {
+      return createErrorResponse('HYDRA_TOOL_INVALID', validationErrors.join(' '), name);
+    }
+
     let result;
 
     switch (name) {
       // === GENERATION TOOLS ===
       case 'ollama_generate': {
-        let prompt = args.prompt;
+        let prompt = safeArgs.prompt;
+        const securityWarnings = detectPromptRisk(prompt);
+        if (securityWarnings.length) {
+          logger.warn('Potential prompt risk detected', { tool: name });
+        }
 
         // Optimize prompt if requested
-        if (args.optimize) {
-          const optimized = optimizePrompt(prompt, { model: args.model });
+        if (safeArgs.optimize) {
+          const optimized = optimizePrompt(prompt, { model: safeArgs.model });
           prompt = optimized.optimizedPrompt;
         }
 
         // Check cache first
-        if (args.useCache !== false) {
-          const cached = getCache(prompt, args.model);
+        if (safeArgs.useCache !== false) {
+          const cached = getCache(prompt, safeArgs.model);
           if (cached) {
             result = { ...cached, fromCache: true };
             break;
           }
         }
 
+        const resolved = await resolveModelOrFallback(safeArgs.model);
         const response = await generate(
-          args.model || 'llama3.2:3b',
+          resolved.model,
           prompt,
-          { temperature: args.temperature, maxTokens: args.maxTokens }
+          { temperature: safeArgs.temperature, maxTokens: safeArgs.maxTokens }
         );
 
         // Save to cache
-        if (args.useCache !== false) {
-          setCache(prompt, response.response, args.model);
+        if (safeArgs.useCache !== false) {
+          setCache(prompt, response.response, resolved.model);
         }
 
-        result = response;
+        result = {
+          ...response,
+          fallbackUsed: resolved.fallbackUsed,
+          model: resolved.model,
+          securityWarnings
+        };
         break;
       }
 
       case 'ollama_smart': {
         // Smart generation: optimize → detect category → select model → generate
-        const optimization = optimizePrompt(args.prompt);
+        const securityWarnings = detectPromptRisk(safeArgs.prompt);
+        if (securityWarnings.length) {
+          logger.warn('Potential prompt risk detected', { tool: name });
+        }
+        const optimization = optimizePrompt(safeArgs.prompt);
         const category = optimization.category;
 
         // Select model based on category
-        let model = args.model;
+        let model = safeArgs.model;
         if (!model) {
-          if (category === 'code') model = 'qwen2.5-coder:1.5b';
-          else if (category === 'question') model = 'llama3.2:1b'; // Fast for simple questions
-          else model = 'llama3.2:3b';
+          if (category === 'code') model = CONFIG.CODER_MODEL;
+          else if (category === 'question') model = CONFIG.FAST_MODEL; // Fast for simple questions
+          else model = CONFIG.DEFAULT_MODEL;
         }
 
         // Use speculative for non-code tasks
@@ -602,90 +261,95 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           });
           result.optimization = optimization;
         }
+        result.securityWarnings = securityWarnings;
         break;
       }
 
       case 'ollama_speculative':
-        result = await speculativeGenerate(args.prompt, args);
+        result = await speculativeGenerate(safeArgs.prompt, safeArgs);
+        result.securityWarnings = detectPromptRisk(safeArgs.prompt);
         break;
 
       case 'ollama_race':
         result = await modelRace(
-          args.prompt,
-          args.models || ['llama3.2:1b', 'phi3:mini', 'llama3.2:3b'],
-          { firstWins: args.firstWins ?? true }
+          safeArgs.prompt,
+          safeArgs.models || [CONFIG.FAST_MODEL, 'phi3:mini', CONFIG.DEFAULT_MODEL],
+          { firstWins: safeArgs.firstWins ?? true }
         );
+        result.securityWarnings = detectPromptRisk(safeArgs.prompt);
         break;
 
       case 'ollama_consensus':
         result = await consensusGenerate(
-          args.prompt,
-          args.models || ['llama3.2:3b', 'phi3:mini']
+          safeArgs.prompt,
+          safeArgs.models || [CONFIG.DEFAULT_MODEL, 'phi3:mini']
         );
+        result.securityWarnings = detectPromptRisk(safeArgs.prompt);
         break;
 
       // === CODE TOOLS ===
       case 'ollama_code':
-        result = await generateWithCorrection(args.prompt, {
-          generatorModel: args.model,
-          coderModel: args.coderModel
+        result = await generateWithCorrection(safeArgs.prompt, {
+          generatorModel: safeArgs.model || CONFIG.DEFAULT_MODEL,
+          coderModel: safeArgs.coderModel || CONFIG.CODER_MODEL
         });
+        result.securityWarnings = detectPromptRisk(safeArgs.prompt);
         break;
 
       case 'ollama_validate':
-        result = await selfCorrect(args.code, {
-          language: args.language,
-          maxAttempts: args.maxAttempts
+        result = await selfCorrect(safeArgs.code, {
+          language: safeArgs.language,
+          maxAttempts: safeArgs.maxAttempts
         });
         break;
 
       // === PROMPT OPTIMIZATION TOOLS ===
       case 'prompt_optimize':
-        result = optimizePrompt(args.prompt, {
-          model: args.model,
-          category: args.category,
-          addExamples: args.addExamples
+        result = optimizePrompt(safeArgs.prompt, {
+          model: safeArgs.model,
+          category: safeArgs.category,
+          addExamples: safeArgs.addExamples
         });
         break;
 
       case 'prompt_analyze':
-        result = analyzePrompt(args.prompt);
+        result = analyzePrompt(safeArgs.prompt);
         break;
 
       case 'prompt_quality':
-        result = testPromptQuality(args.prompt);
+        result = testPromptQuality(safeArgs.prompt);
         break;
 
       case 'prompt_suggest':
-        result = getSuggestions(args.prompt, args.model);
+        result = getSuggestions(safeArgs.prompt, safeArgs.model);
         break;
 
       case 'prompt_batch_optimize':
-        result = optimizePromptBatch(args.prompts, { model: args.model });
+        result = optimizePromptBatch(safeArgs.prompts, { model: safeArgs.model });
         break;
 
       case 'prompt_smart_suggest':
         result = {
-          prompt: args.prompt.substring(0, 50) + (args.prompt.length > 50 ? '...' : ''),
-          analysis: analyzePrompt(args.prompt),
-          smartSuggestions: getSmartSuggestions(args.prompt),
-          standardSuggestions: getSuggestions(args.prompt)
+          prompt: safeArgs.prompt.substring(0, 50) + (safeArgs.prompt.length > 50 ? '...' : ''),
+          analysis: analyzePrompt(safeArgs.prompt),
+          smartSuggestions: getSmartSuggestions(safeArgs.prompt),
+          standardSuggestions: getSuggestions(safeArgs.prompt)
         };
         break;
 
       case 'prompt_autocomplete':
-        result = getAutoCompletions(args.partial);
+        result = getAutoCompletions(safeArgs.partial);
         break;
 
       case 'prompt_autofix':
-        result = autoFixPrompt(args.prompt);
+        result = autoFixPrompt(safeArgs.prompt);
         break;
 
       case 'prompt_template':
-        const template = getPromptTemplate(args.category, args.variant || 'basic');
+        const template = getPromptTemplate(safeArgs.category, safeArgs.variant || 'basic');
         result = {
-          category: args.category,
-          variant: args.variant || 'basic',
+          category: safeArgs.category,
+          variant: safeArgs.variant || 'basic',
           template: template,
           available: template !== null
         };
@@ -693,12 +357,13 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
       // === BATCH & UTILITY TOOLS ===
       case 'ollama_batch': {
-        const maxConcurrent = args.maxConcurrent || 4;
-        const model = args.model || 'llama3.2:3b';
-        let prompts = args.prompts;
+        const maxConcurrent = safeArgs.maxConcurrent || CONFIG.QUEUE_MAX_CONCURRENT;
+        const resolved = await resolveModelOrFallback(safeArgs.model);
+        const model = resolved.model;
+        let prompts = safeArgs.prompts;
 
         // Optimize prompts if requested
-        if (args.optimize) {
+        if (safeArgs.optimize) {
           prompts = prompts.map(p => getBetterPrompt(p, model));
         }
 
@@ -714,13 +379,14 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
         result = {
           results: results.map((r, i) => ({
-            prompt: args.prompts[i].substring(0, 50) + '...',
+            prompt: safeArgs.prompts[i].substring(0, 50) + '...',
             response: r.response || null,
             error: r.error || null
           })),
           total: prompts.length,
           successful: results.filter(r => r.response).length,
-          optimized: args.optimize || false
+          optimized: safeArgs.optimize || false,
+          fallbackUsed: resolved.fallbackUsed
         };
         break;
       }
@@ -735,9 +401,9 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           models: models,
           cache: cacheStats,
           config: {
-            defaultModel: process.env.DEFAULT_MODEL || 'llama3.2:3b',
-            fastModel: process.env.FAST_MODEL || 'llama3.2:1b',
-            coderModel: process.env.CODER_MODEL || 'qwen2.5-coder:1.5b'
+            defaultModel: CONFIG.DEFAULT_MODEL,
+            fastModel: CONFIG.FAST_MODEL,
+            coderModel: CONFIG.CODER_MODEL
           },
           features: {
             promptOptimizer: true,
@@ -745,21 +411,23 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
             selfCorrection: true,
             caching: true,
             batchProcessing: true
-          }
+          },
+          apiVersion: CONFIG.API_VERSION,
+          serverVersion: SERVER_VERSION
         };
         break;
       }
 
       case 'ollama_pull':
-        const success = await pullModel(args.model);
-        result = { model: args.model, pulled: success };
+        const success = await pullModel(safeArgs.model);
+        result = { model: safeArgs.model, pulled: success };
         break;
 
       case 'ollama_cache_clear': {
         const { readdirSync, unlinkSync, statSync } = await import('fs');
         const { join } = await import('path');
-        const cacheDir = process.env.CACHE_DIR || './cache';
-        const olderThan = args.olderThan ? args.olderThan * 1000 : 0;
+        const cacheDir = CONFIG.CACHE_DIR || './cache';
+        const olderThan = safeArgs.olderThan ? safeArgs.olderThan * 1000 : 0;
         const now = Date.now();
         let cleared = 0;
 
@@ -781,17 +449,17 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
       // === GEMINI MODELS TOOLS ===
       case 'gemini_models': {
-        result = await getGeminiModels(args.forceRefresh || false, args.apiKey);
+        result = await getGeminiModels(safeArgs.forceRefresh || false, safeArgs.apiKey);
         break;
       }
 
       case 'gemini_model_details': {
-        result = await getModelDetails(args.model, args.apiKey);
+        result = await getModelDetails(safeArgs.model, safeArgs.apiKey);
         break;
       }
 
       case 'gemini_models_summary': {
-        const modelsResult = await getGeminiModels(args.forceRefresh || false);
+        const modelsResult = await getGeminiModels(safeArgs.forceRefresh || false);
         if (modelsResult.success) {
           result = {
             source: modelsResult.source,
@@ -804,7 +472,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       }
 
       case 'gemini_models_recommend': {
-        const modelsResult = await getGeminiModels(args.forceRefresh || false);
+        const modelsResult = await getGeminiModels(safeArgs.forceRefresh || false);
         if (modelsResult.success) {
           result = {
             source: modelsResult.source,
@@ -817,11 +485,11 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       }
 
       case 'gemini_models_filter': {
-        const modelsResult = await getGeminiModels(args.forceRefresh || false);
+        const modelsResult = await getGeminiModels(safeArgs.forceRefresh || false);
         if (modelsResult.success) {
-          const filtered = filterModelsByCapability(modelsResult.models, args.capability);
+          const filtered = filterModelsByCapability(modelsResult.models, safeArgs.capability);
           result = {
-            capability: args.capability,
+            capability: safeArgs.capability,
             count: filtered.length,
             models: filtered.map(m => ({
               name: m.name,
@@ -845,16 +513,16 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           low: Priority.LOW,
           background: Priority.BACKGROUND
         };
-        const id = enqueue(args.prompt, {
-          model: args.model || 'llama3.2:3b',
-          priority: priorityMap[args.priority] ?? Priority.NORMAL,
-          metadata: args.metadata || {}
+        const id = enqueue(safeArgs.prompt, {
+          model: safeArgs.model || CONFIG.DEFAULT_MODEL,
+          priority: priorityMap[safeArgs.priority] ?? Priority.NORMAL,
+          metadata: safeArgs.metadata || {}
         });
         result = {
           id,
           status: 'queued',
-          priority: args.priority || 'normal',
-          model: args.model || 'llama3.2:3b'
+          priority: safeArgs.priority || 'normal',
+          model: safeArgs.model || CONFIG.DEFAULT_MODEL
         };
         break;
       }
@@ -867,15 +535,15 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           low: Priority.LOW,
           background: Priority.BACKGROUND
         };
-        const ids = enqueueBatch(args.prompts, {
-          model: args.model || 'llama3.2:3b',
-          priority: priorityMap[args.priority] ?? Priority.NORMAL
+        const ids = enqueueBatch(safeArgs.prompts, {
+          model: safeArgs.model || CONFIG.DEFAULT_MODEL,
+          priority: priorityMap[safeArgs.priority] ?? Priority.NORMAL
         });
         result = {
           ids,
           count: ids.length,
-          priority: args.priority || 'normal',
-          model: args.model || 'llama3.2:3b'
+          priority: safeArgs.priority || 'normal',
+          model: safeArgs.model || CONFIG.DEFAULT_MODEL
         };
         break;
       }
@@ -886,7 +554,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       }
 
       case 'queue_item': {
-        const item = getQueue().getItem(args.id);
+        const item = getQueue().getItem(safeArgs.id);
         if (item) {
           result = {
             id: item.id,
@@ -901,14 +569,14 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
             completedAt: item.completedAt ? new Date(item.completedAt).toISOString() : null
           };
         } else {
-          result = { error: `Item ${args.id} not found` };
+          result = { error: `Nie znaleziono elementu ${safeArgs.id}` };
         }
         break;
       }
 
       case 'queue_cancel': {
-        const cancelled = cancelItem(args.id);
-        result = { id: args.id, cancelled };
+        const cancelled = cancelItem(safeArgs.id);
+        result = { id: safeArgs.id, cancelled };
         break;
       }
 
@@ -932,7 +600,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
       case 'queue_wait': {
         try {
-          const item = await getQueue().waitFor(args.id, args.timeout || 60000);
+          const item = await getQueue().waitFor(safeArgs.id, safeArgs.timeout || CONFIG.QUEUE_TIMEOUT_MS);
           result = {
             id: item.id,
             status: item.status,
@@ -941,14 +609,67 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
             duration: item.completedAt ? item.completedAt - item.startedAt : null
           };
         } catch (e) {
-          result = { error: e.message };
+          result = { error: `Nie udało się pobrać wyniku: ${e.message}` };
         }
         break;
       }
 
+      case 'hydra_health': {
+        const health = await checkHealth();
+        const cacheStats = getCacheStats();
+        const queueStatus = getQueueStatus();
+        const nodeEngines = resolveNodeEngines();
+        result = {
+          status: health.available ? 'ok' : 'degraded',
+          ollama: health,
+          queue: queueStatus,
+          cache: cacheStats,
+          version: SERVER_VERSION,
+          apiVersion: CONFIG.API_VERSION,
+          node: {
+            runtime: process.versions.node,
+            engines: nodeEngines
+          }
+        };
+        break;
+      }
+
+      case 'hydra_config': {
+        result = {
+          apiVersion: CONFIG.API_VERSION,
+          defaults: {
+            defaultModel: CONFIG.DEFAULT_MODEL,
+            fastModel: CONFIG.FAST_MODEL,
+            coderModel: CONFIG.CODER_MODEL
+          },
+          cache: {
+            enabled: CONFIG.CACHE_ENABLED,
+            ttlMs: CONFIG.CACHE_TTL_MS,
+            dir: CONFIG.CACHE_DIR,
+            encrypted: Boolean(CONFIG.CACHE_ENCRYPTION_KEY)
+          },
+          queue: {
+            maxConcurrent: CONFIG.QUEUE_MAX_CONCURRENT,
+            maxRetries: CONFIG.QUEUE_MAX_RETRIES,
+            retryDelayBase: CONFIG.QUEUE_RETRY_DELAY_BASE,
+            timeoutMs: CONFIG.QUEUE_TIMEOUT_MS,
+            rateLimit: {
+              tokens: CONFIG.QUEUE_RATE_LIMIT_TOKENS,
+              refillRate: CONFIG.QUEUE_RATE_LIMIT_REFILL
+            }
+          }
+        };
+        break;
+      }
+
       default:
-        throw new Error(`Unknown tool: ${name}`);
+        return createErrorResponse('HYDRA_TOOL_UNKNOWN', 'Nieznane narzędzie.', name);
     }
+
+    logger.info('Tool executed', {
+      tool: name,
+      durationMs: Date.now() - startedAt
+    });
 
     return {
       content: [
@@ -960,11 +681,12 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
     };
 
   } catch (error) {
+    logger.error('Tool execution failed', { tool: name, error: error.message });
     return {
       content: [
         {
           type: 'text',
-          text: JSON.stringify({ error: error.message, tool: name })
+          text: JSON.stringify({ error: `Wystąpił błąd podczas przetwarzania: ${error.message}`, tool: name })
         }
       ],
       isError: true
@@ -976,24 +698,40 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 async function main() {
   const transport = new StdioServerTransport();
 
+  const cacheStats = getCacheStats();
+  logger.info('Cache warmup completed', {
+    totalEntries: cacheStats.totalEntries,
+    validEntries: cacheStats.validEntries
+  });
+
   // Initialize Gemini models at startup (from cache or API)
+  const engines = resolveNodeEngines();
+  const runtimeMajor = getMajorVersion(process.versions.node);
+  const engineMajor = engines ? getMajorVersion(engines) : null;
+  if (engineMajor && runtimeMajor && runtimeMajor < engineMajor) {
+    logger.warn('Node runtime may not satisfy engines requirement', {
+      runtime: process.versions.node,
+      engines
+    });
+  }
+
   const modelsInit = await initializeModels();
   if (modelsInit.success) {
-    console.error(`[HYDRA] Gemini models ready: ${modelsInit.count} models available`);
+    logger.info('Gemini models ready', { count: modelsInit.count });
   }
 
   // Initialize prompt queue with Ollama handler
   const queue = getQueue({
-    maxConcurrent: 4,
-    maxRetries: 3,
-    retryDelayBase: 1000,
-    timeout: 60000,
-    rateLimit: { maxTokens: 10, refillRate: 2 }
+    maxConcurrent: CONFIG.QUEUE_MAX_CONCURRENT,
+    maxRetries: CONFIG.QUEUE_MAX_RETRIES,
+    retryDelayBase: CONFIG.QUEUE_RETRY_DELAY_BASE,
+    timeout: CONFIG.QUEUE_TIMEOUT_MS,
+    rateLimit: { maxTokens: CONFIG.QUEUE_RATE_LIMIT_TOKENS, refillRate: CONFIG.QUEUE_RATE_LIMIT_REFILL }
   });
 
   // Set default handler for prompt processing
   queue.setHandler(async (prompt, model, metadata) => {
-    const response = await generate(model || 'llama3.2:3b', prompt, {
+    const response = await generate(model || CONFIG.DEFAULT_MODEL, prompt, {
       temperature: metadata?.temperature || 0.3,
       maxTokens: metadata?.maxTokens || 2048
     });
@@ -1002,19 +740,24 @@ async function main() {
 
   // Log queue events
   queue.on('completed', ({ id, duration }) => {
-    console.error(`[HYDRA Queue] Item ${id} completed in ${duration}ms`);
+    logger.info('Queue item completed', { id, duration });
   });
   queue.on('failed', ({ id, error }) => {
-    console.error(`[HYDRA Queue] Item ${id} failed: ${error}`);
+    logger.error('Queue item failed', { id, error });
   });
   queue.on('retrying', ({ id, attempt, delay }) => {
-    console.error(`[HYDRA Queue] Item ${id} retry #${attempt} in ${delay}ms`);
+    logger.warn('Queue item retrying', { id, attempt, delay });
   });
 
-  console.error('[HYDRA] Prompt queue initialized (maxConcurrent: 4, retries: 3)');
+  logger.info('Prompt queue initialized', {
+    maxConcurrent: CONFIG.QUEUE_MAX_CONCURRENT,
+    retries: CONFIG.QUEUE_MAX_RETRIES
+  });
 
   await server.connect(transport);
-  console.error('HYDRA Ollama MCP Server v2.2.0 running on stdio (with Queue System)');
+  logger.info('HYDRA Ollama MCP Server running on stdio', { version: SERVER_VERSION });
 }
 
-main().catch(console.error);
+main().catch((error) => {
+  logger.error('Server failed to start', { error: error.message });
+});
