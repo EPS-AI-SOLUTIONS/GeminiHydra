@@ -164,6 +164,32 @@ const detectPromptRisk = (prompt) => {
   return checks.filter(({ pattern }) => pattern.test(prompt)).map(({ message }) => message);
 };
 
+const runAiHandler = async (prompt, options = {}) => {
+  const optimization = optimizePrompt(prompt);
+  const category = optimization.category;
+
+  let model = options.model;
+  if (!model) {
+    if (category === 'code') model = CONFIG.CODER_MODEL;
+    else if (category === 'question') model = CONFIG.FAST_MODEL;
+    else model = CONFIG.DEFAULT_MODEL;
+  }
+
+  let result;
+  if (category !== 'code') {
+    result = await speculativeGenerate(optimization.optimizedPrompt);
+  } else {
+    result = await generateWithCorrection(optimization.optimizedPrompt, {
+      generatorModel: model
+    });
+  }
+
+  return {
+    ...result,
+    optimization
+  };
+};
+
 // List tools handler
 server.setRequestHandler(ListToolsRequestSchema, async () => {
   return { tools: TOOLS };
@@ -239,28 +265,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         if (securityWarnings.length) {
           logger.warn('Potential prompt risk detected', { tool: name });
         }
-        const optimization = optimizePrompt(safeArgs.prompt);
-        const category = optimization.category;
-
-        // Select model based on category
-        let model = safeArgs.model;
-        if (!model) {
-          if (category === 'code') model = CONFIG.CODER_MODEL;
-          else if (category === 'question') model = CONFIG.FAST_MODEL; // Fast for simple questions
-          else model = CONFIG.DEFAULT_MODEL;
-        }
-
-        // Use speculative for non-code tasks
-        if (category !== 'code') {
-          result = await speculativeGenerate(optimization.optimizedPrompt);
-          result.optimization = optimization;
-        } else {
-          // Use code generation with self-correction
-          result = await generateWithCorrection(optimization.optimizedPrompt, {
-            generatorModel: model
-          });
-          result.optimization = optimization;
-        }
+        result = await runAiHandler(safeArgs.prompt, { model: safeArgs.model });
         result.securityWarnings = securityWarnings;
         break;
       }
@@ -720,7 +725,7 @@ async function main() {
     logger.info('Gemini models ready', { count: modelsInit.count });
   }
 
-  // Initialize prompt queue with Ollama handler
+  // Initialize prompt queue with AI handler
   const queue = getQueue({
     maxConcurrent: CONFIG.QUEUE_MAX_CONCURRENT,
     maxRetries: CONFIG.QUEUE_MAX_RETRIES,
@@ -731,10 +736,7 @@ async function main() {
 
   // Set default handler for prompt processing
   queue.setHandler(async (prompt, model, metadata) => {
-    const response = await generate(model || CONFIG.DEFAULT_MODEL, prompt, {
-      temperature: metadata?.temperature || 0.3,
-      maxTokens: metadata?.maxTokens || 2048
-    });
+    const response = await runAiHandler(prompt, { model });
     return response.response;
   });
 

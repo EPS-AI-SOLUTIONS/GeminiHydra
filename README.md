@@ -25,6 +25,8 @@ Serwer udostępnia m.in.:
 - `ollama_status`, `ollama_cache_clear`
 - `hydra_health`, `hydra_config`
 
+Domyślna kolejka promptów korzysta z AI handlera (smart generowanie) już przy starcie.
+
 ## Logowanie
 
 Logi w produkcji są w JSON, sterowane przez `LOG_LEVEL`.
