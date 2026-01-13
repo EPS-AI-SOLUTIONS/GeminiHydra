@@ -12,6 +12,7 @@
  */
 
 import { EventEmitter } from 'events';
+import { existsSync, readFileSync, writeFileSync } from 'fs';
 
 // Priority levels
 export const Priority = {
@@ -183,6 +184,7 @@ export class PromptQueue extends EventEmitter {
       retryDelayMax: options.retryDelayMax || 30000,
       timeout: options.timeout || 60000,
       rateLimit: options.rateLimit || { maxTokens: 10, refillRate: 2 },
+      persistence: options.persistence || { enabled: false, path: './cache/queue-state.json' },
       ...options
     };
 
@@ -193,6 +195,7 @@ export class PromptQueue extends EventEmitter {
     this.nextId = 1;
     this.isProcessing = false;
     this.isPaused = false;
+    this.persistence = this.options.persistence;
 
     // Statistics
     this.stats = {
@@ -204,6 +207,10 @@ export class PromptQueue extends EventEmitter {
       averageTime: 0,
       startTime: Date.now()
     };
+
+    if (this.persistence.enabled) {
+      this._restoreQueueState();
+    }
   }
 
   /**
@@ -230,6 +237,7 @@ export class PromptQueue extends EventEmitter {
 
     this.queue.enqueue(item);
     this.stats.totalQueued++;
+    this._persistQueueState();
 
     this.emit('enqueued', { id: item.id, priority: item.priority, prompt: prompt.substring(0, 50) });
 
@@ -263,6 +271,7 @@ export class PromptQueue extends EventEmitter {
     if (this.queue.remove(id)) {
       this.stats.totalCancelled++;
       this.emit('cancelled', { id });
+      this._persistQueueState();
       return true;
     }
 
@@ -271,6 +280,7 @@ export class PromptQueue extends EventEmitter {
     if (running) {
       running.status = Status.CANCELLED;
       this.emit('cancelled', { id });
+      this._persistQueueState();
       return true;
     }
 
@@ -297,6 +307,7 @@ export class PromptQueue extends EventEmitter {
 
     this.stats.totalCancelled += cancelled.length;
     this.emit('allCancelled', { count: cancelled.length });
+    this._persistQueueState();
     return cancelled;
   }
 
@@ -314,6 +325,7 @@ export class PromptQueue extends EventEmitter {
   resume() {
     this.isPaused = false;
     this.emit('resumed');
+    this._persistQueueState();
     this._processQueue();
   }
 
@@ -445,6 +457,7 @@ export class PromptQueue extends EventEmitter {
 
     this.emit('started', { id: item.id, attempt: item.attempts });
 
+    let timeoutId = null;
     try {
       // Get handler
       const handler = item.handler || this.defaultHandler;
@@ -454,7 +467,7 @@ export class PromptQueue extends EventEmitter {
 
       // Create timeout promise
       const timeoutPromise = new Promise((_, reject) => {
-        setTimeout(() => reject(new Error('Timeout')), item.timeout);
+        timeoutId = setTimeout(() => reject(new Error('Timeout')), item.timeout);
       });
 
       // Execute with timeout
@@ -477,6 +490,7 @@ export class PromptQueue extends EventEmitter {
       this.running.delete(item.id);
       this.completed.set(item.id, item);
       this.stats.totalCompleted++;
+      this._persistQueueState();
 
       // Update average time
       const duration = item.completedAt - item.startedAt;
@@ -510,6 +524,7 @@ export class PromptQueue extends EventEmitter {
 
         // Re-queue with same priority
         this.queue.enqueue(item);
+        this._persistQueueState();
         this._processQueue();
       } else {
         // Final failure
@@ -520,10 +535,12 @@ export class PromptQueue extends EventEmitter {
         this.running.delete(item.id);
         this.completed.set(item.id, item);
         this.stats.totalFailed++;
+        this._persistQueueState();
 
         this.emit('failed', { id: item.id, error: error.message, attempts: item.attempts });
       }
     }
+    if (timeoutId) clearTimeout(timeoutId);
 
     // Continue processing
     this._processQueue();
@@ -550,6 +567,49 @@ export class PromptQueue extends EventEmitter {
 
   _sleep(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
+  }
+
+  _persistQueueState() {
+    if (!this.persistence.enabled) return;
+    try {
+      const payload = {
+        queued: this.queue.getAll().map(item => ({
+          id: item.id,
+          prompt: item.prompt,
+          priority: item.priority,
+          model: item.model,
+          metadata: item.metadata,
+          attempts: item.attempts,
+          maxRetries: item.maxRetries,
+          timeout: item.timeout,
+          createdAt: item.createdAt
+        })),
+        nextId: this.nextId
+      };
+      writeFileSync(this.persistence.path, JSON.stringify(payload, null, 2), 'utf-8');
+    } catch {
+      return;
+    }
+  }
+
+  _restoreQueueState() {
+    try {
+      if (!existsSync(this.persistence.path)) return;
+      const data = JSON.parse(readFileSync(this.persistence.path, 'utf-8'));
+      const queued = data.queued || [];
+      this.nextId = data.nextId || this.nextId;
+      for (const item of queued) {
+        this.enqueue(item.prompt, {
+          priority: item.priority,
+          model: item.model,
+          metadata: item.metadata,
+          maxRetries: item.maxRetries,
+          timeout: item.timeout
+        });
+      }
+    } catch {
+      return;
+    }
   }
 }
 

@@ -13,7 +13,10 @@
     "prepare": "husky install"
   },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.23.0"
+    "@modelcontextprotocol/sdk": "^1.23.0",
+    "ajv": "^8.17.1",
+    "dotenv": "^16.4.5",
+    "envalid": "^8.0.0"
   },
   "devDependencies": {
     "eslint": "^9.0.0",

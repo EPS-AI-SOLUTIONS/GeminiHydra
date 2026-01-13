@@ -9,11 +9,12 @@
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
+import { CONFIG } from './config.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const CACHE_DIR = process.env.CACHE_DIR || join(__dirname, '..', 'cache');
+const CACHE_DIR = CONFIG.CACHE_DIR || join(__dirname, '..', 'cache');
 const MODELS_CACHE_FILE = join(CACHE_DIR, 'gemini-models.json');
-const MODELS_CACHE_TTL = 3600 * 1000; // 1 hour in ms
+const MODELS_CACHE_TTL = CONFIG.GEMINI_MODELS_CACHE_TTL_MS;
 
 // Ensure cache directory exists
 if (!existsSync(CACHE_DIR)) {
@@ -24,26 +25,25 @@ if (!existsSync(CACHE_DIR)) {
  * Get Gemini API key from environment or settings
  */
 function getApiKey() {
-  // Check environment variable first
-  if (process.env.GEMINI_API_KEY) {
-    return process.env.GEMINI_API_KEY;
-  }
+  return process.env.GEMINI_API_KEY || null;
+}
 
-  // Try to read from settings.json
+async function fetchWithRetry(url, options = {}, attempt = 0) {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), CONFIG.GEMINI_FETCH_TIMEOUT_MS);
   try {
-    const settingsPath = join(process.env.USERPROFILE || process.env.HOME, '.gemini', 'settings.json');
-    if (existsSync(settingsPath)) {
-      const settings = JSON.parse(readFileSync(settingsPath, 'utf-8'));
-      // Gemini CLI stores key differently - check common locations
-      if (settings.security?.auth?.apiKey) {
-        return settings.security.auth.apiKey;
-      }
+    const response = await fetch(url, { ...options, signal: controller.signal });
+    return response;
+  } catch (error) {
+    if (attempt >= CONFIG.GEMINI_FETCH_RETRIES) {
+      throw error;
     }
-  } catch (e) {
-    // Ignore errors
+    const backoffMs = Math.min(1000 * 2 ** attempt, 5000);
+    await new Promise(resolve => setTimeout(resolve, backoffMs));
+    return fetchWithRetry(url, options, attempt + 1);
+  } finally {
+    clearTimeout(timeoutId);
   }
-
-  return null;
 }
 
 /**
@@ -61,7 +61,7 @@ export async function fetchGeminiModels(apiKey = null) {
   }
 
   try {
-    const response = await fetch(
+    const response = await fetchWithRetry(
       `https://generativelanguage.googleapis.com/v1beta/models?key=${key}`,
       {
         method: 'GET',
@@ -128,7 +128,7 @@ export async function getModelDetails(modelName, apiKey = null) {
   const model = modelName.startsWith('models/') ? modelName : `models/${modelName}`;
 
   try {
-    const response = await fetch(
+    const response = await fetchWithRetry(
       `https://generativelanguage.googleapis.com/v1beta/${model}?key=${key}`,
       {
         method: 'GET',

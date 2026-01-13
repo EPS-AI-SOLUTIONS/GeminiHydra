@@ -3,7 +3,7 @@
  */
 
 import { createCipheriv, createDecipheriv, createHash, randomBytes } from 'crypto';
-import { readFileSync, writeFileSync, existsSync, mkdirSync, readdirSync, statSync } from 'fs';
+import { readFileSync, writeFileSync, existsSync, mkdirSync, readdirSync, statSync, unlinkSync } from 'fs';
 import { join } from 'path';
 import { CONFIG } from './config.js';
 import { createLogger } from './logger.js';
@@ -12,6 +12,8 @@ const logger = createLogger('cache');
 const CACHE_DIR = CONFIG.CACHE_DIR || join(process.cwd(), 'cache');
 const CACHE_TTL = CONFIG.CACHE_TTL_MS;
 const CACHE_ENABLED = CONFIG.CACHE_ENABLED;
+const CACHE_MAX_ENTRY_BYTES = CONFIG.CACHE_MAX_ENTRY_BYTES;
+const CACHE_MAX_TOTAL_MB = CONFIG.CACHE_MAX_TOTAL_MB;
 const ENCRYPTION_ALGORITHM = 'aes-256-gcm';
 
 // Ensure cache directory exists
@@ -146,6 +148,11 @@ export function setCache(prompt, response, model = '', source = 'ollama') {
       model,
       timestamp: Date.now()
     });
+    const payloadBytes = Buffer.byteLength(payload, 'utf-8');
+    if (payloadBytes > CACHE_MAX_ENTRY_BYTES) {
+      logger.warn('Cache entry skipped due to size limit', { hash, payloadBytes });
+      return false;
+    }
 
     const entry = encryptPayload(payload);
     const storedEntry = entry.encrypted ? entry : { ...JSON.parse(payload), encrypted: false };
@@ -155,6 +162,69 @@ export function setCache(prompt, response, model = '', source = 'ollama') {
   } catch {
     return false;
   }
+}
+
+const sortByOldest = (items) => items.sort((a, b) => a.mtimeMs - b.mtimeMs);
+
+export function cleanupCache() {
+  if (!CACHE_ENABLED) return { cleared: 0, reason: 'disabled' };
+  let cleared = 0;
+
+  try {
+    const files = readdirSync(CACHE_DIR).filter(f => f.endsWith('.json'));
+    const now = Date.now();
+    const fileStats = files.map(file => {
+      const path = join(CACHE_DIR, file);
+      const stat = statSync(path);
+      return { file, path, mtimeMs: stat.mtimeMs, size: stat.size };
+    });
+
+    for (const fileInfo of fileStats) {
+      try {
+        const data = JSON.parse(readFileSync(fileInfo.path, 'utf-8'));
+        const payload = data.encrypted ? decryptPayload(data) : JSON.stringify(data);
+        if (!payload) {
+          unlinkSync(fileInfo.path);
+          cleared++;
+          continue;
+        }
+        const parsed = data.encrypted ? JSON.parse(payload) : data;
+        if (now - parsed.timestamp > CACHE_TTL) {
+          unlinkSync(fileInfo.path);
+          cleared++;
+        }
+      } catch {
+        unlinkSync(fileInfo.path);
+        cleared++;
+      }
+    }
+
+    const maxTotalBytes = CACHE_MAX_TOTAL_MB * 1024 * 1024;
+    const currentFiles = readdirSync(CACHE_DIR).filter(f => f.endsWith('.json'));
+    const currentStats = currentFiles.map(file => {
+      const path = join(CACHE_DIR, file);
+      const stat = statSync(path);
+      return { file, path, mtimeMs: stat.mtimeMs, size: stat.size };
+    });
+    let totalBytes = currentStats.reduce((sum, file) => sum + file.size, 0);
+    if (totalBytes > maxTotalBytes) {
+      const ordered = sortByOldest(currentStats);
+      for (const fileInfo of ordered) {
+        if (totalBytes <= maxTotalBytes) break;
+        try {
+          unlinkSync(fileInfo.path);
+          totalBytes -= fileInfo.size;
+          cleared++;
+        } catch {
+          continue;
+        }
+      }
+    }
+  } catch (error) {
+    logger.error('Cache cleanup failed', { error: error.message });
+  }
+
+  return { cleared };
 }
 
 /**

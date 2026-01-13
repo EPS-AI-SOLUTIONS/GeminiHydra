@@ -8,7 +8,7 @@ export const TOOLS = [
     inputSchema: {
       type: 'object',
       properties: {
-        prompt: { type: 'string', description: 'The prompt to generate from' },
+        prompt: { type: 'string', description: 'The prompt to generate from', maxLength: CONFIG.PROMPT_MAX_LENGTH },
         model: { type: 'string', description: `Model name (default: ${CONFIG.DEFAULT_MODEL})`, default: CONFIG.DEFAULT_MODEL },
         temperature: { type: 'number', description: 'Temperature 0-1 (default: 0.3)', default: 0.3 },
         maxTokens: { type: 'number', description: 'Max tokens to generate', default: 2048 },
@@ -24,7 +24,7 @@ export const TOOLS = [
     inputSchema: {
       type: 'object',
       properties: {
-        prompt: { type: 'string', description: 'The prompt to process' },
+        prompt: { type: 'string', description: 'The prompt to process', maxLength: CONFIG.PROMPT_MAX_LENGTH },
         model: { type: 'string', description: 'Model (default: auto-select based on task)' }
       },
       required: ['prompt']
@@ -36,7 +36,7 @@ export const TOOLS = [
     inputSchema: {
       type: 'object',
       properties: {
-        prompt: { type: 'string', description: 'The prompt to generate from' },
+        prompt: { type: 'string', description: 'The prompt to generate from', maxLength: CONFIG.PROMPT_MAX_LENGTH },
         fastModel: { type: 'string', description: `Fast model (default: ${CONFIG.FAST_MODEL})` },
         accurateModel: { type: 'string', description: `Accurate model (default: ${CONFIG.DEFAULT_MODEL})` },
         timeout: { type: 'number', description: 'Timeout in ms (default: 30000)' }
@@ -50,7 +50,7 @@ export const TOOLS = [
     inputSchema: {
       type: 'object',
       properties: {
-        prompt: { type: 'string', description: 'The prompt to generate from' },
+        prompt: { type: 'string', description: 'The prompt to generate from', maxLength: CONFIG.PROMPT_MAX_LENGTH },
         models: {
           type: 'array',
           items: { type: 'string' },
@@ -67,7 +67,7 @@ export const TOOLS = [
     inputSchema: {
       type: 'object',
       properties: {
-        prompt: { type: 'string', description: 'The prompt to generate from' },
+        prompt: { type: 'string', description: 'The prompt to generate from', maxLength: CONFIG.PROMPT_MAX_LENGTH },
         models: {
           type: 'array',
           items: { type: 'string' },
@@ -85,7 +85,7 @@ export const TOOLS = [
     inputSchema: {
       type: 'object',
       properties: {
-        prompt: { type: 'string', description: 'Code generation prompt' },
+        prompt: { type: 'string', description: 'Code generation prompt', maxLength: CONFIG.PROMPT_MAX_LENGTH },
         language: { type: 'string', description: 'Programming language (auto-detected if not specified)' },
         model: { type: 'string', description: `Generator model (default: ${CONFIG.DEFAULT_MODEL})` },
         coderModel: { type: 'string', description: `Validator model (default: ${CONFIG.CODER_MODEL})` }
@@ -99,7 +99,7 @@ export const TOOLS = [
     inputSchema: {
       type: 'object',
       properties: {
-        code: { type: 'string', description: 'Code to validate' },
+        code: { type: 'string', description: 'Code to validate', maxLength: CONFIG.PROMPT_MAX_LENGTH },
         language: { type: 'string', description: 'Programming language (auto-detected if not specified)' },
         maxAttempts: { type: 'number', description: 'Max correction attempts (default: 3)' }
       },
@@ -114,7 +114,7 @@ export const TOOLS = [
     inputSchema: {
       type: 'object',
       properties: {
-        prompt: { type: 'string', description: 'The prompt to optimize' },
+        prompt: { type: 'string', description: 'The prompt to optimize', maxLength: CONFIG.PROMPT_MAX_LENGTH },
         model: { type: 'string', description: 'Target model for optimization' },
         category: {
           type: 'string',
@@ -132,7 +132,7 @@ export const TOOLS = [
     inputSchema: {
       type: 'object',
       properties: {
-        prompt: { type: 'string', description: 'The prompt to analyze' }
+        prompt: { type: 'string', description: 'The prompt to analyze', maxLength: CONFIG.PROMPT_MAX_LENGTH }
       },
       required: ['prompt']
     }
@@ -143,7 +143,7 @@ export const TOOLS = [
     inputSchema: {
       type: 'object',
       properties: {
-        prompt: { type: 'string', description: 'The prompt to test' }
+        prompt: { type: 'string', description: 'The prompt to test', maxLength: CONFIG.PROMPT_MAX_LENGTH }
       },
       required: ['prompt']
     }
@@ -154,7 +154,7 @@ export const TOOLS = [
     inputSchema: {
       type: 'object',
       properties: {
-        prompt: { type: 'string', description: 'The prompt to improve' },
+        prompt: { type: 'string', description: 'The prompt to improve', maxLength: CONFIG.PROMPT_MAX_LENGTH },
         model: { type: 'string', description: 'Target model' }
       },
       required: ['prompt']
@@ -166,7 +166,7 @@ export const TOOLS = [
     inputSchema: {
       type: 'object',
       properties: {
-        prompts: { type: 'array', items: { type: 'string' }, description: 'Prompts to optimize' },
+        prompts: { type: 'array', items: { type: 'string', maxLength: CONFIG.PROMPT_MAX_LENGTH }, description: 'Prompts to optimize' },
         model: { type: 'string', description: 'Target model' }
       },
       required: ['prompts']
@@ -178,7 +178,7 @@ export const TOOLS = [
     inputSchema: {
       type: 'object',
       properties: {
-        prompt: { type: 'string', description: 'The prompt to analyze' }
+        prompt: { type: 'string', description: 'The prompt to analyze', maxLength: CONFIG.PROMPT_MAX_LENGTH }
       },
       required: ['prompt']
     }
@@ -189,7 +189,7 @@ export const TOOLS = [
     inputSchema: {
       type: 'object',
       properties: {
-        partial: { type: 'string', description: 'Partial prompt text' }
+        partial: { type: 'string', description: 'Partial prompt text', maxLength: CONFIG.PROMPT_MAX_LENGTH }
       },
       required: ['partial']
     }
@@ -200,7 +200,7 @@ export const TOOLS = [
     inputSchema: {
       type: 'object',
       properties: {
-        prompt: { type: 'string', description: 'Prompt to fix' }
+        prompt: { type: 'string', description: 'Prompt to fix', maxLength: CONFIG.PROMPT_MAX_LENGTH }
       },
       required: ['prompt']
     }
@@ -225,7 +225,7 @@ export const TOOLS = [
     inputSchema: {
       type: 'object',
       properties: {
-        prompts: { type: 'array', items: { type: 'string' }, description: 'Prompts to process' },
+        prompts: { type: 'array', items: { type: 'string', maxLength: CONFIG.PROMPT_MAX_LENGTH }, description: 'Prompts to process' },
         model: { type: 'string', description: `Model (default: ${CONFIG.DEFAULT_MODEL})` },
         maxConcurrent: { type: 'number', description: 'Max concurrent jobs (default: 4)' },
         optimize: { type: 'boolean', description: 'Optimize prompts before sending', default: false }
@@ -332,7 +332,7 @@ export const TOOLS = [
     inputSchema: {
       type: 'object',
       properties: {
-        prompt: { type: 'string', description: 'Prompt to enqueue' },
+        prompt: { type: 'string', description: 'Prompt to enqueue', maxLength: CONFIG.PROMPT_MAX_LENGTH },
         model: { type: 'string', description: 'Model to use' },
         priority: { type: 'string', enum: ['urgent', 'high', 'normal', 'low', 'background'], description: 'Queue priority' },
         metadata: { type: 'object', description: 'Optional metadata' }
@@ -346,7 +346,7 @@ export const TOOLS = [
     inputSchema: {
       type: 'object',
       properties: {
-        prompts: { type: 'array', items: { type: 'string' }, description: 'Prompts to enqueue' },
+        prompts: { type: 'array', items: { type: 'string', maxLength: CONFIG.PROMPT_MAX_LENGTH }, description: 'Prompts to enqueue' },
         model: { type: 'string', description: 'Model to use' },
         priority: { type: 'string', enum: ['urgent', 'high', 'normal', 'low', 'background'], description: 'Queue priority' }
       },
