@@ -424,6 +424,113 @@ export const TOOLS = [
     }
   },
 
+  // === TASK CLASSIFICATION TOOLS (LOCAL-FIRST) ===
+  {
+    name: 'task_classify',
+    description: 'Classify a task using LOCAL AI first (Ollama). Returns category, complexity, recommended tier, and optimal model.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        prompt: { type: 'string', description: 'The prompt/task to classify', maxLength: CONFIG.PROMPT_MAX_LENGTH },
+        preferLocal: { type: 'boolean', description: 'Prefer local models for classification (default: true)', default: true },
+        forQueue: { type: 'boolean', description: 'Include queue-specific fields', default: false }
+      },
+      required: ['prompt']
+    }
+  },
+  {
+    name: 'task_connection_status',
+    description: 'Get connection status: Ollama availability, internet connectivity, and recommended mode.',
+    inputSchema: {
+      type: 'object',
+      properties: {},
+      required: []
+    }
+  },
+  {
+    name: 'task_get_optimal_model',
+    description: 'Get optimal execution model based on task classification. Prioritizes LOCAL models.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        category: { type: 'string', description: 'Task category (code, analysis, simple, etc.)' },
+        complexity: { type: 'number', description: 'Complexity 1-10', default: 5 },
+        tier: { type: 'string', enum: ['lite', 'standard', 'pro'], description: 'Model tier', default: 'standard' },
+        preferLocal: { type: 'boolean', description: 'Prefer local models', default: true }
+      },
+      required: []
+    }
+  },
+  {
+    name: 'task_classifier_stats',
+    description: 'Get task classifier cache statistics.',
+    inputSchema: {
+      type: 'object',
+      properties: {},
+      required: []
+    }
+  },
+
+  // === SMART QUEUE TOOLS (LOCAL-FIRST + PARALLEL) ===
+  {
+    name: 'smart_queue_enqueue',
+    description: 'Enqueue prompt with AI classification. Routes to LOCAL (Ollama) or CLOUD queue based on task.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        prompt: { type: 'string', description: 'Prompt to enqueue', maxLength: CONFIG.PROMPT_MAX_LENGTH },
+        priority: { type: 'string', enum: ['urgent', 'high', 'normal', 'low', 'background'], description: 'Queue priority' },
+        tag: { type: 'string', description: 'Optional tag for grouping' },
+        skipClassification: { type: 'boolean', description: 'Skip AI classification', default: false },
+        preferLocal: { type: 'boolean', description: 'Prefer local execution', default: true }
+      },
+      required: ['prompt']
+    }
+  },
+  {
+    name: 'smart_queue_batch',
+    description: 'Enqueue multiple prompts with parallel classification. Efficiently routes to LOCAL/CLOUD queues.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        prompts: { type: 'array', items: { type: 'string', maxLength: CONFIG.PROMPT_MAX_LENGTH }, description: 'Prompts to enqueue' },
+        priority: { type: 'string', enum: ['urgent', 'high', 'normal', 'low', 'background'], description: 'Queue priority' },
+        parallelClassify: { type: 'boolean', description: 'Classify prompts in parallel', default: true }
+      },
+      required: ['prompts']
+    }
+  },
+  {
+    name: 'smart_queue_status',
+    description: 'Get smart queue status: local queue, cloud queue, and overall statistics.',
+    inputSchema: {
+      type: 'object',
+      properties: {},
+      required: []
+    }
+  },
+  {
+    name: 'smart_queue_results',
+    description: 'Get completed results from smart queue.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        completedOnly: { type: 'boolean', description: 'Only completed results', default: false },
+        failedOnly: { type: 'boolean', description: 'Only failed results', default: false }
+      },
+      required: []
+    }
+  },
+  {
+    name: 'smart_queue_clear',
+    description: 'Clear smart queue results and reset statistics.',
+    inputSchema: {
+      type: 'object',
+      properties: {},
+      required: []
+    }
+  },
+
   // === HYDRA TOOLS ===
   {
     name: 'hydra_health',

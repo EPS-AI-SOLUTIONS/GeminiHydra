@@ -54,6 +54,21 @@ import {
   pauseQueue,
   resumeQueue
 } from './prompt-queue.js';
+import {
+  classifyTask,
+  getConnectionStatus,
+  getOptimalExecutionModel,
+  getClassificationStats,
+  clearClassificationCache
+} from './task-classifier.js';
+import {
+  getSmartQueue,
+  smartEnqueue,
+  smartEnqueueBatch,
+  getSmartQueueStatus,
+  getSmartQueueResults,
+  clearSmartQueue
+} from './smart-queue.js';
 import { TOOLS } from './tools.js';
 import { resolveNodeEngines, resolveServerVersion } from './version.js';
 import { buildToolValidators } from './tool-validator.js';
@@ -673,15 +688,112 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         break;
       }
 
+      // === TASK CLASSIFICATION TOOLS ===
+      case 'task_classify': {
+        const securityWarnings = detectPromptRisk(safeArgs.prompt);
+        const blocked = enforcePromptRiskPolicy(name, requestId, securityWarnings);
+        if (blocked) return blocked;
+
+        result = await classifyTask(safeArgs.prompt, {
+          preferLocal: safeArgs.preferLocal !== false,
+          forQueue: safeArgs.forQueue || false
+        });
+        result.securityWarnings = securityWarnings;
+        break;
+      }
+
+      case 'task_connection_status': {
+        result = await getConnectionStatus();
+        break;
+      }
+
+      case 'task_get_optimal_model': {
+        const classification = {
+          category: safeArgs.category || 'simple',
+          complexity: safeArgs.complexity || 5,
+          tier: safeArgs.tier || 'standard'
+        };
+        result = await getOptimalExecutionModel(classification, {
+          preferLocal: safeArgs.preferLocal !== false
+        });
+        break;
+      }
+
+      case 'task_classifier_stats': {
+        result = getClassificationStats();
+        break;
+      }
+
+      // === SMART QUEUE TOOLS ===
+      case 'smart_queue_enqueue': {
+        const securityWarnings = detectPromptRisk(safeArgs.prompt);
+        const blocked = enforcePromptRiskPolicy(name, requestId, securityWarnings);
+        if (blocked) return blocked;
+
+        const id = await smartEnqueue(safeArgs.prompt, {
+          priority: safeArgs.priority || 'normal',
+          tag: safeArgs.tag || 'default',
+          skipClassification: safeArgs.skipClassification || false,
+          preferLocal: safeArgs.preferLocal !== false
+        });
+        result = {
+          id,
+          status: 'queued',
+          priority: safeArgs.priority || 'normal',
+          securityWarnings
+        };
+        break;
+      }
+
+      case 'smart_queue_batch': {
+        const securityWarnings = safeArgs.prompts.flatMap(p => detectPromptRisk(p));
+        const blocked = enforcePromptRiskPolicy(name, requestId, securityWarnings);
+        if (blocked) return blocked;
+
+        const ids = await smartEnqueueBatch(safeArgs.prompts, {
+          priority: safeArgs.priority || 'normal',
+          parallelClassify: safeArgs.parallelClassify !== false
+        });
+        result = {
+          ids,
+          count: ids.length,
+          priority: safeArgs.priority || 'normal',
+          parallelClassify: safeArgs.parallelClassify !== false,
+          securityWarnings
+        };
+        break;
+      }
+
+      case 'smart_queue_status': {
+        result = getSmartQueueStatus();
+        break;
+      }
+
+      case 'smart_queue_results': {
+        result = getSmartQueueResults({
+          completedOnly: safeArgs.completedOnly || false,
+          failedOnly: safeArgs.failedOnly || false
+        });
+        break;
+      }
+
+      case 'smart_queue_clear': {
+        clearSmartQueue();
+        result = { cleared: true };
+        break;
+      }
+
       case 'hydra_health': {
         const health = await checkHealth();
         const cacheStats = getCacheStats();
         const queueStatus = getQueueStatus();
+        const smartQueueStatus = getSmartQueueStatus();
         const nodeEngines = resolveNodeEngines();
         result = {
           status: health.available ? 'ok' : 'degraded',
           ollama: health,
           queue: queueStatus,
+          smartQueue: smartQueueStatus,
           cache: cacheStats,
           version: SERVER_VERSION,
           apiVersion: CONFIG.API_VERSION,

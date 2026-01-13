@@ -44,11 +44,11 @@ wtExe = userProfile & "\AppData\Local\Microsoft\WindowsApps\wt.exe"
 useWT = objFSO.FileExists(wtExe)
 
 If useWT Then
-    ' Launch with Windows Terminal using custom profile
-    objShell.Run "wt.exe -p ""Gemini CLI (HYDRA)"" --title ""Gemini CLI"" powershell.exe -NoExit -ExecutionPolicy Bypass -File """ & launcherPS1 & """", 1, False
+    ' Launch with Windows Terminal using custom profile (isolated from user profile)
+    objShell.Run "wt.exe -p ""Gemini CLI (HYDRA)"" --title ""Gemini CLI"" powershell.exe -NoProfile -NoExit -ExecutionPolicy Bypass -File """ & launcherPS1 & """", 1, False
 Else
-    ' Fallback to standard PowerShell
-    objShell.Run "powershell.exe -NoExit -ExecutionPolicy Bypass -File """ & launcherPS1 & """", 1, False
+    ' Fallback to standard PowerShell (isolated from user profile)
+    objShell.Run "powershell.exe -NoProfile -NoExit -ExecutionPolicy Bypass -File """ & launcherPS1 & """", 1, False
 End If
 
 ' === FUNCTIONS ===

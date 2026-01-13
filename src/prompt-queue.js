@@ -23,8 +23,8 @@ export const Priority = {
   BACKGROUND: 4
 };
 
-// Queue item status
-export const Status = {
+// Queue item status (internal use only)
+const Status = {
   PENDING: 'pending',
   RUNNING: 'running',
   COMPLETED: 'completed',
@@ -55,10 +55,6 @@ class PriorityQueue {
     this.heap[0] = this.heap.pop();
     this._bubbleDown(0);
     return top;
-  }
-
-  peek() {
-    return this.heap[0] || null;
   }
 
   remove(id) {
@@ -624,17 +620,6 @@ export function getQueue(options = {}) {
     queueInstance = new PromptQueue(options);
   }
   return queueInstance;
-}
-
-/**
- * Reset queue instance
- */
-export function resetQueue() {
-  if (queueInstance) {
-    queueInstance.cancelAll();
-    queueInstance.removeAllListeners();
-  }
-  queueInstance = null;
 }
 
 /**

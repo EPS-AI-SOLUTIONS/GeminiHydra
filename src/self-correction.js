@@ -8,9 +8,9 @@ const CODER_MODEL = process.env.CODER_MODEL || 'qwen2.5-coder:1.5b';
 const MAX_ATTEMPTS = 3;
 
 /**
- * Detect programming language from code
+ * Detect programming language from code (internal)
  */
-export function detectLanguage(code) {
+function detectLanguage(code) {
   const patterns = {
     python: [/\bdef\s+\w+\s*\(/, /\bimport\s+\w+/, /\bclass\s+\w+:/, /print\s*\(/],
     javascript: [/\bfunction\s+\w+/, /\bconst\s+\w+\s*=/, /\blet\s+\w+/, /=>\s*{/],
@@ -35,9 +35,9 @@ export function detectLanguage(code) {
 }
 
 /**
- * Extract code blocks from response
+ * Extract code blocks from response (internal)
  */
-export function extractCodeBlocks(text) {
+function extractCodeBlocks(text) {
   const codeBlockRegex = /```(\w+)?\n([\s\S]*?)```/g;
   const blocks = [];
   let match;
@@ -53,9 +53,9 @@ export function extractCodeBlocks(text) {
 }
 
 /**
- * Validate code syntax (basic checks)
+ * Validate code syntax (basic checks, internal)
  */
-export function validateSyntax(code, language) {
+function validateSyntax(code, language) {
   const issues = [];
 
   // Common checks
