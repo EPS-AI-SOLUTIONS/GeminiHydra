@@ -1,4 +1,19 @@
 #Requires -Version 5.1
+<#
+.SYNOPSIS
+    Agent Swarm Module - The 4-Step Protocol
+.DESCRIPTION
+    Implements the Hydra Agent Swarm protocol:
+    1. Speculative Research
+    2. Deep Planning
+    3. Parallel Execution (Witcher Agents)
+    4. Synthesis
+.VERSION
+    2.0.0
+.AUTHOR
+    HYDRA System
+#>
+
 function Invoke-AgentSwarm {
     [CmdletBinding()]
     param(
