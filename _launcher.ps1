@@ -1,7 +1,7 @@
-# ═══════════════════════════════════════════════════════════════════════════════
+﻿# â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 # GEMINI CLI - HYDRA LAUNCHER v3.0 (The Witcher Edition)
 # Features: Auto-Resume, Auto-Restart, Robust Ollama, Agent Swarm
-# ═══════════════════════════════════════════════════════════════════════════════
+# â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
 param(
     [switch]$Yolo,
@@ -248,7 +248,7 @@ while ($true) {
 
     # Show fallback status
     $fallbackProviders = @()
-    if (Test-Path "$env:LOCALAPPDATA\Programs\Ollama\ollama.exe" -or (Get-Command "ollama" -ErrorAction SilentlyContinue)) {
+    if ((Test-Path "$env:LOCALAPPDATA\Programs\Ollama\ollama.exe") -or (Get-Command "ollama" -ErrorAction SilentlyContinue)) {
         $fallbackProviders += "Ollama"
     }
     if ($env:ANTHROPIC_API_KEY) { $fallbackProviders += "Claude" }
@@ -291,3 +291,4 @@ while ($true) {
     Write-Host "(Press Ctrl+C to abort)" -ForegroundColor DarkGray
     Start-Sleep -Seconds 3
 }
+
