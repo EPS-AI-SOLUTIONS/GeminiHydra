@@ -1,6 +1,6 @@
 # GeminiCLI Project Identity & Configuration
 **Identity**: GEMINI
-**Version**: HYDRA 10.1 (AI Handler v2.0)
+**Version**: HYDRA 10.3 (AI Handler v2.0)
 **Mode**: MCP Orchestration
 **Path**: C:\Users\BIURODOM\Desktop\GeminiCLI
 

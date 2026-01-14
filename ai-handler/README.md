@@ -1,6 +1,6 @@
 # AI Handler - Refactored Architecture
 
-Version: 2.0.0 | HYDRA 10.1
+Version: 2.0.0 | HYDRA 10.3
 
 ## Overview
 
