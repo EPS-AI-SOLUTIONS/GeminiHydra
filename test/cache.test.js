@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { rmSync, existsSync } from 'node:fs';
 
 process.env.CACHE_DIR = './cache-test';
-process.env.CACHE_MAX_ENTRY_BYTES = '50';
+process.env.CACHE_MAX_ENTRY_BYTES = '1000';
 process.env.CACHE_TTL = '0';
 
 test('hashKey returns a sha256 hex string', async () => {
@@ -16,7 +16,7 @@ test('setCache skips entries exceeding max size', async () => {
   const { setCache } = await import(`../src/cache.js?setcache=${Date.now()}`);
   const result = setCache(
     'prompt',
-    'response too long response too long response too long response too long',
+    'response too long'.repeat(100),
     'model'
   );
   assert.equal(result, false);
@@ -28,6 +28,7 @@ test('setCache skips entries exceeding max size', async () => {
 test('cleanupCache removes expired entries', async () => {
   const { setCache, cleanupCache } = await import(`../src/cache.js?cleanup=${Date.now()}`);
   setCache('prompt', 'response ok', 'model');
+  await new Promise(resolve => setTimeout(resolve, 10));
   const result = cleanupCache();
   assert.ok(result.cleared >= 1);
   if (existsSync('./cache-test')) {
