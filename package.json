@@ -1,6 +1,6 @@
 {
   "name": "ollama-hydra",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "description": "HYDRA AI Handler for Gemini CLI - Ollama MCP Server",
   "type": "module",
   "main": "src/server.js",
