@@ -31,6 +31,19 @@ if (Get-Module -Name PSReadLine -ErrorAction SilentlyContinue) {
             [Microsoft.PowerShell.PSConsoleReadLine]::AcceptLine()
         }
     }
+
+    # Alt+t to toggle Deep Thinking
+    Set-PSReadLineKeyHandler -Chord 'Alt+t' -ScriptBlock {
+        $current = $env:GEMINI_DEEP_THINKING
+        if ($current -eq '1') {
+            $env:GEMINI_DEEP_THINKING = '0'
+            Write-Host "`n[Deep Thinking: OFF]" -ForegroundColor DarkGray
+        } else {
+            $env:GEMINI_DEEP_THINKING = '1'
+            Write-Host "`n[Deep Thinking: ON]" -ForegroundColor Magenta
+        }
+        [Microsoft.PowerShell.PSConsoleReadLine]::AcceptLine()
+    }
 }
 
 # === Gemini Function (direct, no wrapper) ===
@@ -59,6 +72,23 @@ Set-Alias -Name g -Value Start-Gemini
 function prompt {
     $path = (Get-Location).Path
     if ($path.Length -gt 40) { $path = "..." + $path.Substring($path.Length - 37) }
+    
+    # --- Status Line Integration ---
+    try {
+        # Set Env Vars for StatusLine
+        $env:AI_HANDLER_STATUS = if (Test-Path "$PSScriptRoot\ai-handler\AIModelHandler.psm1") { 'active' } else { 'unknown' }
+        if (-not $env:GEMINI_DEEP_THINKING) { $env:GEMINI_DEEP_THINKING = '0' }
+        
+        # Call StatusLine Script
+        $statusLine = Join-Path $env:GEMINI_HOME 'statusline.cjs'
+        if (Test-Path $statusLine) {
+            node $statusLine
+        }
+    } catch {
+        # Silent fail for status line
+    }
+    # -------------------------------
+
     Write-Host "[" -NoNewline -ForegroundColor DarkGray
     Write-Host "Gemini" -NoNewline -ForegroundColor Cyan
     Write-Host "] " -NoNewline -ForegroundColor DarkGray

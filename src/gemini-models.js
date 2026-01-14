@@ -180,7 +180,7 @@ function saveModelsCache(models) {
       cachedAt: Date.now()
     }, null, 2), 'utf-8');
     return true;
-  } catch (e) {
+  } catch (_e) {
     return false;
   }
 }

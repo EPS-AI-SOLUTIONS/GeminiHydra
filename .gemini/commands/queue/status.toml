@@ -1,9 +1,10 @@
 # Queue Status Command - View and manage prompt queue
 # Usage: /queue:status [action]
 
-[command]
 name = "status"
 description = "View and manage the prompt queue"
+category = "queue"
+requires_mcp = "ollama-hydra"
 
 prompt = """
 Use @ollama-hydra MCP server to manage the prompt queue.
@@ -23,7 +24,3 @@ Format the output nicely showing:
 - Average processing time
 - Rate limit status
 """
-
-[options]
-category = "queue"
-requires_mcp = "ollama-hydra"

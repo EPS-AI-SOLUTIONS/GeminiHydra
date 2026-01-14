@@ -45,10 +45,10 @@ useWT = objFSO.FileExists(wtExe)
 
 If useWT Then
     ' Launch with Windows Terminal using custom profile (isolated from user profile)
-    objShell.Run "wt.exe -p ""Gemini CLI (HYDRA)"" --title ""Gemini CLI"" powershell.exe -NoProfile -NoExit -ExecutionPolicy Bypass -File """ & launcherPS1 & """", 1, False
+    objShell.Run """" & wtExe & """ -p ""Gemini CLI (HYDRA)"" --title ""Gemini CLI"" powershell.exe -NoProfile -NoExit -ExecutionPolicy Bypass -Command "". '" & launcherPS1 & "'""", 1, False
 Else
     ' Fallback to standard PowerShell (isolated from user profile)
-    objShell.Run "powershell.exe -NoProfile -NoExit -ExecutionPolicy Bypass -File """ & launcherPS1 & """", 1, False
+    objShell.Run "powershell.exe -NoProfile -NoExit -ExecutionPolicy Bypass -Command "". '" & launcherPS1 & "'""", 1, False
 End If
 
 ' === FUNCTIONS ===

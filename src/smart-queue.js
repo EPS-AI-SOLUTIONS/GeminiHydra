@@ -13,7 +13,7 @@
 
 import { EventEmitter } from 'events';
 import { PromptQueue, Priority } from './prompt-queue.js';
-import { classifyTask, getOptimalExecutionModel, getConnectionStatus, testOllamaAvailability } from './task-classifier.js';
+import { classifyTask, getOptimalExecutionModel, testOllamaAvailability } from './task-classifier.js';
 import { generate } from './ollama-client.js';
 
 // Smart Queue Configuration
@@ -307,8 +307,6 @@ export class SmartQueue extends EventEmitter {
    * Handler for cloud queue (placeholder - needs Gemini integration)
    */
   async _cloudHandler(prompt, model, metadata) {
-    const startTime = Date.now();
-
     // For now, fallback to local if available
     const localAvailable = await testOllamaAvailability();
 

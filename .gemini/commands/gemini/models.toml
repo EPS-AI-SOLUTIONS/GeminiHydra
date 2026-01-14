@@ -1,9 +1,10 @@
 # Gemini Models Command - List and manage Gemini API models
 # Usage: /gemini:models [action]
 
-[command]
 name = "models"
 description = "List and manage Gemini API models"
+category = "gemini"
+requires_mcp = "ollama-hydra"
 
 prompt = """
 Use the @ollama-hydra MCP server to fetch and display Gemini models.
@@ -21,7 +22,3 @@ Capabilities: generateContent, countTokens, embedContent, generateAnswer, batchE
 
 After getting results, format them nicely in a table or list.
 """
-
-[options]
-category = "gemini"
-requires_mcp = "ollama-hydra"

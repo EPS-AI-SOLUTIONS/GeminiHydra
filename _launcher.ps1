@@ -103,7 +103,7 @@ while ($true) {
     $monitorScript = Join-Path $scriptDir 'Start-StatusMonitor.ps1'
     if (Test-Path $monitorScript) {
         if (-not (Get-Process -Name "powershell" | Where-Object { $_.MainWindowTitle -like "*HYDRA Monitor*" })) {
-            Start-Process powershell -ArgumentList "-NoExit", "-File", "`"$monitorScript`"" -WindowStyle Normal
+            Start-Process powershell -ArgumentList "-NoExit", "-File", "`"$monitorScript`"" -WindowStyle Hidden
         }
     }
 
@@ -116,8 +116,9 @@ while ($true) {
     try {
         # Check if node modules installed
         if (-not (Test-Path "node_modules")) {
-            Write-Host "Installing dependencies..." -ForegroundColor Yellow
-            npm install --silent
+            Show-ProgressAnimation -Message "Installing dependencies" -ScriptBlock {
+                npm install --silent
+            }
         }
         
         # Launch Node process

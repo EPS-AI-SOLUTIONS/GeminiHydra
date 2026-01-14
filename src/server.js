@@ -58,11 +58,9 @@ import {
   classifyTask,
   getConnectionStatus,
   getOptimalExecutionModel,
-  getClassificationStats,
-  clearClassificationCache
+  getClassificationStats
 } from './task-classifier.js';
 import {
-  getSmartQueue,
   smartEnqueue,
   smartEnqueueBatch,
   getSmartQueueStatus,
@@ -200,23 +198,37 @@ const enforcePromptRiskPolicy = (toolName, requestId, warnings) => {
 };
 
 const runAiHandler = async (prompt, options = {}) => {
-  const optimization = optimizePrompt(prompt);
+  // === HYDRA ENFORCEMENT ===
+  // Force optimization using the Agent Swarm / Prompt Optimizer logic
+  // even if not explicitly requested by the basic generation tool.
+  
+  const optimization = await optimizePrompt(prompt, { 
+    model: 'gemini-3-pro-preview', // Force Gemini 3 Pro for optimization
+    category: 'auto'
+  });
+  
   const category = optimization.category;
-
+  
   let model = options.model;
+  
+  // If no model specified, use HYDRA defaults
   if (!model) {
     if (category === 'code') model = CONFIG.CODER_MODEL;
     else if (category === 'question') model = CONFIG.FAST_MODEL;
     else model = CONFIG.DEFAULT_MODEL;
   }
 
+  // Use optimization result for generation
   let result;
-  if (category !== 'code') {
-    result = await speculativeGenerate(optimization.optimizedPrompt);
-  } else {
-    result = await generateWithCorrection(optimization.optimizedPrompt, {
+  
+  // If complex/code, use self-correction loop
+  if (category === 'code' || category === 'complex') {
+     result = await generateWithCorrection(optimization.optimizedPrompt, {
       generatorModel: model
     });
+  } else {
+    // For simple queries, still use speculative decoding for speed + quality
+    result = await speculativeGenerate(optimization.optimizedPrompt);
   }
 
   return {
@@ -415,7 +427,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         result = autoFixPrompt(safeArgs.prompt);
         break;
 
-      case 'prompt_template':
+      case 'prompt_template': {
         const template = getPromptTemplate(safeArgs.category, safeArgs.variant || 'basic');
         result = {
           category: safeArgs.category,
@@ -424,6 +436,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           available: template !== null
         };
         break;
+      }
 
       // === BATCH & UTILITY TOOLS ===
       case 'ollama_batch': {
@@ -492,10 +505,11 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         break;
       }
 
-      case 'ollama_pull':
+      case 'ollama_pull': {
         const success = await pullModel(safeArgs.model);
         result = { model: safeArgs.model, pulled: success };
         break;
+      }
 
       case 'ollama_cache_clear': {
         const { readdirSync, unlinkSync, statSync } = await import('fs');
@@ -515,7 +529,9 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
               cleared++;
             }
           }
-        } catch {}
+        } catch {
+          // ignore
+        }
 
         result = { cleared, cacheDir };
         break;
@@ -932,7 +948,7 @@ async function main() {
   });
 
   // Set default handler for prompt processing
-  queue.setHandler(async (prompt, model, metadata) => {
+  queue.setHandler(async (prompt, model, _metadata) => {
     const response = await runAiHandler(prompt, { model });
     return response.response;
   });
@@ -952,6 +968,23 @@ async function main() {
     maxConcurrent: CONFIG.QUEUE_MAX_CONCURRENT,
     retries: CONFIG.QUEUE_MAX_RETRIES
   });
+
+  // === LIVE HEALTH STATUS MONITOR ===
+  setInterval(async () => {
+    try {
+        const health = await checkHealth();
+        if (!health.available) {
+            logger.error('Ollama heartbeat lost. Attempting restart...');
+            const { exec } = await import('child_process');
+            exec('ollama serve', (err) => {
+                if (err) logger.error('Restart failed', err);
+                else logger.info('Ollama restart triggered via shell');
+            });
+        }
+    } catch (e) {
+        logger.error('Health monitor error', e);
+    }
+  }, 10000); // Check every 10 seconds
 
   if (CONFIG.CACHE_CLEANUP_INTERVAL_MS > 0) {
     const { cleanupCache } = await import('./cache.js');

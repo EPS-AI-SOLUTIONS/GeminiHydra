@@ -11,8 +11,7 @@
  * @version 2.0.0
  */
 
-import { checkHealth, generate, listModels } from './ollama-client.js';
-import { CONFIG } from './config.js';
+import { checkHealth, generate } from './ollama-client.js';
 
 // Configuration - LOCAL FIRST
 const ClassifierConfig = {

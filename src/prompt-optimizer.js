@@ -9,7 +9,7 @@
  * - Category-based enhancements
  */
 
-import { readFileSync, existsSync } from 'fs';
+import { readFileSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 
@@ -20,7 +20,7 @@ const CONFIG_PATH = join(__dirname, '..', 'prompt-optimizer-gemini.json');
 let config;
 try {
   config = JSON.parse(readFileSync(CONFIG_PATH, 'utf-8'));
-} catch (error) {
+} catch {
   // Default config if file not found
   config = {
     categories: {},
@@ -167,7 +167,6 @@ export function getModelOptimization(model) {
 export function optimizePrompt(prompt, options = {}) {
   const model = options.model || 'llama3.2:3b';
   let category = options.category || 'auto';
-  const addExamples = options.addExamples || false;
 
   // Detect category if auto
   if (category === 'auto') {
@@ -332,8 +331,6 @@ export function getSuggestions(prompt, model = 'llama3.2:3b') {
 export function getSmartSuggestions(prompt, analysis = null) {
   if (!analysis) analysis = analyzePrompt(prompt);
   const suggestions = [];
-  const promptLower = prompt.toLowerCase();
-  const smartConfig = config.smartSuggestions || {};
 
   // Check for missing error handling mention in code prompts
   if (analysis.category === 'code') {
@@ -447,7 +444,7 @@ export function getPromptTemplate(category, variant = 'basic') {
 /**
  * Apply auto-fix to prompt based on smart suggestions
  */
-export function autoFixPrompt(prompt, options = {}) {
+export function autoFixPrompt(prompt, _options = {}) {
   const analysis = analyzePrompt(prompt);
   let fixed = prompt;
   const appliedFixes = [];
