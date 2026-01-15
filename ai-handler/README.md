@@ -6,6 +6,13 @@ Version: 2.0.0 | HYDRA 10.3
 
 The AI Handler provides comprehensive AI model management with automatic fallback, rate limiting, cost optimization, and multi-provider support. This refactored architecture separates concerns into focused modules for better maintainability and extensibility.
 
+## Requirements
+
+- **PowerShell 7+ (`pwsh`) or Windows PowerShell** is required to run the `.ps1` bootstrap scripts.
+- On macOS/Linux, install PowerShell 7 and ensure `pwsh` is on your PATH.
+- If PowerShell is unavailable, you cannot run the bootstrap scripts; use the Node entrypoint in the repo root instead.
+- Common errors like `pwsh: command not found` or `powershell: command not found` indicate PowerShell is missing from the environment.
+
 ## Directory Structure
 
 ```

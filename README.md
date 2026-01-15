@@ -6,6 +6,12 @@
 
 HYDRA is an AI orchestration system that combines cloud AI (Google Gemini) for strategic planning with local AI (Ollama) for parallel task execution through 12 specialized Witcher agents.
 
+## Prerequisites
+
+- **PowerShell 7+ (`pwsh`) or Windows PowerShell** is required to run `.\_launcher.ps1`.
+  - On macOS/Linux, install PowerShell 7 and ensure `pwsh` is on your PATH.
+  - If you cannot install PowerShell, use the Node entrypoint (`npm start`) instead of the launcher script.
+
 ## Quick Start
 
 ```bash
@@ -52,6 +58,60 @@ Copy `.env.example` to `.env` and configure:
 - [GEMINI.md](./GEMINI.md) - System instructions and rules
 - [ARCHITECTURE.md](./ARCHITECTURE.md) - Technical architecture
 - [CHANGELOG.md](./CHANGELOG.md) - Version history
+
+## Git Remote Setup
+
+`git push` requires a configured remote. If you see "No configured push destination", add one:
+
+```bash
+git remote add origin <your-remote-url>
+git push -u origin <your-branch>
+```
+
+## Troubleshooting
+
+### `pwsh` / `powershell` missing
+
+If `pwsh` or `powershell` is not available, the launcher scripts will fail. Validate availability:
+
+```bash
+pwsh -v
+powershell -v
+```
+
+If neither command exists:
+- Install PowerShell 7+ and ensure `pwsh` is on PATH.
+- Or skip the launcher and run the Node entrypoint instead:
+
+```bash
+npm start
+```
+
+### Error: `pwsh: command not found` / `powershell: command not found`
+
+These errors mean PowerShell is not installed in the environment. Install PowerShell 7+ (so `pwsh` is available), or use the Node entrypoint:
+
+```bash
+npm start
+```
+
+### `git push` fails with "No configured push destination"
+
+Add a remote and push again:
+
+```bash
+git remote add origin <your-remote-url>
+git push -u origin <your-branch>
+```
+
+### Error: `fatal: No configured push destination.`
+
+This means no Git remote is configured. Add a remote and retry:
+
+```bash
+git remote add origin <your-remote-url>
+git push -u origin <your-branch>
+```
 
 ## Version
 
