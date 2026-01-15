@@ -1,7 +1,7 @@
 ﻿# cspell:ignore LASTEXITCODE OPENAI wrappera
-# ══════════════════════════════════════════════════════════════════════════════
+# PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP
 # GEMINI CLI - HYDRA LAUNCHER v3.3 (Polished Debug Edition)
-# ══════════════════════════════════════════════════════════════════════════════
+# PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP
 
 param(
     [switch]$Yolo,
@@ -32,9 +32,8 @@ if (Test-Path $hydraBin) {
 
 # === GIT AUTO-UPDATE (VERBOSE) ===
 if (Test-Path (Join-Path $scriptDir ".git")) {
-    Write-Host "  ⏳ Sprawdzanie aktualizacji (Git)..." -NoNewline -ForegroundColor Cyan
+    Write-Host "  ➤ Sprawdzanie aktualizacji (Git)..." -NoNewline -ForegroundColor Cyan
     try {
-        # [FIX] Bez zmiennej. Output leci na ekran (jeśli jest), linter nie płacze.
         git fetch origin
         $gitStatus = git status -uno
         
@@ -49,7 +48,6 @@ if (Test-Path (Join-Path $scriptDir ".git")) {
     }
     catch {
         Write-Host " [BŁĄD GITA - POMIJAM]" -ForegroundColor Red
-        # Ignorujemy błąd Gita, żeby launcher mógł iść dalej
     }
 }
 
@@ -107,7 +105,6 @@ while ($true) {
     Write-Host "  1. Sprawdzanie Ollama..." -NoNewline -ForegroundColor DarkGray
     
     try {
-        # [FIX] Używamy $null zamiast $test
         $null = Invoke-WebRequest -Uri $ollamaUrl -Method Head -TimeoutSec 2 -ErrorAction Stop
         Write-Host " [ONLINE]" -ForegroundColor Green
     }
@@ -122,7 +119,7 @@ while ($true) {
 
         if ($ollamaPath -and (Test-Path $ollamaPath)) {
             Start-Process -FilePath $ollamaPath -ArgumentList "serve" -WindowStyle Hidden
-            Start-Sleep -Seconds 3 # Daj mu chwilę
+            Start-Sleep -Seconds 3
             Write-Host " [URUCHOMIONO]" -ForegroundColor Green
         }
         else {
@@ -133,7 +130,7 @@ while ($true) {
     # === NODE DEPS ===
     Write-Host "  2. Sprawdzanie zależności (NPM)..." -ForegroundColor DarkGray
     if (-not (Test-Path "node_modules")) {
-        Write-Host "     Instalowanie node_modules (Bez trybu silent)..." -ForegroundColor Yellow
+        Write-Host "     Instalowanie node_modules..." -ForegroundColor Yellow
         npm install
     }
     else {
@@ -154,6 +151,9 @@ while ($true) {
             Write-Host "     Wrapper nie znaleziony! Próba bezpośrednia..." -ForegroundColor Red
             node src/server.js
         }
+        Write-Host "[HYDRA 🐉] MCP Server uruchomiony – wersja $SERVER_VERSION" -ForegroundColor Green
+        Write-Host "   ➤ Nasłuchuje na stdio – podłącz Gemini CLI lub Ctrl+C aby zatrzymać" -ForegroundColor Cyan
+        Write-Host "   ➤ Ollama: $(if (Test-Path 'http://localhost:11434') {'ONLINE'} else {'OFFLINE'})" -ForegroundColor Yellow
     }
     catch {
         Write-Host "!!! KRYTYCZNY BŁĄD !!!" -ForegroundColor Red
