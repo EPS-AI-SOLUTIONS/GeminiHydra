@@ -104,6 +104,7 @@ export async function selfCorrect(code, options = {}) {
   const language = options.language || detectLanguage(code);
   const maxAttempts = options.maxAttempts || MAX_ATTEMPTS;
   const model = options.model || CODER_MODEL;
+  const includeDebug = options.debug === true;
 
   let currentCode = code;
   let attempts = 0;
@@ -114,11 +115,13 @@ export async function selfCorrect(code, options = {}) {
 
     // Validate current code
     const validation = validateSyntax(currentCode, language);
-    history.push({
+    const historyEntry = {
       attempt: attempts,
       valid: validation.valid,
-      issues: validation.issues
-    });
+      issues: validation.issues,
+      fix: null
+    };
+    history.push(historyEntry);
 
     if (validation.valid) {
       return {
@@ -144,10 +147,26 @@ ${currentCode}`;
         // Extract code if wrapped in markdown
         const blocks = extractCodeBlocks('```\n' + result.response + '\n```');
         currentCode = blocks.length > 0 ? blocks[0].code : result.response.trim();
+        historyEntry.fix = {
+          model,
+          applied: true,
+          responsePreview: includeDebug ? undefined : result.response.slice(0, 200),
+          ...(includeDebug ? { prompt: fixPrompt, response: result.response } : {})
+        };
+      } else {
+        historyEntry.fix = {
+          model,
+          applied: false,
+          error: 'Empty response from model'
+        };
       }
     } catch (error) {
-      history.push({ attempt: attempts, error: error.message });
-      break;
+      historyEntry.fix = {
+        model,
+        applied: false,
+        error: error.message
+      };
+      continue;
     }
   }
 
