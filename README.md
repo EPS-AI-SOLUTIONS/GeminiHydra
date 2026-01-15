@@ -54,6 +54,12 @@ Copy `.env.example` to `.env` and configure:
 - `SSH_PUBLIC_KEY` - Optional SSH public key for local authorization via `scripts/setup-ssh-key.sh`
 - See `GEMINI.md` for full configuration options
 
+To install the key, run:
+
+```bash
+./scripts/setup-ssh-key.sh
+```
+
 ## Documentation
 
 - [GEMINI.md](./GEMINI.md) - System instructions and rules

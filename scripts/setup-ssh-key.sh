@@ -1,6 +1,13 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+if [[ -z "${SSH_PUBLIC_KEY:-}" ]] && [[ -f ".env" ]]; then
+  set -a
+  # shellcheck disable=SC1091
+  source ".env"
+  set +a
+fi
+
 if [[ -z "${SSH_PUBLIC_KEY:-}" ]]; then
   echo "SSH_PUBLIC_KEY is not set. Add it to your .env file before running this script." >&2
   exit 1
@@ -17,7 +24,7 @@ AUTHORIZED_KEYS="$SSH_DIR/authorized_keys"
 mkdir -p "$SSH_DIR"
 chmod 700 "$SSH_DIR"
 
-if [[ -f "$AUTHORIZED_KEYS" ]] && rg -q --fixed-strings "$SSH_PUBLIC_KEY" "$AUTHORIZED_KEYS"; then
+if [[ -f "$AUTHORIZED_KEYS" ]] && grep -Fq -- "$SSH_PUBLIC_KEY" "$AUTHORIZED_KEYS"; then
   echo "SSH public key already present in $AUTHORIZED_KEYS."
   exit 0
 fi
