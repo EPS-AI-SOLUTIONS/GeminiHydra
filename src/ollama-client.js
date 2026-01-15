@@ -6,6 +6,19 @@ export const OLLAMA_HOST = process.env.OLLAMA_HOST || 'http://localhost:11434';
 
 const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
+const createTimeoutSignal = (timeoutMs) => {
+  if (typeof AbortSignal !== 'undefined' && typeof AbortSignal.timeout === 'function') {
+    return { signal: AbortSignal.timeout(timeoutMs), cleanup: null };
+  }
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
+  return {
+    signal: controller.signal,
+    cleanup: () => clearTimeout(timeout)
+  };
+};
+
 /**
  * Call Ollama generate API
  */
@@ -56,10 +69,11 @@ export async function checkHealth(options = {}) {
   let lastError = null;
 
   for (let attempt = 0; attempt <= retries; attempt += 1) {
+    const { signal, cleanup } = createTimeoutSignal(timeoutMs);
     try {
       const response = await fetch(`${OLLAMA_HOST}/api/tags`, {
         method: 'GET',
-        signal: AbortSignal.timeout(timeoutMs)
+        signal
       });
 
       if (!response.ok) {
@@ -74,6 +88,8 @@ export async function checkHealth(options = {}) {
       }
     } catch (error) {
       lastError = error;
+    } finally {
+      cleanup?.();
     }
 
     if (attempt < retries) {
@@ -88,8 +104,10 @@ export async function checkHealth(options = {}) {
  * List available models
  */
 export async function listModels() {
+  const { signal, cleanup } = createTimeoutSignal(5000);
   try {
-    const response = await fetch(`${OLLAMA_HOST}/api/tags`);
+    const response = await fetch(`${OLLAMA_HOST}/api/tags`, { signal });
+    if (!response.ok) return [];
     const data = await response.json();
     return data.models?.map(m => ({
       name: m.name,
@@ -98,6 +116,8 @@ export async function listModels() {
     })) || [];
   } catch {
     return [];
+  } finally {
+    cleanup?.();
   }
 }
 
@@ -105,11 +125,19 @@ export async function listModels() {
  * Pull a model
  */
 export async function pullModel(model) {
-  const response = await fetch(`${OLLAMA_HOST}/api/pull`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ name: model, stream: false })
-  });
+  const { signal, cleanup } = createTimeoutSignal(60000);
+  try {
+    const response = await fetch(`${OLLAMA_HOST}/api/pull`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: model, stream: false }),
+      signal
+    });
 
-  return response.ok;
+    return response.ok;
+  } catch {
+    return false;
+  } finally {
+    cleanup?.();
+  }
 }

@@ -56,6 +56,19 @@ let networkStatus = {
   ollamaModels: []
 };
 
+const createTimeoutSignal = (timeoutMs) => {
+  if (typeof AbortSignal !== 'undefined' && typeof AbortSignal.timeout === 'function') {
+    return { signal: AbortSignal.timeout(timeoutMs), cleanup: null };
+  }
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
+  return {
+    signal: controller.signal,
+    cleanup: () => clearTimeout(timeout)
+  };
+};
+
 // ============================================================================
 // Network & Ollama Detection
 // ============================================================================
@@ -77,10 +90,11 @@ export async function testNetworkConnectivity() {
   ];
 
   for (const url of testUrls) {
+    const { signal, cleanup } = createTimeoutSignal(5000);
     try {
       const response = await fetch(url, {
         method: 'HEAD',
-        signal: AbortSignal.timeout(5000)
+        signal
       });
       if (response.ok) {
         networkStatus.online = true;
@@ -89,6 +103,8 @@ export async function testNetworkConnectivity() {
       }
     } catch {
       // Try next URL
+    } finally {
+      cleanup?.();
     }
   }
 
