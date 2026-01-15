@@ -1,22 +1,21 @@
 ﻿# cspell:ignore LASTEXITCODE OPENAI wrappera
 # PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP
-# GEMINI CLI - HYDRA LAUNCHER v3.3 (Polished Debug Edition)
+# GEMINI CLI - HYDRA LAUNCHER v3.3
 # PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP
 
 param(
     [switch]$Yolo,
-    [switch]$Turbo
+    [switch]$Turbo,
+    [switch]$Debug
 )
 
-$ErrorActionPreference = "Continue" # [DEBUG] Pokazuj wszystkie błędy
+$ErrorActionPreference = "Continue"
 
 # --- CONFIGURATION ---
-$env:HYDRA_YOLO_MODE = 'true'
+$env:HYDRA_YOLO_MODE = if ($Yolo) { 'true' } else { 'false' }
 $env:HYDRA_DEEP_THINKING = 'true'
 $env:HYDRA_DEEP_RESEARCH = 'true'
 $env:HYDRA_TURBO_MODE = if ($Turbo) { 'true' } else { 'false' }
-
-if ($Yolo) { $env:HYDRA_YOLO_MODE = 'true' }
 
 # === PATH RESOLUTION ===
 $script:ProjectRoot = if ($PSScriptRoot) { $PSScriptRoot } else { $PWD.Path }
@@ -52,7 +51,7 @@ if (Test-Path (Join-Path $scriptDir ".git")) {
 }
 
 # === WINDOW CONFIGURATION ===
-$Host.UI.RawUI.WindowTitle = 'Gemini CLI (HYDRA - Debug Mode)'
+$Host.UI.RawUI.WindowTitle = if ($Debug) { 'Gemini CLI (HYDRA - Debug Mode)' } else { 'Gemini CLI (HYDRA)' }
 
 # Icon Setup
 try {
@@ -93,10 +92,27 @@ if (Test-Path $envFile) {
     }
 }
 
+function Get-RunningMcpServer {
+    try {
+        $processes = Get-CimInstance -ClassName Win32_Process -Filter "Name='node.exe'" -ErrorAction Stop
+    }
+    catch {
+        return $null
+    }
+
+    foreach ($proc in $processes) {
+        $cmd = $proc.CommandLine
+        if ($cmd -and ($cmd -match 'src[\\/]+server\.js')) {
+            return $proc
+        }
+    }
+    return $null
+}
+
 # === MAIN LOOP ===
 while ($true) {
     Clear-Host
-    Write-Host "GEMINI CLI (HYDRA DEBUG)" -ForegroundColor Cyan
+    Write-Host (if ($Debug) { "GEMINI CLI (HYDRA DEBUG)" } else { "GEMINI CLI (HYDRA)" }) -ForegroundColor Cyan
     Write-Host "------------------------" -ForegroundColor DarkGray
 
     # === OLLAMA CHECK ===
@@ -151,27 +167,51 @@ while ($true) {
 
     # === LAUNCH ===
     Write-Host "  3. Startowanie silnika..." -ForegroundColor Cyan
-    
+    $serverStartedInBackground = $false
+
     try {
-        $fallbackWrapper = Join-Path $script:ProjectRoot 'Invoke-GeminiWithFallback.ps1'
-        
-        if (Test-Path $fallbackWrapper) {
-            Write-Host "     Uruchamianie wrappera..." -ForegroundColor DarkGray
-            & $fallbackWrapper -Interactive -MaxRetries 3 -RetryDelayMs 2000
+        Write-Host "     Uruchamianie MCP servera (node src/server.js)..." -ForegroundColor DarkGray
+        $ollamaStatus = 'OFFLINE'
+        try {
+            $null = Invoke-WebRequest -Uri $ollamaUrl -Method Head -TimeoutSec 2 -ErrorAction Stop
+            $ollamaStatus = 'ONLINE'
+        }
+        catch {}
+        $existingServer = Get-RunningMcpServer
+        if ($existingServer) {
+            Write-Host "[HYDRA 🐉] MCP Server już działa" -ForegroundColor Yellow
+            Write-Host "   ➤ PID: $($existingServer.ProcessId)" -ForegroundColor Yellow
+            Write-Host "   ➤ Ollama: $ollamaStatus" -ForegroundColor Yellow
+            $serverStartedInBackground = $true
         }
         else {
-            Write-Host "     Wrapper nie znaleziony! Próba bezpośrednia..." -ForegroundColor Red
-            node src/server.js
+            Write-Host "[HYDRA 🐉] MCP Server startuje" -ForegroundColor Green
+            Write-Host "   ➤ Nasłuchuje na stdio – podłącz Gemini CLI lub Ctrl+C aby zatrzymać" -ForegroundColor Cyan
+            Write-Host "   ➤ Ollama: $ollamaStatus" -ForegroundColor Yellow
+            if ($Debug) {
+                $serverProcess = Start-Process -FilePath "node" -ArgumentList "src/server.js" -WorkingDirectory $script:ProjectRoot -PassThru -WindowStyle Normal
+                $serverStartedInBackground = $true
+                Write-Host "   ➤ MCP server uruchomiony w nowym oknie (PID $($serverProcess.Id))" -ForegroundColor Green
+            }
+            else {
+                node src/server.js
+                if ($LASTEXITCODE -ne 0) {
+                    throw "Node zakończony kodem $LASTEXITCODE."
+                }
+            }
         }
-        Write-Host "[HYDRA 🐉] MCP Server uruchomiony – wersja $SERVER_VERSION" -ForegroundColor Green
-        Write-Host "   ➤ Nasłuchuje na stdio – podłącz Gemini CLI lub Ctrl+C aby zatrzymać" -ForegroundColor Cyan
-        Write-Host "   ➤ Ollama: $(if (Test-Path 'http://localhost:11434') {'ONLINE'} else {'OFFLINE'})" -ForegroundColor Yellow
     }
     catch {
         Write-Host "!!! KRYTYCZNY BŁĄD !!!" -ForegroundColor Red
         Write-Host $_ -ForegroundColor Red
         Write-Host $_.ScriptStackTrace -ForegroundColor DarkRed
         Start-Sleep -Seconds 10
+    }
+
+    if ($serverStartedInBackground) {
+        Write-Host "`n[HYDRA] Naciśnij Enter, aby wrócić do menu..." -ForegroundColor DarkGray
+        Read-Host | Out-Null
+        continue
     }
 
     Write-Host "`n[HYDRA] Restart za 3 sekundy..." -ForegroundColor DarkGray

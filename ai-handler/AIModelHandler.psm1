@@ -309,6 +309,8 @@ $script:DefaultConfig = @{
         rateLimitThreshold = 0.95
         costOptimization = $false
         autoFallback = $true
+        useSwarmByDefault = $true
+        defaultTaskType = "general"
         logLevel = "info"
         logFormat = "json"
         streamResponses = $true
@@ -927,6 +929,9 @@ function Initialize-AIState {
     param()
 
     $config = Get-AIConfig
+    if ($config.settings.modelDiscovery.enabled -and -not (Get-Command Initialize-ModelDiscovery -ErrorAction SilentlyContinue)) {
+        Import-SubModule -Name "ModelDiscovery" -Path $script:ModelDiscoveryPath | Out-Null
+    }
     if ($config.settings.modelDiscovery.enabled -and (Get-Command Initialize-ModelDiscovery -ErrorAction SilentlyContinue)) {
         try {
             $discovery = Initialize-ModelDiscovery -UpdateConfig:$config.settings.modelDiscovery.updateConfigOnStart `
@@ -1376,13 +1381,33 @@ function Invoke-AIRequest {
 
     # Auto-select model if not specified
     if (-not $Model) {
-        $optimal = Get-OptimalModel -Task "simple" -EstimatedTokens ($Messages | ConvertTo-Json | Measure-Object -Character).Characters
-        if ($optimal) {
-            $Provider = $optimal.provider
-            $Model = $optimal.model
-        } else {
-            throw "Brak dostępnych modeli."
+        $taskType = "general"
+        if ($config.settings.defaultTaskType -and $config.settings.aliasFallbackChains -and
+            $config.settings.aliasFallbackChains.ContainsKey($config.settings.defaultTaskType)) {
+            $taskType = $config.settings.defaultTaskType
         }
+
+        $auto = $null
+        if ($config.settings.aliasFallbackChains) {
+            $auto = Get-ModelForTask -TaskType $taskType -PreferLocal:($config.settings.preferLocal -eq $true)
+        }
+
+        if ($auto) {
+            $Provider = $auto.Provider
+            $Model = $auto.Model
+        } else {
+            $optimal = Get-OptimalModel -Task "simple" -EstimatedTokens ($Messages | ConvertTo-Json | Measure-Object -Character).Characters
+            if ($optimal) {
+                $Provider = $optimal.provider
+                $Model = $optimal.model
+            } else {
+                throw "Brak dostępnych modeli."
+            }
+        }
+    }
+
+    if ($Model) {
+        $Model = Resolve-ModelAlias -Alias $Model
     }
 
     $currentProvider = $Provider
@@ -2564,6 +2589,9 @@ function Sync-AIModels {
     )
 
     if (-not (Get-Command 'Get-AllAvailableModels' -ErrorAction SilentlyContinue)) {
+        Import-SubModule -Name "ModelDiscovery" -Path $script:ModelDiscoveryPath | Out-Null
+    }
+    if (-not (Get-Command 'Get-AllAvailableModels' -ErrorAction SilentlyContinue)) {
         Write-Warning "ModelDiscovery module not loaded"
         return $null
     }
@@ -3095,6 +3123,7 @@ function Invoke-LazyInit {
     if (-not $hasKeys -and -not $hasOllama) { return }
 
     try {
+        Import-SubModule -Name "ModelDiscovery" -Path $script:ModelDiscoveryPath | Out-Null
         # Background model discovery (non-blocking)
         $script:DiscoveredModels = Sync-AIModels -Silent -ErrorAction SilentlyContinue
     } catch {

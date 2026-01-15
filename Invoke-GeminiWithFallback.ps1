@@ -116,5 +116,135 @@ function Get-AvailableFallbacks {
     return $available
 }
 
-# === MAIN LOGIC (kontynuacja w pełnym pliku – reszta po testach) ===
-# (Plik oryginalny był obcięty w raw, ale core działa – dodamy resztę w następnej iteracji)
+function Invoke-ProviderOnce {
+    param(
+        [hashtable]$Provider,
+        [string]$Prompt
+    )
+
+    if ($Provider.Type -eq "cli") {
+        $output = & $Provider.Command $Prompt 2>&1
+        $text = ($output | Out-String).Trim()
+        if ($LASTEXITCODE -ne 0) {
+            throw $text
+        }
+        if (Test-QuotaError -Output $text) {
+            throw $text
+        }
+        if ([string]::IsNullOrWhiteSpace($text)) {
+            throw "Empty response from $($Provider.Name)"
+        }
+        return $text
+    }
+
+    $response = & $Provider.Invoke $Prompt
+    if ([string]::IsNullOrWhiteSpace($response)) {
+        throw "Empty response from $($Provider.Name)"
+    }
+    return $response
+}
+
+function Invoke-ProviderWithRetries {
+    param(
+        [hashtable]$Provider,
+        [string]$Prompt
+    )
+
+    $lastError = $null
+    for ($attempt = 1; $attempt -le $MaxRetries; $attempt++) {
+        try {
+            $response = Invoke-ProviderOnce -Provider $Provider -Prompt $Prompt
+            return @{
+                Success = $true
+                Provider = $Provider.Name
+                Response = $response
+            }
+        } catch {
+            $lastError = $_.Exception.Message
+            $isQuota = Test-QuotaError -Output $lastError
+            if ($isQuota) {
+                return @{
+                    Success = $false
+                    Provider = $Provider.Name
+                    Error = $lastError
+                    Quota = $true
+                }
+            }
+            if ($attempt -lt $MaxRetries) {
+                Start-Sleep -Milliseconds $RetryDelayMs
+            }
+        }
+    }
+
+    return @{
+        Success = $false
+        Provider = $Provider.Name
+        Error = $lastError
+        Quota = $false
+    }
+}
+
+function Invoke-WithFallback {
+    param(
+        [Parameter(Mandatory)]
+        [string]$Prompt
+    )
+
+    $available = Get-AvailableFallbacks
+    if (-not $available -or $available.Count -eq 0) {
+        throw "No available providers."
+    }
+
+    $errors = @()
+    foreach ($provider in $available) {
+        $result = Invoke-ProviderWithRetries -Provider $provider -Prompt $Prompt
+        if ($result.Success) {
+            return @{
+                Provider = $result.Provider
+                Response = $result.Response
+            }
+        }
+
+        $errors += "$($result.Provider): $($result.Error)"
+    }
+
+    throw ("All providers failed. " + ($errors -join " | "))
+}
+
+function Start-InteractiveLoop {
+    Write-Host "HYDRA fallback shell. Type 'exit' to quit." -ForegroundColor DarkGray
+    while ($true) {
+        $inputPrompt = Read-Host "You"
+        if ($null -eq $inputPrompt) { continue }
+        $trimmed = $inputPrompt.Trim()
+        if ($trimmed.Length -eq 0) { continue }
+        if ($trimmed -in @("exit", "quit", "q")) { break }
+
+        try {
+            $result = Invoke-WithFallback -Prompt $trimmed
+            Write-Host ""
+            Write-Host $result.Response
+            Write-Host ""
+        } catch {
+            Write-Host "Error: $($_.Exception.Message)" -ForegroundColor Red
+        }
+    }
+}
+
+if ($Interactive) {
+    Start-InteractiveLoop
+    return
+}
+
+if (-not $Prompt) {
+    Write-Host "Usage: .\\Invoke-GeminiWithFallback.ps1 -Prompt 'Your question' [-Interactive]" -ForegroundColor Yellow
+    exit 1
+}
+
+try {
+    $result = Invoke-WithFallback -Prompt $Prompt
+    Write-Host $result.Response
+} catch {
+    Write-Host "Error: $($_.Exception.Message)" -ForegroundColor Red
+    exit 1
+}

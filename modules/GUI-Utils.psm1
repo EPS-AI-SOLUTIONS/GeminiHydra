@@ -462,12 +462,20 @@ function Show-TheEndBanner {
 
     if ($NoAnimation) {
         Write-Host $simpleArt -ForegroundColor Yellow
+        Write-Host '             THE END' -ForegroundColor Yellow
     } else {
         $colors = @('DarkYellow', 'Yellow', 'White', 'Yellow', 'DarkYellow')
+        $blinkOn = $true
         foreach ($color in $colors) {
             Clear-Host
             Write-Host $simpleArt -ForegroundColor $color
+            if ($blinkOn) {
+                Write-Host '             THE END' -ForegroundColor White
+            } else {
+                Write-Host (' ' * 20)
+            }
             Start-Sleep -Milliseconds 200
+            $blinkOn = -not $blinkOn
         }
     }
 }
