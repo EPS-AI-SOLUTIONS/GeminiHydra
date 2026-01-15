@@ -18,7 +18,7 @@ import {
   ListToolsRequestSchema,
 } from '@modelcontextprotocol/sdk/types.js';
 
-import { generate, checkHealth, listModels, pullModel } from './ollama-client.js';
+import { generate, checkHealth, listModels, pullModel, OLLAMA_HOST } from './ollama-client.js';
 import { speculativeGenerate, modelRace, consensusGenerate } from './speculative.js';
 import { selfCorrect, generateWithCorrection } from './self-correction.js';
 import { getCache, setCache, getCacheStats } from './cache.js';
@@ -911,6 +911,14 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 // Start server
 async function main() {
   const transport = new StdioServerTransport();
+  const healthIntervalMs = 10000;
+  const healthTimeoutMs = 3000;
+  const healthRetries = 1;
+  const healthRetryDelayMs = 500;
+  const restartCooldownMs = 60000;
+  let restartInProgress = false;
+  let lastRestartAttempt = 0;
+  let healthCheckInFlight = false;
 
   const cacheStats = getCacheStats();
   logger.info('Cache warmup completed', {
@@ -970,21 +978,76 @@ async function main() {
   });
 
   // === LIVE HEALTH STATUS MONITOR ===
-  setInterval(async () => {
+  const isLocalHost = (host) => {
     try {
-        const health = await checkHealth();
-        if (!health.available) {
-            logger.error('Ollama heartbeat lost. Attempting restart...');
-            const { exec } = await import('child_process');
-            exec('ollama serve', (err) => {
-                if (err) logger.error('Restart failed', err);
-                else logger.info('Ollama restart triggered via shell');
-            });
-        }
-    } catch (e) {
-        logger.error('Health monitor error', e);
+      const url = new URL(host);
+      return ['localhost', '127.0.0.1', '::1'].includes(url.hostname);
+    } catch {
+      return false;
     }
-  }, 10000); // Check every 10 seconds
+  };
+
+  const attemptRestart = async () => {
+    if (!isLocalHost(OLLAMA_HOST)) {
+      logger.warn('Skipping Ollama restart for non-local host', { host: OLLAMA_HOST });
+      return { attempted: false, reason: 'non-local-host' };
+    }
+
+    if (restartInProgress) {
+      return { attempted: false, reason: 'restart-in-progress' };
+    }
+
+    const now = Date.now();
+    if (now - lastRestartAttempt < restartCooldownMs) {
+      return { attempted: false, reason: 'cooldown' };
+    }
+
+    restartInProgress = true;
+    lastRestartAttempt = now;
+
+    try {
+      const { spawn } = await import('child_process');
+      const child = spawn('ollama', ['serve'], { detached: true, stdio: 'ignore' });
+      child.unref();
+      logger.info('Ollama restart triggered via spawn', { pid: child.pid });
+      return { attempted: true };
+    } catch (error) {
+      logger.error('Restart failed', { error: error.message });
+      return { attempted: true, error: error.message };
+    } finally {
+      restartInProgress = false;
+    }
+  };
+
+  setInterval(async () => {
+    if (healthCheckInFlight) return;
+    healthCheckInFlight = true;
+    try {
+      const health = await checkHealth({
+        timeoutMs: healthTimeoutMs,
+        retries: healthRetries,
+        retryDelayMs: healthRetryDelayMs
+      });
+      if (!health.available) {
+        logger.error('Ollama heartbeat lost', { error: health.error, host: health.host });
+        const restart = await attemptRestart();
+        if (restart.attempted) {
+          const recovery = await checkHealth({
+            timeoutMs: 5000,
+            retries: 2,
+            retryDelayMs: 1000
+          });
+          if (recovery.available) {
+            logger.info('Ollama recovered after restart', { host: recovery.host });
+          }
+        }
+      }
+    } catch (e) {
+      logger.error('Health monitor error', e);
+    } finally {
+      healthCheckInFlight = false;
+    }
+  }, healthIntervalMs); // Check every 10 seconds
 
   if (CONFIG.CACHE_CLEANUP_INTERVAL_MS > 0) {
     const { cleanupCache } = await import('./cache.js');

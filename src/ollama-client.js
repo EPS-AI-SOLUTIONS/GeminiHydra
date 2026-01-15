@@ -2,7 +2,9 @@
  * HYDRA Ollama Client - API wrapper for Ollama
  */
 
-const OLLAMA_HOST = process.env.OLLAMA_HOST || 'http://localhost:11434';
+export const OLLAMA_HOST = process.env.OLLAMA_HOST || 'http://localhost:11434';
+
+const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
 /**
  * Call Ollama generate API
@@ -47,24 +49,39 @@ export async function generate(model, prompt, options = {}) {
 /**
  * Check if Ollama is available
  */
-export async function checkHealth() {
-  try {
-    const response = await fetch(`${OLLAMA_HOST}/api/tags`, {
-      method: 'GET',
-      signal: AbortSignal.timeout(5000)
-    });
+export async function checkHealth(options = {}) {
+  const timeoutMs = options.timeoutMs ?? 5000;
+  const retries = options.retries ?? 0;
+  const retryDelayMs = options.retryDelayMs ?? 250;
+  let lastError = null;
 
-    if (!response.ok) return { available: false, error: response.statusText };
+  for (let attempt = 0; attempt <= retries; attempt += 1) {
+    try {
+      const response = await fetch(`${OLLAMA_HOST}/api/tags`, {
+        method: 'GET',
+        signal: AbortSignal.timeout(timeoutMs)
+      });
 
-    const data = await response.json();
-    return {
-      available: true,
-      models: data.models?.map(m => m.name) || [],
-      host: OLLAMA_HOST
-    };
-  } catch (error) {
-    return { available: false, error: error.message, host: OLLAMA_HOST };
+      if (!response.ok) {
+        lastError = new Error(response.statusText);
+      } else {
+        const data = await response.json();
+        return {
+          available: true,
+          models: data.models?.map(m => m.name) || [],
+          host: OLLAMA_HOST
+        };
+      }
+    } catch (error) {
+      lastError = error;
+    }
+
+    if (attempt < retries) {
+      await sleep(retryDelayMs);
+    }
   }
+
+  return { available: false, error: lastError?.message, host: OLLAMA_HOST };
 }
 
 /**
