@@ -51,6 +51,7 @@ User Prompt → Gemini Pro (Plan) → Ollama Agents (Parallel) → Gemini Pro (S
 Copy `.env.example` to `.env` and configure:
 - `OLLAMA_HOST` - Ollama server address
 - `DEFAULT_MODEL`, `FAST_MODEL`, `CODER_MODEL` - Model selection
+- `SSH_PUBLIC_KEY` - Optional SSH public key for local authorization via `scripts/setup-ssh-key.sh`
 - See `GEMINI.md` for full configuration options
 
 ## Documentation
