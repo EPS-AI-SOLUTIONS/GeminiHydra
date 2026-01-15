@@ -611,10 +611,22 @@ function Invoke-AI {
                 return Invoke-AdvancedAI @params
             }
             elseif ($hasAIRequest) {
+                # Check for default Swarm mode in config if available
+                $useSwarm = $false
+                if (-not $Model -and -not $Provider) {
+                     if (Get-Command Get-AIConfig -ErrorAction SilentlyContinue) {
+                         $config = Get-AIConfig
+                         if ($config.settings.useSwarmByDefault) {
+                             $useSwarm = $true
+                         }
+                     }
+                }
+
                 $params = @{
                     Messages    = $messages
                     MaxTokens   = $MaxTokens
                     Temperature = $Temperature
+                    Swarm       = $useSwarm
                 }
                 if ($Model) { $params.Model = $Model }
                 if ($Provider) { $params.Provider = $Provider }

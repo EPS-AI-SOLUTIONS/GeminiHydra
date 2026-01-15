@@ -105,13 +105,23 @@ switch ($PSCmdlet.ParameterSetName) {
             $config = Get-AIConfig
             $streamEnabled = $Stream -or ($config.settings.streamResponses -eq $true)
 
+            # Check if Swarm should be used by default
+            $useSwarm = $Swarm.IsPresent
+            if (-not $useSwarm -and $config.settings.useSwarmByDefault) {
+                # Only default to swarm if no specific provider/model overrides are set that might conflict
+                if (-not $Provider -and -not $Model) {
+                     $useSwarm = $true
+                     Write-Verbose "Using Swarm by default as per configuration"
+                }
+            }
+
             $invokeParams = @{
                 Messages    = $messages
                 MaxTokens   = $MaxTokens
                 Temperature = $Temperature
                 AutoFallback = -not $NoFallback
                 Stream      = $streamEnabled
-                Swarm       = $Swarm.IsPresent
+                Swarm       = $useSwarm
             }
             if ($Provider) { $invokeParams.Provider = $Provider }
             if ($Model) { $invokeParams.Model = $Model }

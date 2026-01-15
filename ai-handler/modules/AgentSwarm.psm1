@@ -123,6 +123,11 @@ function Invoke-ResilientCall {
                 }
             }
 
+            # Resolve alias if Resolve-ModelAlias is available (loaded from AIModelHandler)
+            if (Get-Command Resolve-ModelAlias -ErrorAction SilentlyContinue) {
+                $tryModel = Resolve-ModelAlias -Alias $tryModel
+            }
+
             Write-Host "[$Label] Trying $p/$tryModel..." -ForegroundColor DarkGray
 
             $params = @{
