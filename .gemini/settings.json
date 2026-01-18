@@ -25,17 +25,16 @@
       "timeout": 120000
     },
     "serena": {
-      "command": "uvx",
+      "command": "C:/Users/BIURODOM/.local/bin/uvx.exe",
       "args": [
         "--from",
         "git+https://github.com/oraios/serena",
         "serena",
         "start-mcp-server",
-        "--context",
-        "codex",
         "--project",
-        "C:/"
-      ]
+        "C:/Users/BIURODOM/Desktop/GeminiCLI"
+      ],
+      "timeout": 120000
     },
     "desktop-commander": {
       "command": "C:/Users/BIURODOM/AppData/Roaming/npm/desktop-commander.cmd",
