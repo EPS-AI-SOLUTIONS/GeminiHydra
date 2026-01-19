@@ -16,7 +16,18 @@
       "Bash(ls:*)",
       "Bash(node src/index.js:*)",
       "Bash(node src/cli/index.js:*)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push)",
+      "Bash(wc:*)",
+      "Bash(dir \"C:\\\\WINDOWS\\\\TEMP\\\\claude\\\\C--Users-BIURODOM-Desktop-GeminiCLI\\\\tasks\")",
+      "Bash(dir /b \"C:\\\\Users\\\\BIURODOM\\\\Desktop\\\\GeminiCLI\\\\docs\")",
+      "mcp__serena__read_file",
+      "mcp__serena__find_symbol",
+      "mcp__serena__replace_content",
+      "mcp__serena__create_text_file",
+      "Bash(node:*)",
+      "Bash(dir:*)"
     ]
   }
 }

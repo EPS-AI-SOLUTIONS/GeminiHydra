@@ -13,9 +13,10 @@ import { OutputRenderer } from './OutputRenderer.js';
 import { CommandParser } from './CommandParser.js';
 import { HistoryManager } from './HistoryManager.js';
 import { Autocomplete } from './Autocomplete.js';
-import { Spinner } from './Spinner.js';
+import { Spinner, SpinnerTypes, getSpinnerType, getAvailableSpinnerTypes, createSpinner, createTypedSpinner, MultiSpinner, AnimatedText, createMultiSpinner, demoSpinners } from './Spinner.js';
 import { HydraTheme, getAutoTheme, getTheme } from './Theme.js';
-import { COMMAND_PREFIX } from './constants.js';
+import { COMMAND_PREFIX, PROMPT_STATES, EXECUTION_MODES } from './constants.js';
+import { PromptBuilder } from './PromptBuilder.js';
 import { loadConfig } from '../config.js';
 
 /**
@@ -54,12 +55,19 @@ export class HydraCLI {
   /** @type {Object} */
   #theme;
 
+  /** @type {PromptBuilder} */
+  #promptBuilder;
+
   /** @type {Object} */
   #state = {
     forceProvider: null,
     quickMode: false,
+    yoloMode: false,
     multilineMode: false,
-    running: false
+    running: false,
+    lastResponseTime: null,
+    lastProvider: null,
+    promptState: PROMPT_STATES.IDLE
   };
 
   /**
@@ -88,6 +96,16 @@ export class HydraCLI {
       theme: this.#theme,
       history: this.#history,
       autocomplete: this.#autocomplete
+    });
+
+    // Initialize prompt builder
+    this.#promptBuilder = new PromptBuilder(this.#theme, {
+      showState: true,
+      showMode: true,
+      showAgent: true,
+      showTime: true,
+      showTimestamp: false,
+      compact: false
     });
 
     // Register commands
@@ -151,6 +169,15 @@ export class HydraCLI {
       description: 'Toggle quick mode (skip planning)',
       category: 'Mode',
       handler: () => this.#cmdQuickMode()
+    });
+
+    // YOLO mode - autonomous execution without confirmations
+    this.#commands.register({
+      name: 'yolo',
+      aliases: ['y'],
+      description: 'Toggle YOLO mode (autonomous, no confirmations)',
+      category: 'Mode',
+      handler: () => this.#cmdYoloMode()
     });
 
     // Multiline mode
@@ -290,6 +317,7 @@ export class HydraCLI {
 
   #cmdForceProvider(provider) {
     this.#state.forceProvider = provider;
+    this.#syncPromptBuilder();
     if (provider === 'ollama') {
       this.#output.info('Next query will use Ollama');
     } else if (provider === 'gemini') {
@@ -299,12 +327,65 @@ export class HydraCLI {
     }
   }
 
+  /**
+   * Synchronize PromptBuilder with current CLI state
+   * @private
+   */
+  #syncPromptBuilder() {
+    // Determine execution mode
+    let mode = EXECUTION_MODES.NORMAL;
+    if (this.#state.yoloMode) {
+      mode = EXECUTION_MODES.YOLO;
+    } else if (this.#state.quickMode) {
+      mode = EXECUTION_MODES.QUICK;
+    }
+
+    this.#promptBuilder.updateContext({
+      state: this.#state.promptState,
+      mode: mode,
+      forceProvider: this.#state.forceProvider,
+      activeAgent: this.#state.lastProvider,
+      lastResponseTime: this.#state.lastResponseTime,
+      multilineMode: this.#state.multilineMode
+    });
+  }
+
+  /**
+   * Build the dynamic prompt string
+   * @returns {string} Colored prompt string
+   * @private
+   */
+  #buildPrompt() {
+    this.#syncPromptBuilder();
+    return this.#promptBuilder.build('hydra');
+  }
+
   #cmdQuickMode() {
     this.#state.quickMode = !this.#state.quickMode;
+    // Disable YOLO if enabling quick mode
+    if (this.#state.quickMode && this.#state.yoloMode) {
+      this.#state.yoloMode = false;
+    }
+    this.#syncPromptBuilder();
     if (this.#state.quickMode) {
       this.#output.success('Quick mode: ON (planning skipped)');
     } else {
       this.#output.info('Quick mode: OFF (full pipeline)');
+    }
+  }
+
+  #cmdYoloMode() {
+    this.#state.yoloMode = !this.#state.yoloMode;
+    // Disable quick mode if enabling YOLO
+    if (this.#state.yoloMode && this.#state.quickMode) {
+      this.#state.quickMode = false;
+    }
+    this.#syncPromptBuilder();
+    if (this.#state.yoloMode) {
+      this.#output.success('YOLO mode: ON (autonomous execution, no confirmations)');
+      this.#output.warning('Use with caution - actions will execute without prompts!');
+    } else {
+      this.#output.info('YOLO mode: OFF (normal confirmations)');
     }
   }
 
@@ -339,9 +420,9 @@ export class HydraCLI {
     }
   }
 
-  #cmdClear() {
+  async #cmdClear() {
     this.#output.clear();
-    this.#output.renderBanner();
+    await this.#output.renderBanner({ animated: false });
   }
 
   #cmdHelp(command) {
@@ -370,6 +451,7 @@ export class HydraCLI {
       this.#theme = theme;
       this.#output.theme = theme;
       this.#input.theme = theme;
+      this.#promptBuilder.theme = theme;
       this.#output.success(`Theme changed to: ${name || theme.name}`);
     } else {
       this.#output.warning(`Unknown theme: ${name}. Available: hydra, minimal, neon, monokai, dracula`);
@@ -550,26 +632,46 @@ export class HydraCLI {
       return this.#cmdAnalyze(prompt);
     }
 
+    // Update state to processing
+    this.#state.promptState = PROMPT_STATES.PROCESSING;
+    this.#syncPromptBuilder();
     this.#spinner.start('Processing with HYDRA...');
+
+    const startTime = Date.now();
 
     try {
       let result;
+      let usedProvider = null;
 
       if (this.#state.forceProvider === 'ollama') {
+        usedProvider = 'ollama';
         result = await this.#hydra.ollama(prompt);
         this.#state.forceProvider = null;
       } else if (this.#state.forceProvider === 'gemini') {
+        usedProvider = 'gemini';
         result = await this.#hydra.gemini(prompt);
         this.#state.forceProvider = null;
       } else if (this.#state.quickMode) {
         result = await this.#hydra.quick(prompt);
+        usedProvider = result.provider || result.metadata?.provider;
       } else {
         result = await this.#hydra.process(prompt, { verbose: false });
+        usedProvider = result.metadata?.provider;
       }
 
       this.#spinner.stop();
 
+      // Calculate response time
+      const responseTime = Date.now() - startTime;
+      this.#state.lastResponseTime = responseTime;
+      this.#state.lastProvider = usedProvider;
+
       if (result.success !== false) {
+        // Update state to success
+        this.#state.promptState = PROMPT_STATES.SUCCESS;
+        this.#promptBuilder.recordResponseTime(responseTime);
+        this.#syncPromptBuilder();
+
         // Render metadata if available
         if (result.metadata) {
           this.#output.renderMetadata(result.metadata);
@@ -586,20 +688,33 @@ export class HydraCLI {
         }
 
         // Duration
-        const duration = result.metadata?.totalDuration_ms || result.duration_ms;
+        const duration = result.metadata?.totalDuration_ms || result.duration_ms || responseTime;
         if (duration) {
           this.#output.newline();
           this.#output.dim(`Total time: ${duration}ms`);
         }
       } else {
+        // Update state to error
+        this.#state.promptState = PROMPT_STATES.ERROR;
+        this.#syncPromptBuilder();
         this.#output.error(result.error || 'Unknown error');
       }
     } catch (error) {
+      // Update state to error
+      this.#state.promptState = PROMPT_STATES.ERROR;
+      this.#state.lastResponseTime = Date.now() - startTime;
+      this.#syncPromptBuilder();
       this.#spinner.fail('Processing failed');
       this.#output.error(error.message);
     }
 
     this.#output.newline();
+
+    // Reset state to idle after a short delay (for visual feedback)
+    setTimeout(() => {
+      this.#state.promptState = PROMPT_STATES.IDLE;
+      this.#syncPromptBuilder();
+    }, 100);
   }
 
   // ============ Main REPL ============
@@ -613,14 +728,8 @@ export class HydraCLI {
 
     while (this.#state.running && !this.#input.isClosed) {
       try {
-        // Build prompt string
-        let promptStr = 'HYDRA';
-        if (this.#state.forceProvider) {
-          promptStr = `[${this.#state.forceProvider}]`;
-        } else if (this.#state.quickMode) {
-          promptStr = '[quick]';
-        }
-        promptStr += '> ';
+        // Build dynamic prompt string with state, mode, agent, and time info
+        const promptStr = this.#buildPrompt();
 
         // Read input
         let result;
@@ -681,8 +790,8 @@ export class HydraCLI {
       return;
     }
 
-    // Interactive mode
-    this.#output.renderBanner();
+    // Interactive mode - show animated banner
+    await this.#output.renderBanner({ animated: true, gradient: 'hydra' });
     await this.#cmdHealth();
     this.#output.newline();
 
@@ -719,5 +828,99 @@ if (isMain) {
     process.exit(1);
   });
 }
+
+// Re-export banner utilities
+export { showBanner, showCompactBanner, showMinimalBanner, showStartupAnimation, VERSION, CODENAME } from './Banner.js';
+
+// Re-export spinner utilities
+export {
+  Spinner,
+  SpinnerTypes,
+  getSpinnerType,
+  getAvailableSpinnerTypes,
+  createSpinner,
+  createTypedSpinner,
+  MultiSpinner,
+  AnimatedText,
+  createMultiSpinner,
+  demoSpinners
+} from './Spinner.js';
+
+// Re-export border/box utilities
+export {
+  BorderRenderer,
+  createBorderRenderer,
+  quickBox,
+  quickPanel,
+  SINGLE,
+  DOUBLE,
+  ROUNDED,
+  BOLD,
+  DASHED,
+  DOTTED,
+  ASCII,
+  BORDER_STYLES,
+  stripAnsi,
+  visibleLength,
+  padString,
+  wordWrap
+} from './Borders.js';
+
+// Re-export markdown renderer
+export {
+  MarkdownRenderer,
+  createMarkdownRenderer
+} from './MarkdownRenderer.js';
+
+// Re-export output renderer
+export { OutputRenderer, createRenderer } from './OutputRenderer.js';
+
+// Re-export theme utilities
+export { HydraTheme, getAutoTheme, getTheme, getAvailableThemes } from './Theme.js';
+
+// Re-export icons and symbols
+export {
+  Icons,
+  IconsASCII,
+  IconGroups,
+  Spinners,
+  SpinnersASCII,
+  BoxChars,
+  ProgressChars,
+  supportsUnicode,
+  supportsEmoji,
+  getIcons,
+  getSpinner,
+  getBoxChars,
+  getProgressChars,
+  icon,
+  coloredIcon,
+  statusMessage,
+  progressBar
+} from './icons.js';
+
+// Re-export advanced progress bar system
+export {
+  AdvancedProgressBar,
+  MultiProgressBar,
+  PROGRESS_STYLES,
+  createAdvancedProgressBar,
+  createMultiProgressBar,
+  demoProgressStyles
+} from './progress.js';
+
+// Re-export table and list renderers
+export {
+  TableRenderer,
+  ListRenderer,
+  TABLE_STYLES,
+  LIST_STYLES,
+  ALIGNMENT,
+  DEFAULT_TABLE_COLORS,
+  createTableRenderer,
+  createListRenderer,
+  renderTable,
+  renderList
+} from './TableRenderer.js';
 
 export default HydraCLI;

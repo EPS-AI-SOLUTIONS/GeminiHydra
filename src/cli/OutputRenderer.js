@@ -5,11 +5,20 @@
  */
 
 import chalk from 'chalk';
-import { Marked } from 'marked';
-import TerminalRenderer from 'marked-terminal';
 import { highlight } from 'cli-highlight';
 import { HydraTheme } from './Theme.js';
 import { DEFAULT_TERMINAL_WIDTH } from './constants.js';
+import { showBanner, showCompactBanner, showMinimalBanner, VERSION, CODENAME } from './Banner.js';
+import {
+  TableRenderer,
+  ListRenderer,
+  TABLE_STYLES,
+  LIST_STYLES,
+  ALIGNMENT,
+  createTableRenderer,
+  createListRenderer
+} from './TableRenderer.js';
+import { MarkdownRenderer, createMarkdownRenderer } from './MarkdownRenderer.js';
 
 /**
  * @typedef {Object} RenderOptions
@@ -26,8 +35,8 @@ export class OutputRenderer {
   /** @type {Object} */
   #theme;
 
-  /** @type {import('marked').Marked} */
-  #marked;
+  /** @type {MarkdownRenderer} */
+  #markdownRenderer;
 
   /** @type {number} */
   #terminalWidth;
@@ -40,20 +49,12 @@ export class OutputRenderer {
     this.#theme = theme;
     this.#terminalWidth = process.stdout.columns || DEFAULT_TERMINAL_WIDTH;
 
-    // Configure marked with terminal renderer
-    this.#marked = new Marked();
-    this.#marked.setOptions({
-      renderer: new TerminalRenderer({
-        // Styling
-        strong: chalk.bold,
-        em: chalk.italic,
-        del: chalk.strikethrough,
-        heading: chalk.bold.cyan,
-        link: chalk.blue.underline,
-        href: chalk.blue.underline,
-        // Blockquotes
-        blockquote: chalk.gray.italic
-      })
+    // Create enhanced markdown renderer
+    this.#markdownRenderer = new MarkdownRenderer(theme, {
+      colors: true,
+      syntaxHighlight: true,
+      wordWrap: true,
+      maxWidth: this.#terminalWidth - 4
     });
 
     // Update terminal width on resize
@@ -146,15 +147,33 @@ export class OutputRenderer {
   // ============ Markdown Rendering ============
 
   /**
-   * Render markdown content
+   * Render markdown content with enhanced formatting
+   * Supports: headers with colors, lists with icons, code blocks with syntax highlighting,
+   * blockquotes with styled borders, links with colors, bold, italic, and strikethrough
    * @param {string} content - Markdown content
+   * @param {Object} [options] - Render options
+   * @param {boolean} [options.print=true] - Whether to print to console
    * @returns {string} Rendered output
    */
-  renderMarkdown(content) {
+  renderMarkdown(content, options = {}) {
     if (!content) return '';
-    const rendered = this.#marked.parse(content);
-    console.log(rendered);
+    const { print = true } = options;
+
+    const rendered = this.#markdownRenderer.render(content);
+
+    if (print) {
+      console.log(rendered);
+    }
+
     return rendered;
+  }
+
+  /**
+   * Get the markdown renderer instance
+   * @returns {MarkdownRenderer} Markdown renderer
+   */
+  get markdownRenderer() {
+    return this.#markdownRenderer;
   }
 
   // ============ Code Rendering ============
@@ -263,73 +282,194 @@ export class OutputRenderer {
 
   // ============ Table Rendering ============
 
+  /** @type {TableRenderer} */
+  #tableRenderer = null;
+
+  /** @type {ListRenderer} */
+  #listRenderer = null;
+
   /**
-   * Render a table
+   * Get or create table renderer instance
+   * @returns {TableRenderer} Table renderer
+   * @private
+   */
+  #getTableRenderer() {
+    if (!this.#tableRenderer) {
+      this.#tableRenderer = createTableRenderer({
+        style: 'unicode',
+        coloredHeaders: true,
+        zebra: false
+      });
+    }
+    return this.#tableRenderer;
+  }
+
+  /**
+   * Get or create list renderer instance
+   * @returns {ListRenderer} List renderer
+   * @private
+   */
+  #getListRenderer() {
+    if (!this.#listRenderer) {
+      this.#listRenderer = createListRenderer({
+        style: 'bullet',
+        colored: true
+      });
+    }
+    return this.#listRenderer;
+  }
+
+  /**
+   * Render a table with advanced styling options
    * @param {Object[]} data - Array of row objects
-   * @param {string[]} [headers] - Column headers (keys from data if not specified)
+   * @param {(string[]|Object[])} [columns] - Column headers or column definitions
+   * @param {Object} [options] - Table options
+   * @param {string} [options.style='unicode'] - Table style: 'simple', 'grid', 'outline', 'borderless', 'unicode', 'double', 'rounded', 'heavy'
+   * @param {boolean} [options.coloredHeaders=true] - Enable colored headers
+   * @param {boolean} [options.zebra=false] - Enable zebra striping (alternating row colors)
+   * @param {string} [options.title] - Table title
+   * @param {boolean} [options.showRowNumbers=false] - Show row numbers
    * @returns {string} Rendered table
    */
-  renderTable(data, headers) {
+  renderTable(data, columns, options = {}) {
     if (!data || data.length === 0) {
       this.dim('(empty table)');
       return '';
     }
 
-    const cols = headers || Object.keys(data[0]);
-    const box = this.#theme.box;
-    const borderColor = this.#theme.colors.border;
-
-    // Calculate column widths
-    const widths = cols.map(col => {
-      const headerLen = String(col).length;
-      const maxDataLen = Math.max(
-        ...data.map(row => String(row[col] ?? '').length)
-      );
-      return Math.max(headerLen, maxDataLen);
-    });
-
-    // Build table
-    const output = [];
-
-    // Header separator
-    const headerSep = borderColor(box.topLeft) +
-      widths.map(w => box.horizontal.repeat(w + 2)).join(borderColor(box.horizontal)) +
-      borderColor(box.topRight);
-    output.push(headerSep);
-
-    // Header row
-    const headerRow = borderColor(box.vertical) +
-      cols.map((col, i) =>
-        ' ' + this.#theme.colors.highlight(String(col).padEnd(widths[i])) + ' '
-      ).join(borderColor(box.vertical)) +
-      borderColor(box.vertical);
-    output.push(headerRow);
-
-    // Header/data separator
-    const dataSep = borderColor(box.teeRight) +
-      widths.map(w => box.horizontal.repeat(w + 2)).join(borderColor(box.cross)) +
-      borderColor(box.teeLeft);
-    output.push(dataSep);
-
-    // Data rows
-    for (const row of data) {
-      const dataRow = borderColor(box.vertical) +
-        cols.map((col, i) =>
-          ' ' + String(row[col] ?? '').padEnd(widths[i]) + ' '
-        ).join(borderColor(box.vertical)) +
-        borderColor(box.vertical);
-      output.push(dataRow);
-    }
-
-    // Bottom border
-    const bottomSep = borderColor(box.bottomLeft) +
-      widths.map(w => box.horizontal.repeat(w + 2)).join(borderColor(box.horizontal)) +
-      borderColor(box.bottomRight);
-    output.push(bottomSep);
-
-    const result = output.join('\n');
+    const renderer = this.#getTableRenderer();
+    const result = renderer.render(data, columns, options);
     console.log(result);
     return result;
+  }
+
+  /**
+   * Render a simple table (backwards compatible)
+   * @param {Object[]} data - Array of row objects
+   * @param {string[]} [headers] - Column headers
+   * @returns {string} Rendered table
+   */
+  renderSimpleTable(data, headers) {
+    return this.renderTable(data, headers, { style: 'simple' });
+  }
+
+  /**
+   * Render a grid-style table
+   * @param {Object[]} data - Array of row objects
+   * @param {string[]} [headers] - Column headers
+   * @returns {string} Rendered table
+   */
+  renderGridTable(data, headers) {
+    return this.renderTable(data, headers, { style: 'grid', zebra: true });
+  }
+
+  /**
+   * Render a borderless table
+   * @param {Object[]} data - Array of row objects
+   * @param {string[]} [headers] - Column headers
+   * @returns {string} Rendered table
+   */
+  renderBorderlessTable(data, headers) {
+    return this.renderTable(data, headers, { style: 'borderless' });
+  }
+
+  /**
+   * Render a styled list
+   * @param {(string[]|Object[])} items - List items (strings or objects with text/children)
+   * @param {Object} [options] - List options
+   * @param {string} [options.style='bullet'] - List style: 'bullet', 'dash', 'arrow', 'star', 'numbered', 'lettered', 'roman', 'checkbox', 'none'
+   * @param {boolean} [options.colored=true] - Enable colored markers
+   * @returns {string} Rendered list
+   */
+  renderList(items, options = {}) {
+    if (!items || items.length === 0) {
+      this.dim('(empty list)');
+      return '';
+    }
+
+    const renderer = this.#getListRenderer();
+    const result = renderer.render(items, options);
+    console.log(result);
+    return result;
+  }
+
+  /**
+   * Render a numbered list
+   * @param {string[]} items - List items
+   * @returns {string} Rendered list
+   */
+  renderNumberedList(items) {
+    return this.renderList(items, { style: 'numbered' });
+  }
+
+  /**
+   * Render a bullet list
+   * @param {string[]} items - List items
+   * @returns {string} Rendered list
+   */
+  renderBulletList(items) {
+    return this.renderList(items, { style: 'bullet' });
+  }
+
+  /**
+   * Render a checkbox list
+   * @param {Object[]} items - List items with { text, checked } properties
+   * @returns {string} Rendered list
+   */
+  renderCheckboxList(items) {
+    return this.renderList(items, { style: 'checkbox' });
+  }
+
+  /**
+   * Get available table styles
+   * @returns {string[]} Style names
+   */
+  getTableStyles() {
+    return Object.keys(TABLE_STYLES);
+  }
+
+  /**
+   * Get available list styles
+   * @returns {string[]} Style names
+   */
+  getListStyles() {
+    return Object.keys(LIST_STYLES);
+  }
+
+  /**
+   * Set default table style
+   * @param {string} style - Style name
+   */
+  setTableStyle(style) {
+    if (TABLE_STYLES[style]) {
+      this.#getTableRenderer().setStyle(style);
+    }
+  }
+
+  /**
+   * Set default list style
+   * @param {string} style - Style name
+   */
+  setListStyle(style) {
+    if (LIST_STYLES[style]) {
+      this.#getListRenderer().setStyle(style);
+    }
+  }
+
+  /**
+   * Enable/disable zebra striping for tables
+   * @param {boolean} enabled - Enable zebra
+   */
+  setTableZebra(enabled) {
+    this.#getTableRenderer().setZebra(enabled);
+  }
+
+  /**
+   * Enable/disable colored headers for tables
+   * @param {boolean} enabled - Enable colored headers
+   */
+  setTableColoredHeaders(enabled) {
+    this.#getTableRenderer().setColoredHeaders(enabled);
   }
 
   // ============ Metadata Rendering ============
@@ -383,22 +523,41 @@ export class OutputRenderer {
 
   /**
    * Render the HYDRA banner
+   * @param {Object} [options] - Banner options
+   * @param {string} [options.style='full'] - Banner style: 'full', 'compact', 'minimal'
+   * @param {boolean} [options.animated=true] - Enable animation
+   * @param {string} [options.gradient='hydra'] - Gradient style
    */
-  renderBanner() {
-    const banner = `
-${this.#theme.colors.secondary('╔═══════════════════════════════════════════════════╗')}
-${this.#theme.colors.secondary('║')}     ${this.#theme.colors.primary(this.#theme.symbols.hydra)} ${this.#theme.colors.highlight('HYDRA')} - Gemini + Ollama Orchestration      ${this.#theme.colors.secondary('║')}
-${this.#theme.colors.secondary('║')}                                                   ${this.#theme.colors.secondary('║')}
-${this.#theme.colors.secondary('║')}  Commands:                                        ${this.#theme.colors.secondary('║')}
-${this.#theme.colors.secondary('║')}    ${this.#theme.colors.primary('/health')}  - Check provider status               ${this.#theme.colors.secondary('║')}
-${this.#theme.colors.secondary('║')}    ${this.#theme.colors.primary('/stats')}   - Show usage statistics               ${this.#theme.colors.secondary('║')}
-${this.#theme.colors.secondary('║')}    ${this.#theme.colors.primary('/ollama')}  - Force Ollama (next query)           ${this.#theme.colors.secondary('║')}
-${this.#theme.colors.secondary('║')}    ${this.#theme.colors.primary('/gemini')}  - Force Gemini (next query)           ${this.#theme.colors.secondary('║')}
-${this.#theme.colors.secondary('║')}    ${this.#theme.colors.primary('/help')}    - Show all commands                   ${this.#theme.colors.secondary('║')}
-${this.#theme.colors.secondary('║')}    ${this.#theme.colors.primary('/exit')}    - Exit HYDRA                          ${this.#theme.colors.secondary('║')}
-${this.#theme.colors.secondary('╚═══════════════════════════════════════════════════╝')}
-`;
-    console.log(banner);
+  async renderBanner(options = {}) {
+    const { style = 'full', animated = true, gradient = 'hydra' } = options;
+
+    switch (style) {
+      case 'minimal':
+        showMinimalBanner();
+        break;
+      case 'compact':
+        showCompactBanner({ gradient });
+        break;
+      case 'full':
+      default:
+        await showBanner({
+          animated,
+          gradient,
+          logo: 'large',
+          showInfo: true,
+          showCommands: true,
+          theme: this.#theme
+        });
+        break;
+    }
+  }
+
+  /**
+   * Get version info
+   * @returns {{version: string, codename: string}} Version information
+   */
+  getVersionInfo() {
+    return { version: VERSION, codename: CODENAME };
   }
 
   // ============ Health Status ============
