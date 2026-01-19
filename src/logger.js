@@ -53,4 +53,17 @@ class Logger {
   }
 }
 
-export default new Logger();
+const defaultLogger = new Logger();
+
+// Backwards compatibility for existing modules
+export const createLogger = (context) => {
+  // Return a proxy or wrapper that injects context into meta
+  return {
+    info: (msg, meta = {}) => defaultLogger.info(msg, { ...meta, context }),
+    warn: (msg, meta = {}) => defaultLogger.warn(msg, { ...meta, context }),
+    error: (msg, meta = {}) => defaultLogger.error(msg, { ...meta, context }),
+    debug: (msg, meta = {}) => defaultLogger.debug(msg, { ...meta, context })
+  };
+};
+
+export default defaultLogger;

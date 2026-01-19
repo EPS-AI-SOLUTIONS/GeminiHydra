@@ -167,8 +167,10 @@ const buildSpeculationPrompt = (prompt) =>
 
 const buildPlanPrompt = (prompt, speculation) =>
   [
-    'You are the planner. Create a concise JSON plan with steps, assumptions, and dependencies.',
-    'Output JSON only.',
+    'You are the planner. Create a detailed execution plan as a JSON array of tasks.',
+    'Each task must have an "agent" (name) and an "instruction" (what to do).',
+    'Example: [{"agent": "Yennefer", "instruction": "Refactor login.js"}, {"agent": "Triss", "instruction": "Write tests for login"}]',
+    'Output JSON only. Do not add markdown or conversational text.',
     '',
     `Task: ${prompt}`,
     '',
@@ -250,43 +252,126 @@ export const runSwarm = async ({
       speculationResult = { response: 'Speculation failed: ' + e.message };
     }
 
+// Helper to extract JSON from model output
+const parseJsonPlan = (text) => {
+  try {
+    // Try parsing directly
+    return JSON.parse(text);
+  } catch (e) {
+    // Try extracting from code blocks
+    const match = text.match(/```json\s*([\s\S]*?)\s*```/) || text.match(/\[\s*\{[\s\S]*\}\s*\]/);
+    if (match) {
+      try { return JSON.parse(match[1] || match[0]); } catch (err) { return null; }
+    }
+    return null;
+  }
+};
+
+const buildAgentTaskPrompt = (agent, prompt, speculation, taskInstruction) =>
+  [
+    `You are ${agent.name} (${agent.persona}).`,
+    `Specialization: ${agent.specialization}.`,
+    'Execute the following specific sub-task.',
+    '',
+    `Global Task: ${prompt}`,
+    `Speculation: ${speculation}`,
+    '',
+    `YOUR ASSIGNMENT: ${taskInstruction}`
+  ].join('\n');
+
+export const runSwarm = async ({
+  prompt,
+  title,
+  agents,
+  includeTranscript = false,
+  saveMemory = true,
+  logger
+}) => {
+  try {
+    const selectedAgents =
+      Array.isArray(agents) && agents.length
+        ? AGENTS.filter((agent) => agents.includes(agent.name))
+        : AGENTS;
+    const unknownAgents = Array.isArray(agents)
+      ? agents.filter((name) => !AGENTS.some((agent) => agent.name === name))
+      : [];
+
+    // Step 1: Speculation
+    let speculationResult;
+    try {
+      speculationResult = await generate(
+        CONFIG.FAST_MODEL,
+        buildSpeculationPrompt(prompt),
+        {
+          temperature: 0.2,
+          maxTokens: 600
+        }
+      );
+    } catch (e) {
+      if (logger)
+        logger.error('Swarm speculation failed', { error: e.message });
+      speculationResult = { response: 'Speculation failed: ' + e.message };
+    }
+
     // Step 2: Planning
     let planResult;
+    let tasks = [];
     try {
       planResult = await generate(
         CONFIG.DEFAULT_MODEL,
         buildPlanPrompt(prompt, speculationResult.response),
         {
           temperature: 0.2,
-          maxTokens: 900
+          maxTokens: 1200,
+          format: 'json' // Enforce JSON mode if supported by Ollama
         }
       );
+      
+      const parsed = parseJsonPlan(planResult.response);
+      if (Array.isArray(parsed)) {
+        tasks = parsed;
+      } else if (parsed && parsed.steps && Array.isArray(parsed.steps)) {
+        tasks = parsed.steps; // Handle { "steps": [...] } format
+      } else {
+        // Fallback: Create generic tasks for selected agents
+        tasks = selectedAgents.map(a => ({ agent: a.name, instruction: "Contribute to the task based on your specialization." }));
+      }
     } catch (e) {
       if (logger) logger.error('Swarm planning failed', { error: e.message });
       planResult = { response: 'Planning failed: ' + e.message };
+      tasks = selectedAgents.map(a => ({ agent: a.name, instruction: "Contribute to the task." }));
     }
 
-    // Step 3: Agents (Parallel)
+    // Filter tasks to only include allowed agents (if agents param provided)
+    if (Array.isArray(agents) && agents.length > 0) {
+      tasks = tasks.filter(t => agents.includes(t.agent));
+    }
+
+    // Step 3: Agents Execution (Parallel Tasks)
     const agentResults = await runWithLimit(
-      selectedAgents,
+      tasks,
       Math.max(1, CONFIG.QUEUE_MAX_CONCURRENT || 5),
-      async (agent) => {
-        const resolved = await resolveModel(agent.model);
+      async (task) => {
+        const agentName = task.agent || 'Unknown';
+        const agentDef = AGENTS.find(a => a.name === agentName) || AGENTS[0];
+        
+        const resolved = await resolveModel(agentDef.model);
         const response = await generate(
           resolved.model,
-          buildAgentPrompt(
-            agent,
+          buildAgentTaskPrompt(
+            agentDef,
             prompt,
             speculationResult.response,
-            planResult.response
+            task.instruction
           ),
           {
             temperature: 0.3,
-            maxTokens: 1400
+            maxTokens: 2000
           }
         );
         return {
-          name: agent.name,
+          name: agentName,
+          task: task.instruction,
           model: resolved.model,
           fallbackUsed: resolved.fallbackUsed,
           response: response.response

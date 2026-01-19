@@ -12,7 +12,7 @@ const parseBoolean = (value, fallback) => {
 };
 
 const yoloMode = parseBoolean(process.env.HYDRA_YOLO, false);
-const defaultQueueMaxConcurrent = yoloMode ? 10 : 5;
+const defaultQueueMaxConcurrent = yoloMode ? 20 : 10;
 const defaultQueueMaxRetries = yoloMode ? 1 : 3;
 const defaultQueueTimeoutMs = yoloMode ? 15000 : 60000;
 

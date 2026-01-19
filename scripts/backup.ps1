@@ -7,15 +7,13 @@ if (-not (Test-Path $BackupDir)) { New-Item -ItemType Directory -Path $BackupDir
 $Timestamp = (Get-Date).ToString("yyyyMMdd-HHmm")
 $ZipFile = Join-Path $BackupDir "hydra_backup_$Timestamp.zip"
 
-Write-Host "📦 Backing up HYDRA data..." -ForegroundColor Cyan
+Write-Host "Backing up data..."
 
-$Files = @()
-if (Test-Path $SourceDir) { $Files += $SourceDir }
-if (Test-Path $MemoryDir) { $Files += $MemoryDir }
+$FilesToZip = @()
+if (Test-Path $SourceDir) { $FilesToZip += $SourceDir }
+if (Test-Path $MemoryDir) { $FilesToZip += $MemoryDir }
 
-if ($Files.Count -gt 0) {
-    Compress-Archive -Path $Files -DestinationPath $ZipFile
-    Write-Host "✔ Backup created: $ZipFile" -ForegroundColor Green
-} else {
-    Write-Warning "No data found to backup."
+if ($FilesToZip.Count -gt 0) {
+    Compress-Archive -Path $FilesToZip -DestinationPath $ZipFile -Force
+    Write-Host "Success: $ZipFile"
 }
