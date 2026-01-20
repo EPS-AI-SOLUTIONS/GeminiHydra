@@ -49,13 +49,3 @@ export const claudeIpc = {
   clearHistory: (): Promise<void> => invoke('clear_approval_history'),
 };
 
-// Default CLI path based on environment
-export function getDefaultCliPath(): string {
-  // Adjust based on your Claude CLI location
-  return 'C:\\Users\\BIURODOM\\Desktop\\ClaudeCli\\bin\\claude-code\\cli.js';
-}
-
-// Default working directory
-export function getDefaultWorkingDir(): string {
-  return 'C:\\Users\\BIURODOM\\Desktop\\ClaudeCli';
-}

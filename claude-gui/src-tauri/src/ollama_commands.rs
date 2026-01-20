@@ -68,14 +68,6 @@ pub async fn ollama_chat(
     client.chat_stream(&window, &request_id, &model, messages).await
 }
 
-/// Configure Ollama base URL
-#[command]
-pub async fn ollama_set_url(state: State<'_, OllamaState>, url: String) -> Result<(), String> {
-    let mut client = state.client.write().await;
-    *client = OllamaClient::new(Some(url));
-    Ok(())
-}
-
 /// Generate completion synchronously (no streaming, for AI metadata tasks)
 #[command]
 pub async fn ollama_generate_sync(

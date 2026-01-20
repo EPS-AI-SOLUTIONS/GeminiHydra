@@ -187,10 +187,6 @@ body {
   text-shadow: 0 0 10px rgba(0, 255, 65, 0.5);
 }
 
-.text-glow-sm {
-  text-shadow: 0 0 5px rgba(0, 255, 65, 0.3);
-}
-
 .border-glow {
   box-shadow: 0 0 15px rgba(0, 255, 65, 0.2), inset 0 0 10px rgba(0, 255, 65, 0.05);
 }
@@ -216,24 +212,6 @@ body {
   overflow: hidden;
 }
 
-.xterm {
-  padding: 0.5rem;
-}
-
-.xterm-viewport {
-  scrollbar-width: thin;
-  scrollbar-color: rgba(0, 255, 65, 0.4) transparent;
-}
-
-.xterm-viewport::-webkit-scrollbar {
-  width: 6px;
-}
-
-.xterm-viewport::-webkit-scrollbar-thumb {
-  background: linear-gradient(180deg, rgba(0, 255, 65, 0.4), rgba(0, 200, 50, 0.2));
-  border-radius: 3px;
-}
-
 /* ============================================
    APPROVAL DIALOG
    ============================================ */
@@ -244,22 +222,6 @@ body {
   max-width: 400px;
   z-index: 1000;
   animation: slideUp 0.3s ease-out;
-}
-
-.approval-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.25rem;
-  padding: 0.25rem 0.5rem;
-  background: rgba(0, 255, 65, 0.15);
-  border-radius: 0.25rem;
-  font-size: 0.75rem;
-  color: var(--matrix-accent);
-}
-
-.approval-badge-auto {
-  background: rgba(65, 105, 255, 0.15);
-  color: #6495ff;
 }
 
 /* ============================================
@@ -320,24 +282,8 @@ body {
   100% { box-shadow: 0 0 20px rgba(0, 255, 65, 0.5); }
 }
 
-.animate-pulse-slow {
-  animation: pulse-slow 2s ease-in-out infinite;
-}
-
-.animate-shimmer {
-  animation: shimmer 1.5s infinite;
-}
-
-.animate-fade-in {
-  animation: fadeIn 0.3s ease-out;
-}
-
 .animate-slide-up {
   animation: slideUp 0.3s ease-out;
-}
-
-.animate-glow {
-  animation: glow 2s ease-in-out infinite alternate;
 }
 
 /* ============================================
@@ -345,14 +291,6 @@ body {
    ============================================ */
 .sidebar {
   transition: width 0.3s ease;
-}
-
-.sidebar-collapsed {
-  width: 60px;
-}
-
-.sidebar-expanded {
-  width: 240px;
 }
 
 .nav-item {

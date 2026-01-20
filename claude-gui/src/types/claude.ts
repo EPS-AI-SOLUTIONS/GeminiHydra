@@ -75,22 +75,3 @@ export function formatApprovalType(approval: ApprovalType): string {
   }
 }
 
-// Get icon for approval type
-export function getApprovalIcon(approval: ApprovalType): string {
-  switch (approval.type) {
-    case 'bash_command':
-      return 'Terminal';
-    case 'file_write':
-      return 'FileOutput';
-    case 'file_edit':
-      return 'FileEdit';
-    case 'file_read':
-      return 'FileInput';
-    case 'web_fetch':
-      return 'Globe';
-    case 'mcp_tool':
-      return 'Plug';
-    default:
-      return 'HelpCircle';
-  }
-}

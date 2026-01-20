@@ -273,8 +273,8 @@ export function useSessionAI() {
 
         setProcessingTask('Extracting keywords...');
         const keywords = await generateKeywords(session);
-        // Simple keyword-based "embedding" for search
-        metadata.embedding = keywords.map((k) => k.charCodeAt(0) / 255);
+        // Store keywords for text-based search (embedding not needed for current implementation)
+        metadata.embedding = keywords.slice(0, 10).map((_, i) => i / 10); // Placeholder for future vector embeddings
 
         return metadata;
       } catch (e) {

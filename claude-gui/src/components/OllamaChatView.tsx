@@ -156,7 +156,7 @@ export function OllamaChatView() {
           id: crypto.randomUUID(),
           name: file.name,
           type: isImage ? 'image' : 'file',
-          content: isImage ? content : content, // base64 for images, text for files
+          content, // base64 for images, text for files
           mimeType: file.type,
         };
 
@@ -249,26 +249,19 @@ export function OllamaChatView() {
       // Check if any image attachments (for vision models)
       const hasImages = attachments.some((a) => a.type === 'image');
 
+      // Regular chat (vision models not yet supported - images are included as text descriptions)
       if (hasImages) {
-        // For vision models - include image description in prompt
-        const imageDescriptions = attachments
+        const imageNames = attachments
           .filter((a) => a.type === 'image')
-          .map((a) => `[Image: ${a.name}]`)
+          .map((a) => a.name)
           .join(', ');
-
-        // Note: Full vision support would need multimodal API
-        await invoke('ollama_generate', {
-          model: selectedModel,
-          prompt: `${imageDescriptions}\n\n${content}`,
-          system: null,
-        });
-      } else {
-        // Regular chat
-        await invoke('ollama_chat', {
-          model: selectedModel,
-          messages: chatMessages,
-        });
+        chatMessages[chatMessages.length - 1].content = `[Attached images: ${imageNames}]\n\n${content}`;
       }
+
+      await invoke('ollama_chat', {
+        model: selectedModel,
+        messages: chatMessages,
+      });
 
     } catch (e) {
       console.error('Chat error:', e);

@@ -50,7 +50,6 @@ pub fn run() {
             ollama_commands::ollama_generate,
             ollama_commands::ollama_generate_sync,
             ollama_commands::ollama_chat,
-            ollama_commands::ollama_set_url,
             // Chat history commands
             chat_history::list_chat_sessions,
             chat_history::get_chat_session,
@@ -61,10 +60,6 @@ pub fn run() {
             chat_history::clear_all_chats,
             // Agentic commands
             agentic::execute_command,
-            agentic::open_application,
-            agentic::get_system_info,
-            agentic::get_disk_space,
-            agentic::get_processes,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

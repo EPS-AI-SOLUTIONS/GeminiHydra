@@ -171,7 +171,7 @@ describe('claudeStore', () => {
         id: 'test-1',
         timestamp: new Date().toISOString(),
         action: 'approved',
-        approval_type: { type: 'bash', command: 'ls -la' },
+        approval_type: { type: 'bash_command', command: 'ls -la' },
         auto_approved: false,
       });
 
@@ -188,7 +188,7 @@ describe('claudeStore', () => {
           id: `test-${i}`,
           timestamp: new Date().toISOString(),
           action: 'approved',
-          approval_type: { type: 'bash', command: `cmd ${i}` },
+          approval_type: { type: 'bash_command', command: `cmd ${i}` },
           auto_approved: false,
         });
       }

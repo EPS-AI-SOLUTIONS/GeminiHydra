@@ -159,12 +159,13 @@ export function CodeBlock({ code, language, className }: CodeBlockProps) {
         throw new Error(`Unsupported language: ${lang}`);
       }
 
-      // Execute via Tauri command
-      const result = await invoke<string>('execute_command', {
+      // Execute via Tauri command (safe_mode: false allows code execution)
+      const result = await invoke<{ stdout: string; stderr: string }>('execute_command', {
         command: `${command} ${args.map((a) => `"${a.replace(/"/g, '\\"')}"`).join(' ')}`,
+        safeMode: false,
       });
 
-      setOutput(result || '(No output)');
+      setOutput(result.stdout || result.stderr || '(No output)');
     } catch (err) {
       setError(String(err));
     } finally {
