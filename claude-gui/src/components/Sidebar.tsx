@@ -18,13 +18,14 @@ import {
   X,
   MessagesSquare,
   Brain,
+  Bug,
 } from 'lucide-react';
 import { useClaudeStore } from '../stores/claudeStore';
 import { useClaude } from '../hooks/useClaude';
 import { useChatHistory, type ChatSessionSummary } from '../hooks/useChatHistory';
 
 interface NavItem {
-  id: 'terminal' | 'settings' | 'history' | 'rules' | 'chats' | 'ollama' | 'learning';
+  id: 'terminal' | 'settings' | 'history' | 'rules' | 'chats' | 'ollama' | 'learning' | 'debug';
   label: string;
   icon: React.ReactNode;
 }
@@ -33,6 +34,7 @@ const navItems: NavItem[] = [
   { id: 'terminal', label: 'Terminal', icon: <Terminal size={18} /> },
   { id: 'ollama', label: 'Ollama AI', icon: <Bot size={18} /> },
   { id: 'learning', label: 'AI Learning', icon: <Brain size={18} /> },
+  { id: 'debug', label: 'Debug LiveView', icon: <Bug size={18} /> },
   { id: 'chats', label: 'Historia czatów', icon: <MessageSquare size={18} /> },
   { id: 'rules', label: 'Reguły auto-appr.', icon: <Shield size={18} /> },
   { id: 'history', label: 'Historia zatwierdzeń', icon: <History size={18} /> },

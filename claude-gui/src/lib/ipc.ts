@@ -107,3 +107,138 @@ export const parallelIpc = {
     safeInvoke('ollama_batch_generate', { model, prompts, options }),
 };
 
+// ============================================================================
+// Debug LiveView IPC
+// ============================================================================
+
+export type LogLevel = 'debug' | 'info' | 'warn' | 'error';
+
+export interface LogEntry {
+  id: number;
+  timestamp: number;
+  level: LogLevel;
+  source: string;
+  message: string;
+  details?: string;
+}
+
+export interface IpcCall {
+  id: number;
+  timestamp: number;
+  command: string;
+  duration_ms: number;
+  success: boolean;
+  error?: string;
+}
+
+export interface DebugStats {
+  // Memory
+  memory_used_mb: number;
+  memory_total_mb: number;
+  memory_percent: number;
+
+  // Tasks
+  active_tasks: number;
+  queued_tasks: number;
+  completed_tasks: number;
+
+  // IPC
+  ipc_calls_total: number;
+  ipc_calls_failed: number;
+  ipc_avg_latency_ms: number;
+  ipc_calls_per_sec: number;
+
+  // Events
+  events_emitted: number;
+  events_per_sec: number;
+
+  // System
+  uptime_secs: number;
+  cpu_cores: number;
+  timestamp: number;
+}
+
+export interface DebugSnapshot {
+  stats: DebugStats;
+  recent_logs: LogEntry[];
+  recent_ipc: IpcCall[];
+}
+
+export const debugIpc = {
+  // Get current system stats
+  getStats: (): Promise<DebugStats> =>
+    isTauri()
+      ? safeInvoke('debug_get_stats')
+      : Promise.resolve({
+          memory_used_mb: 0,
+          memory_total_mb: 256,
+          memory_percent: 0,
+          active_tasks: 0,
+          queued_tasks: 0,
+          completed_tasks: 0,
+          ipc_calls_total: 0,
+          ipc_calls_failed: 0,
+          ipc_avg_latency_ms: 0,
+          ipc_calls_per_sec: 0,
+          events_emitted: 0,
+          events_per_sec: 0,
+          uptime_secs: 0,
+          cpu_cores: navigator.hardwareConcurrency || 4,
+          timestamp: Date.now(),
+        }),
+
+  // Get logs with optional filtering
+  getLogs: (level?: LogLevel, limit?: number, sinceId?: number): Promise<LogEntry[]> =>
+    isTauri()
+      ? safeInvoke('debug_get_logs', { level, limit, since_id: sinceId })
+      : Promise.resolve([]),
+
+  // Get IPC call history
+  getIpcHistory: (limit?: number): Promise<IpcCall[]> =>
+    isTauri()
+      ? safeInvoke('debug_get_ipc_history', { limit })
+      : Promise.resolve([]),
+
+  // Get full debug snapshot
+  getSnapshot: (): Promise<DebugSnapshot> =>
+    isTauri()
+      ? safeInvoke('debug_get_snapshot')
+      : Promise.resolve({
+          stats: {
+            memory_used_mb: 0,
+            memory_total_mb: 256,
+            memory_percent: 0,
+            active_tasks: 0,
+            queued_tasks: 0,
+            completed_tasks: 0,
+            ipc_calls_total: 0,
+            ipc_calls_failed: 0,
+            ipc_avg_latency_ms: 0,
+            ipc_calls_per_sec: 0,
+            events_emitted: 0,
+            events_per_sec: 0,
+            uptime_secs: 0,
+            cpu_cores: navigator.hardwareConcurrency || 4,
+            timestamp: Date.now(),
+          },
+          recent_logs: [],
+          recent_ipc: [],
+        }),
+
+  // Clear all logs
+  clearLogs: (): Promise<void> =>
+    safeInvoke('debug_clear_logs'),
+
+  // Add a log entry from frontend
+  addLog: (level: LogLevel, source: string, message: string, details?: string): Promise<void> =>
+    safeInvoke('debug_add_log', { level, source, message, details }),
+
+  // Start real-time streaming
+  startStreaming: (): Promise<void> =>
+    safeInvoke('debug_start_streaming'),
+
+  // Stop streaming
+  stopStreaming: (): Promise<void> =>
+    safeInvoke('debug_stop_streaming'),
+};
+

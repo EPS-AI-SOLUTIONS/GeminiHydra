@@ -72,7 +72,7 @@ interface ClaudeState {
   workingDir: string;
   cliPath: string;
   sidebarCollapsed: boolean;
-  currentView: 'terminal' | 'settings' | 'history' | 'rules' | 'chats' | 'ollama' | 'learning';
+  currentView: 'terminal' | 'settings' | 'history' | 'rules' | 'chats' | 'ollama' | 'learning' | 'debug';
 
   // Auto-start config
   autoStartEnabled: boolean;

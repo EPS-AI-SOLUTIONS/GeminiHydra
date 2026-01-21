@@ -35,6 +35,7 @@ dirs = "6"
 rayon = "1.10"
 num_cpus = "1.16"
 parking_lot = "0.12"  # Faster mutexes
+lazy_static = "1.5"   # Global state for debug
 
 [features]
 default = ["custom-protocol"]

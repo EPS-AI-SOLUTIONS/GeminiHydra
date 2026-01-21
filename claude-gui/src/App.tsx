@@ -19,6 +19,7 @@ const SettingsView = lazy(() => import('./components/SettingsView').then(m => ({
 const HistoryView = lazy(() => import('./components/HistoryView').then(m => ({ default: m.HistoryView })));
 const RulesView = lazy(() => import('./components/RulesView').then(m => ({ default: m.RulesView })));
 const LearningPanel = lazy(() => import('./components/LearningPanel').then(m => ({ default: m.LearningPanel })));
+const DebugPanel = lazy(() => import('./components/DebugPanel').then(m => ({ default: m.DebugPanel })));
 
 // Matrix-themed loading fallback
 function LoadingFallback() {
@@ -164,6 +165,8 @@ function App() {
         return <OllamaChatView />;
       case 'learning':
         return <LearningPanel />;
+      case 'debug':
+        return <DebugPanel />;
       case 'chats':
         return <ChatHistoryView />;
       case 'history':

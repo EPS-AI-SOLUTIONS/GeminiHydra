@@ -3,6 +3,7 @@ mod bridge;
 mod chat_history;
 mod claude;
 mod commands;
+mod debug;
 mod learning;
 mod memory;
 mod ollama;
@@ -32,6 +33,9 @@ pub fn run() {
             // Initialize Ollama state
             let ollama_state = ollama_commands::OllamaState::new();
             app.manage(ollama_state);
+
+            // Initialize Debug LiveView
+            debug::init();
 
             tracing::info!("Claude HYDRA initialized");
             Ok(())
@@ -95,6 +99,15 @@ pub fn run() {
             learning::start_model_training,
             learning::cancel_model_training,
             learning::get_alzur_models,
+            // Debug LiveView commands
+            debug::debug_get_stats,
+            debug::debug_get_logs,
+            debug::debug_get_ipc_history,
+            debug::debug_get_snapshot,
+            debug::debug_clear_logs,
+            debug::debug_add_log,
+            debug::debug_start_streaming,
+            debug::debug_stop_streaming,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
