@@ -5,7 +5,7 @@
   "identifier": "com.claudecli.gui",
   "build": {
     "beforeDevCommand": "npm run dev",
-    "devUrl": "http://localhost:1420",
+    "devUrl": "http://localhost:4200",
     "beforeBuildCommand": "npm run build",
     "frontendDist": "../dist"
   },
