@@ -1,0 +1,43 @@
+Directory listing for C:\Users\BIURODOM\Desktop\GeminiHydra:
+[DIR] .gemini
+[DIR] .serena
+[DIR] bin
+[DIR] data
+[DIR] GeminiGUI
+[DIR] grimoires
+[DIR] mcp
+[DIR] public
+[DIR] src
+[DIR] tests
+.gitignore
+.mcp.json
+AgentSwarm.psm1
+ARCHITECTURE.md
+bridge.json
+bridge.ps1
+COMPLETION_REPORT.md
+CONTRIBUTING.md
+Debug-Swarm.ps1
+Execute-GrandPlan.ps1
+fib.py
+gemini-mcp-config.json
+gemini.bat
+GEMINI.md
+gemini.ps1
+Generate-MCP-Config.ps1
+icon.ico
+launch-gui.bat
+memory_test.txt
+package-lock.json
+package.json
+README.md
+READY.md
+repomix-output.xml
+run-portable-gemini.ps1
+setup-mcp.ps1
+setup-ollama.ps1
+start-ollama.ps1
+Test-Dijkstra.ps1
+Test-Prompts.ps1
+
+(3 ignored)

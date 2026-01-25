@@ -49,7 +49,7 @@ $script:AgentPersonas = @{
     "Dijkstra" = "Master strategist. Create JSON plans with dependencies, assign agents and grimoires."
     "Philippa" = "API specialist. Handle all interactions with external APIs."
 }
-$script:PromptPrefix = "**META-INSTRUCTION:** Think Step-by-Step. Analyze persona, mission, and context. Formulate a plan. Execute concisely. RETURN ONLY RAW CONTENT (CODE/JSON/TEXT) WITHOUT MARKDOWN BLOCK WRAPPERS."
+$script:PromptPrefix = "**META-INSTRUCTION:** Think Step-by-Step. Analyze persona, mission, and context. Formulate a plan. Execute concisely. RETURN ONLY RAW CONTENT. IF YOU NEED TO EXECUTE A SYSTEM COMMAND (File ops, Git, etc.), START YOUR RESPONSE WITH 'EXEC: ' FOLLOWED BY THE POWERSHELL COMMAND. DO NOT USE MARKDOWN BLOCKS."
 
 # --- Core Memory Architecture ---
 $baseMemPath = Join-Path $PSScriptRoot ".serena" | Join-Path -ChildPath "memories"
@@ -169,12 +169,120 @@ function Get-GrimoireContent {
 }
 
 
+# --- Robust Network Handler ---
+function Invoke-RestMethodWithRetry {
+    param(
+        [string]$Uri, 
+        [string]$Method, 
+        [string]$Body, 
+        [string]$ContentType, 
+        [int]$TimeoutSec,
+        [int]$MaxRetries = 3
+    )
+
+    $attempt = 0
+    $baseWaitMs = 1000
+
+    while ($attempt -lt $MaxRetries) {
+        $attempt++
+        try {
+            return Invoke-RestMethod -Uri $Uri -Method $Method -Body $Body -ContentType $ContentType -TimeoutSec $TimeoutSec -ErrorAction Stop
+        } catch {
+            $err = $_.Exception.Message
+            # Don't retry on timeout if it was intentional, but here we treat most errors as transient network issues
+            if ($attempt -ge $MaxRetries) { throw $err }
+            
+            # Exponential Backoff
+            $waitMs = $baseWaitMs * [Math]::Pow(2, $attempt - 1)
+            Write-Host "[NET] Error ($err). Retrying in $($waitMs)ms..." -ForegroundColor DarkYellow
+            Start-Sleep -Milliseconds $waitMs
+        }
+    }
+}
+
+# --- Infrastructure Health Check ---
+function Test-OllamaPulse {
+    $ollamaUrl = "http://localhost:11434/api/tags"
+    try {
+        $response = Invoke-RestMethod -Uri $ollamaUrl -Method Get -TimeoutSec 5 -ErrorAction Stop
+        return $true
+    } catch {
+        Write-SwarmLog -Level "WARN" -Message "Ollama pulse check failed. Attempting resuscitation..."
+        return $false
+    }
+}
+
+function Ensure-Ollama {
+    # 1. Check Pulse
+    if (Test-OllamaPulse) { return }
+
+    Write-Host "[SYSTEM] Starting Ollama server (High-Performance Mode)..." -ForegroundColor Yellow
+    
+    # 2. Kill existing zombie process if pulse failed
+    $running = Get-Process ollama -ErrorAction SilentlyContinue
+    if ($running) { Stop-Process -InputObject $running -Force -ErrorAction SilentlyContinue }
+
+    # 3. Start with Optimized Env Vars
+    # OLLAMA_KEEP_ALIVE=24h -> Prevents unloading during session
+    # OLLAMA_NUM_PARALLEL=4 -> Allows 4 concurrent requests (Semaphore limit)
+    # OLLAMA_FLASH_ATTENTION=1 -> Speed boost (if supported)
+    $envParams = @{
+        "OLLAMA_KEEP_ALIVE" = "24h"
+        "OLLAMA_NUM_PARALLEL" = "4"
+        "OLLAMA_FLASH_ATTENTION" = "1"
+    }
+    
+    # Merge with current env
+    Get-ChildItem Env: | ForEach-Object { if (-not $envParams.ContainsKey($_.Name)) { $envParams[$_.Name] = $_.Value } }
+
+    try {
+        $startInfo = New-Object System.Diagnostics.ProcessStartInfo
+        $startInfo.FileName = "ollama"
+        $startInfo.Arguments = "serve"
+        $startInfo.WindowStyle = [System.Diagnostics.ProcessWindowStyle]::Hidden
+        foreach ($key in $envParams.Keys) { $startInfo.EnvironmentVariables[$key] = $envParams[$key] }
+        $startInfo.UseShellExecute = $false # Required for Env Vars
+
+        $proc = [System.Diagnostics.Process]::Start($startInfo)
+
+        # 4. Wait for spin-up (max 60s)
+        for ($i = 0; $i -lt 30; $i++) {
+            Start-Sleep -Seconds 2
+            if (Test-OllamaPulse) { 
+                Write-Host "[SYSTEM] Ollama is ALIVE." -ForegroundColor Green
+                
+                # 5. WARMUP: Force load common models
+                Write-Host "[SYSTEM] Warming up models..." -NoNewline
+                $warmupModels = @("qwen2.5-coder:1.5b", "llama3.2:3b")
+                foreach ($m in $warmupModels) {
+                    try {
+                        $body = @{ model = $m; prompt = "hi"; stream = $false } | ConvertTo-Json
+                        Invoke-RestMethod -Uri "http://localhost:11434/api/generate" -Method Post -Body $body -ContentType "application/json" -TimeoutSec 5 | Out-Null
+                        Write-Host " [$m OK]" -NoNewline -ForegroundColor Green
+                    } catch {
+                        Write-Host " [$m SKIP]" -NoNewline -ForegroundColor DarkGray
+                    }
+                }
+                Write-Host ""
+                return 
+            }
+            Write-Host "." -NoNewline
+        }
+    } catch {
+        Write-SwarmLog -Level "ERROR" -Message "Failed to start Ollama: $($_.Exception.Message)"
+    }
+    throw "CRITICAL: Ollama server is unreachable and could not be started."
+}
+
 # --- LLM Invocation (v12.12 - DIJKSTRA GEMINI SPECIAL) ---
 function Invoke-Llm {
     param([Parameter(Mandatory=$true)][string]$AgentName, [Parameter(Mandatory=$true)][string]$FullPrompt, [array]$ModelOverride)
 
     # v12.12: DIJKSTRA uses ONLY Gemini chain (strategic planning requires best models)
     if ($AgentName -eq "Dijkstra") {
+        # Ensure UTF8 for correct character handling
+        [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+        
         Write-SwarmLog -Message "DIJKSTRA STRATEGIC MODE: Engaging Gemini-only chain (no Ollama)."
         foreach ($modelConfig in $script:DijkstraChain) {
             $modelName = $modelConfig.Name
@@ -193,15 +301,18 @@ function Invoke-Llm {
                                             Set-Content -Path $tmpFile -Value $FullPrompt -Encoding UTF8
                 
                                             $geminiResult = Get-Content $tmpFile -Raw | & $nodePath $geminiJsPath -m $targetModel 2>$null | Out-String
+                
+                # Check Exit Code from Node process
+                if ($LASTEXITCODE -ne 0) {
+                    throw "Gemini CLI exited with error code $LASTEXITCODE. Output: $geminiResult"
+                }
+
                 Remove-Item $tmpFile -ErrorAction SilentlyContinue
 
                 if ($geminiResult -is [array]) { $geminiResult = $geminiResult -join "`n" }
                 $geminiResult = "$geminiResult".Trim()
 
-                if ($geminiResult -match "^Error:|^CLI Error:|^An unexpected critical error") {
-                     throw "CLI Error: $geminiResult"
-                }
-                if ([string]::IsNullOrWhiteSpace($geminiResult)) { throw "Empty result" }
+                if ([string]::IsNullOrWhiteSpace($geminiResult)) { throw "Empty result from Gemini CLI" }
 
                 Write-SwarmLog -Message "Dijkstra SUCCESS with $targetModel [$modelRole]"
                 return $geminiResult
@@ -218,6 +329,7 @@ function Invoke-Llm {
     # ALL OTHER AGENTS: Use Ollama Prime first, then Gemini fallback
     # 1. PRIMARY: Local Ollama Execution
     try {
+        if ($AgentName -ne "Dijkstra") { Ensure-Ollama }
         Write-SwarmLog -Message "Agent $AgentName attempting thinking with OLLAMA PRIME."
         $exe = if (Test-Path (Join-Path $PSScriptRoot "bin\ollama.exe")) { Join-Path $PSScriptRoot "bin\ollama.exe" } else { "ollama" }
         $localModelsPath = Join-Path $PSScriptRoot "data\ollama\models"
@@ -274,6 +386,10 @@ function Invoke-Llm {
 # --- Graph Processor ---
 function Start-GraphProcessor {
     param([Parameter(Mandatory=$true)][array]$Plan, [switch]$Yolo)
+    
+    # Verify Infrastructure
+    Ensure-Ollama
+
     $threadCount = if ($Yolo) { 12 } else { 6 }
     $RunspacePool = [runspacefactory]::CreateRunspacePool(1, $threadCount)
     $RunspacePool.Open()
@@ -298,6 +414,10 @@ function Start-GraphProcessor {
     }
 
     Write-SwarmLog -Message "Starting GraphProcessor with $($remainingTasks.Count) tasks."
+    
+    # v12.16 TRAFFIC CONTROL: Semaphore to limit concurrent Ollama hits
+    # Even if we have 12 threads, only 3 should hit the LLM at once to prevent timeouts/OOM.
+    $ollamaSemaphore = [System.Threading.SemaphoreSlim]::new(3, 3)
 
     while ($remainingTasks.Count -gt 0) {
         $tasksToRun = @(); $tasksToRemove = @()
@@ -324,24 +444,60 @@ function Start-GraphProcessor {
         $jobs = @()
         foreach($task in $tasksToRun) {
             $scriptBlock = {
-                param($t, $PromptPrefix, $AgentPersonas, $AgentModels)
+                param($t, $PromptPrefix, $AgentPersonas, $AgentModels, $Semaphore)
                 try {
                     $persona = if ($AgentPersonas -and $AgentPersonas[$t.agent]) { $AgentPersonas[$t.agent] } else { "You are agent $($t.agent). Complete the task efficiently." }
                     $agentModel = if ($AgentModels -and $AgentModels[$t.agent]) { $AgentModels[$t.agent] } else { "llama3.2:1b" }
                     $prompt = "$PromptPrefix`nPERSONA: $persona`nTASK: $($t.task)`nRespond with the completed work only. No explanations needed."
 
                     # Direct Ollama API call (no module dependency)
+                    # v12.17: Retry Logic (JSON Mode disabled for compatibility with EXEC protocol)
                     $body = @{
                         model = $agentModel
                         prompt = $prompt
                         stream = $false
-                        options = @{ temperature = 0.7; num_predict = 2000 }
+                        options = @{ temperature = 0.3; num_predict = 4000 } # Lower temp for stability
                     } | ConvertTo-Json -Depth 5
 
-                    $response = Invoke-RestMethod -Uri "http://localhost:11434/api/generate" -Method Post -Body $body -ContentType "application/json" -TimeoutSec 90
+                    # TRAFFIC CONTROL: Wait for slot
+                    $Semaphore.Wait()
+                    try {
+                        # Retry Loop Inline
+                        $attempt = 0; $max = 3; $success = $false
+                        while ($attempt -lt $max) {
+                            try {
+                                $response = Invoke-RestMethod -Uri "http://localhost:11434/api/generate" -Method Post -Body $body -ContentType "application/json" -TimeoutSec 90 -ErrorAction Stop
+                                $success = $true
+                                break
+                            } catch {
+                                $attempt++
+                                $wait = 1000 * [Math]::Pow(2, $attempt-1)
+                                Start-Sleep -Milliseconds $wait
+                            }
+                        }
+                        if (-not $success) { throw "Ollama API failed after $max retries." }
+
+                    } finally {
+                        $Semaphore.Release() | Out-Null
+                    }
 
                     if ($response -and $response.response) {
                         $result = $response.response.Trim()
+                        
+                        # --- v12.15 EXEC PROTOCOL (THE HAND) ---
+                        if ($result -match "^EXEC:\s*(.*)") {
+                            $cmdToRun = $matches[1].Trim()
+                            try {
+                                # Execute the command in the current scope
+                                $cmdOutput = Invoke-Expression $cmdToRun 2>&1 | Out-String
+                                if ([string]::IsNullOrWhiteSpace($cmdOutput)) { $cmdOutput = "(Command executed successfully, no output)" }
+                                $result = "EXECUTION REPORT:`nCOMMAND: $cmdToRun`nOUTPUT:`n$cmdOutput"
+                            } catch {
+                                return [PSCustomObject]@{ Id = $t.id; Agent = $t.agent; Status = "Failed"; Message = "EXEC FAILURE: $($_.Exception.Message)" }
+                            }
+                        }
+                        # ---------------------------------------
+
                         return [PSCustomObject]@{ Id = $t.id; Agent = $t.agent; Status = "Success"; Message = "OK"; Result = $result }
                     } else {
                         return [PSCustomObject]@{ Id = $t.id; Agent = $t.agent; Status = "Failed"; Message = "Empty Ollama response" }
@@ -350,12 +506,12 @@ function Start-GraphProcessor {
                     return [PSCustomObject]@{ Id = $t.id; Agent = $t.agent; Status = "Failed"; Message = "ERROR: $($_.Exception.Message)" }
                 }
             }
-            $job = [powershell]::Create().AddScript($scriptBlock).AddArgument($task).AddArgument($capturedPrefix).AddArgument($capturedPersonas).AddArgument($capturedAgentModels)
+            $job = [powershell]::Create().AddScript($scriptBlock).AddArgument($task).AddArgument($capturedPrefix).AddArgument($capturedPersonas).AddArgument($capturedAgentModels).AddArgument($ollamaSemaphore)
             $job.RunspacePool = $RunspacePool
             $jobs += [PSCustomObject]@{ Pipe = $job; Handle = $job.BeginInvoke(); Task = $task }
         }
-        # v12.8 FIX: Add 300s timeout per task to prevent infinite hangs (local models can be slow)
-        $taskTimeout = 300000  # 300 seconds
+        # v12.16 FIX: Optimized timeout (Strict Fail-Fast Strategy)
+        $taskTimeout = 120000  # 120 seconds (2 minutes)
         foreach ($j in $jobs) {
             $completed = $j.Handle.AsyncWaitHandle.WaitOne($taskTimeout)
             if ($completed) {
@@ -384,7 +540,8 @@ function Start-GraphProcessor {
                 }
             } else {
                 $taskId = [int]$j.Task.id
-                Write-Host "[SWARM] Task $taskId ($($j.Task.agent)) TIMEOUT after 120s." -ForegroundColor Yellow
+                $timeoutSec = $taskTimeout / 1000
+                Write-Host "[SWARM] Task $taskId ($($j.Task.agent)) TIMEOUT after ${timeoutSec}s." -ForegroundColor Yellow
                 $j.Pipe.Stop()
                 # Mark as completed to prevent infinite retry
                 $completedTasks[$taskId] = $true
@@ -483,7 +640,20 @@ OUTPUT ONLY THE REFINED ENGLISH OBJECTIVE. NO MARKDOWN, NO EXPLANATIONS.
 
     # --- PHASE A: DIJKSTRA PLANNING ---
     $chronicle1 = Get-SessionCache -Key "chronicle"
-    $dijkstraPrompt2 = "Based on the objective, create a JSON plan. Objective: $Objective. OUTPUT VALID JSON ONLY. Example: [{`"id`":1,`"agent`":`"Ciri`",`"task`":`"List files`",`"grimoires`":[],`"dependencies`":[]}]"
+    
+    # MEMORY INJECTION
+    $memories = Get-ContextualMemories -AgentName "Dijkstra" -Query $Objective
+    Write-Host "[MEMORY] Context retrieved for planning." -ForegroundColor DarkGray
+    
+    $dijkstraPrompt2 = @"
+CONTEXTUAL MEMORIES & LESSONS LEARNED:
+$memories
+
+OBJECTIVE: $Objective
+
+TASK: Create a JSON plan based on the objective and the memories above.
+OUTPUT VALID JSON ONLY. Example: [{`"id`":1,`"agent`":`"Ciri`",`"task`":`"List files`",`"grimoires`":[],`"dependencies`":[]}]
+"@
     
     $planJson = Invoke-Llm -AgentName "Dijkstra" -FullPrompt "$($script:PromptPrefix)`n$($script:AgentPersonas['Dijkstra'])`n$dijkstraPrompt2"
     Write-Host "DEBUG RAW PLAN: $planJson" -ForegroundColor Magenta
@@ -540,6 +710,12 @@ DECISION:
         if ($evalResponse -match "STATUS: SUCCESS") {
             Write-Host "[DIJKSTRA] Mission evaluated as SUCCESS." -ForegroundColor Green
             $missionSuccess = $true
+
+            # MEMORY UPGRADE: Save the lesson if this was a repair
+            if ($retryCount -gt 0) {
+                 Write-Host "[MEMORY] Consolidating self-healing lesson..." -ForegroundColor DarkGray
+                 Add-VectorMemory -AgentName "Dijkstra" -Type "LessonLearned" -Content "Objective: $Objective. Failure fixed by plan: $($fixPlan | ConvertTo-Json -Compress)" -Tags "repair,self-healing"
+            }
         } else {
             Write-Host "[DIJKSTRA] Issues detected. Initiating Repair Cycle $retryCount/$maxRetries..." -ForegroundColor Yellow
             $cleanFixJson = Clean-Json -RawInput $evalResponse
@@ -562,6 +738,12 @@ DECISION:
     Write-Host "`n--- PHASE D: FINAL SYNTHESIS ---" -ForegroundColor Cyan
     Write-SwarmLog -Message "Starting Phase D: Synthesis"
 
+    # MEMORY UPGRADE: Save successful workflow pattern
+    if ($missionSuccess) {
+        Write-Host "[MEMORY] Archiving successful workflow pattern..." -ForegroundColor DarkGray
+        Add-VectorMemory -AgentName "Regis" -Type "WorkflowPattern" -Content "Objective: $Objective. Successful plan structure used." -Tags "workflow,success"
+    }
+
     try {
         $minimizedResults = $aggregatedResults | Select-Object Id, Agent, Status, @{Name='Result';Expression={$_.Result.Substring(0, [Math]::Min(500, $_.Result.Length))}} 
         $resultsJson = $minimizedResults | ConvertTo-Json -Depth 2 -Compress
@@ -574,6 +756,7 @@ $resultsJson
 INSTRUCTIONS:
 You are Dijkstra. Provide a final 'Mission Report' for the user.
 Summarize what was done, what failed (if any), and the final outcome.
+IMPORTANT: DO NOT use 'EXEC:' commands in this phase. This is a text-only reporting phase. Any remaining fixes must be delegated to a future session.
 "@
         return Invoke-Llm -AgentName "Dijkstra" -FullPrompt "$($script:PromptPrefix)`n$($script:AgentPersonas['Dijkstra'])`n$synthesisPrompt"
 
@@ -583,6 +766,6 @@ Summarize what was done, what failed (if any), and the final outcome.
     }
 }
 
-Export-ModuleMember -Function Invoke-AgentSwarm, Get-VectorMemory, Get-SessionCache, Write-SwarmLog, Invoke-Llm
+Export-ModuleMember -Function Invoke-AgentSwarm, Get-VectorMemory, Add-VectorMemory, Get-ContextualMemories, Get-SessionCache, Set-SessionCache, Write-SwarmLog, Invoke-Llm
 Set-Alias -Name Get-SwarmMemory -Value Get-VectorMemory -Scope Global
 Set-Alias -Name Get-SwarmCache -Value Get-SessionCache -Scope Global

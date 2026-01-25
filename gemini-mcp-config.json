@@ -126,9 +126,12 @@
                                       "command":  "cmd",
                                       "args":  [
                                                    "/c",
-                                                   "uvx",
-                                                   "--from",
-                                                   "git+https://github.com/oraios/serena",
+                                                   "uv",
+                                                   "run",
+                                                   "--directory",
+                                                   "C:\\Users\\BIURODOM\\Desktop\\GeminiHydra\\mcp\\serena-local",
+                                                   "--package",
+                                                   ".",
                                                    "serena",
                                                    "start-mcp-server",
                                                    "--project-from-cwd"
