@@ -35,7 +35,7 @@ export const useEnvLoader = (): UseEnvLoaderReturn => {
       try {
         const env = await invoke<Record<string, string>>(
           TAURI_COMMANDS.GET_ENV_VARS
-        );
+        ) || {};
 
         const newSettings: Record<string, string> = {};
 

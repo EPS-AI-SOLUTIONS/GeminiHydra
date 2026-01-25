@@ -11,12 +11,12 @@
  * - Input history (basic)
  */
 
-import { memo, useEffect, useCallback, useState } from 'react';
+import { memo, useEffect, useCallback } from 'react';
 import TextareaAutosize from 'react-textarea-autosize';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Send, RefreshCw, X, AlertCircle, Paperclip, StopCircle } from 'lucide-react';
+import { Send, X, AlertCircle, Paperclip, StopCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '../../utils';
 
@@ -87,7 +87,6 @@ export const ChatInput = memo<ChatInputProps>(
       reset,
       setFocus,
       watch,
-      setValue,
       formState: { errors, isValid },
     } = useForm<ChatFormData>({
       resolver: zodResolver(chatSchema),

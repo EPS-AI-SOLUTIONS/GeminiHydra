@@ -37,15 +37,3 @@ export type {
   SkeletonMessageProps,
 } from './Skeleton';
 
-// ============================================================================
-// TOAST COMPONENTS (Notifications)
-// ============================================================================
-
-export { Toast, default as ToastDefault } from './Toast';
-export type {
-  ToastProps,
-  ToastVariant,
-} from './Toast';
-
-export { ToastContainer, default as ToastContainerDefault } from './ToastContainer';
-export type { ToastContainerProps } from './ToastContainer';

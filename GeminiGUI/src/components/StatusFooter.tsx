@@ -28,7 +28,7 @@ const StatusFooterComponent: React.FC<StatusFooterProps> = ({
   };
 
   return (
-    <footer className="glass-panel rounded-lg p-2 border-[var(--matrix-border)] flex items-center justify-between text-xs font-mono shrink-0 transition-colors duration-300">
+    <footer className="glass-panel rounded-lg px-2 py-0.5 border-[var(--matrix-border)] flex items-center justify-between text-[10px] font-mono shrink-0 transition-colors duration-300">
       <div className="flex items-center gap-4">
         <span className={`font-bold ${isStreaming || isWorking ? 'animate-pulse text-[var(--matrix-accent)]' : 'text-[var(--matrix-text-dim)]'}`}>
           [{getStatusText()}]

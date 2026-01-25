@@ -1,7 +1,6 @@
 import { motion, AnimatePresence } from 'framer-motion';
 import { Keyboard, X } from 'lucide-react';
 import { useEffect } from 'react';
-import { cn } from '../utils';
 
 interface ShortcutsModalProps {
   isOpen: boolean;

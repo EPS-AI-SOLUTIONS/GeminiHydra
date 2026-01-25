@@ -357,10 +357,62 @@ async fn spawn_swarm_agent(window: Window, objective: String) -> Result<(), Stri
 
     // Get module path safely
     let base_dir = get_base_dir();
-    let module_path = base_dir.join("AgentSwarm.psm1");
+    let mut module_path = base_dir.join("AgentSwarm.psm1");
+    let mut attempted_paths = vec![module_path.clone()];
 
     if !module_path.exists() {
-        return Err(format!("AgentSwarm.psm1 not found at: {:?}", module_path));
+        // Fallback: Check parent directories up to 5 levels up
+        let mut current_dir = base_dir.clone();
+        let mut found = false;
+        
+        for _ in 0..5 {
+            if let Some(parent) = current_dir.parent() {
+                let candidate = parent.join("AgentSwarm.psm1");
+                attempted_paths.push(candidate.clone());
+                if candidate.exists() {
+                    module_path = candidate;
+                    found = true;
+                    break;
+                }
+                current_dir = parent.to_path_buf();
+            } else {
+                break;
+            }
+        }
+
+        // Additional Dev Fallback: Check from CWD if not found yet
+        if !found {
+            if let Ok(cwd) = std::env::current_dir() {
+                let mut current_cwd = cwd.clone();
+                for _ in 0..4 {
+                    let candidate = current_cwd.join("AgentSwarm.psm1");
+                    attempted_paths.push(candidate.clone());
+                     if candidate.exists() {
+                        module_path = candidate;
+                        found = true;
+                        break;
+                    }
+                    if let Some(parent) = current_cwd.parent() {
+                        current_cwd = parent.to_path_buf();
+                    } else {
+                        break;
+                    }
+                }
+            }
+        }
+    }
+
+    // Canonicalize if possible to get clean absolute path
+    if let Ok(abs_path) = std::fs::canonicalize(&module_path) {
+        module_path = abs_path;
+    }
+
+    if !module_path.exists() {
+        let paths_log = attempted_paths.iter()
+            .map(|p| p.to_string_lossy().to_string())
+            .collect::<Vec<_>>()
+            .join("\n - ");
+        return Err(format!("AgentSwarm.psm1 not found. Searched in:\n - {}", paths_log));
     }
 
     // SECURITY: Use encoded command to prevent injection

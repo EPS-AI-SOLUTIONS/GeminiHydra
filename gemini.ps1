@@ -11,6 +11,12 @@ Set-Location $ScriptDir
 if (Test-Path "$ScriptDir\AgentSwarm.psm1") {
     Write-Host "Importing Agent Swarm Protocols..." -ForegroundColor Gray
     Import-Module "$ScriptDir\AgentSwarm.psm1" -Force
+    if (Test-Path "$ScriptDir\GeminiExtras.psm1") {
+        Import-Module "$ScriptDir\GeminiExtras.psm1" -Force
+    }
+    if (Test-Path "$ScriptDir\GeminiRAG.psm1") {
+        Import-Module "$ScriptDir\GeminiRAG.psm1" -Force
+    }
 } else {
     Write-Error "CRITICAL: AgentSwarm.psm1 not found!"
     exit 1

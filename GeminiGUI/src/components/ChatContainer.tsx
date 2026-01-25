@@ -93,7 +93,7 @@ export const ChatContainer = memo<ChatContainerProps>(
 
     return (
       <DragDropZone onImageDrop={handleImageDrop} onTextDrop={handleTextDrop}>
-        <div className="glass-panel flex-1 rounded-lg border-[var(--matrix-border)] flex flex-col min-h-0 relative">
+        <div className="glass-panel flex-1 h-full rounded-lg border-[var(--matrix-border)] flex flex-col min-h-0 relative">
           {/* Messages List */}
           <div className="flex-1 min-h-0">
             <MessageList

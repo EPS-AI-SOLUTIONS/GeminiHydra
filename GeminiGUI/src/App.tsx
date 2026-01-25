@@ -10,7 +10,7 @@ import { RightSidebar } from './components/RightSidebar';
 import { StatusFooter } from './components/StatusFooter';
 import { Header } from './components/layout/Header';
 import { ShortcutsModal } from './components/ShortcutsModal';
-import { ToastContainer, ToastMessage, ToastType } from './components/ui/Toast';
+import { Toaster, toast } from 'sonner';
 
 // Constants & Utils
 import { STATUS, COMMAND_PATTERNS, TAURI_COMMANDS } from './constants';
@@ -19,6 +19,9 @@ import { invoke } from '@tauri-apps/api/core';
 import { WebviewWindow } from '@tauri-apps/api/webviewWindow';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { cn } from './utils';
+
+import { WitcherRunes } from './components/effects/WitcherRunes';
+import { SystemContextMenu } from './components/SystemContextMenu';
 
 function App() {
   console.log('[App] Mounting...');
@@ -29,7 +32,7 @@ function App() {
   const [isStreaming, setIsStreaming] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isShortcutsOpen, setIsShortcutsOpen] = useState(false);
-  const [toasts, setToasts] = useState<ToastMessage[]>([]);
+  const [isTauri, setIsTauri] = useState(false);
 
   // ========================================
   // Store State
@@ -37,7 +40,6 @@ function App() {
   const count = useAppStore((state) => state.count);
   const currentSessionId = useAppStore((state) => state.currentSessionId);
   const sessions = useAppStore((state) => state.sessions);
-  const chatHistory = useAppStore((state) => state.chatHistory);
   const settings = useAppStore((state) => state.settings);
 
   const increment = useAppStore((state) => state.increment);
@@ -55,16 +57,28 @@ function App() {
   useEnvLoader();
 
   // ========================================
-  // Toast System
+  // Initialization & Tauri Check
   // ========================================
-  const addToast = useCallback((message: string, type: ToastType = 'info') => {
-    const id = crypto.randomUUID();
-    setToasts((prev) => [...prev, { id, type, message }]);
-  }, []);
+  useEffect(() => {
+    // Check if running in Tauri
+    const checkTauri = async () => {
+      try {
+        await invoke('greet', { name: 'HealthCheck' });
+        setIsTauri(true);
+        console.log('[App] Tauri environment detected.');
+      } catch (e) {
+        console.log('[App] Web environment detected (Tauri unavailable).');
+        setIsTauri(false);
+      }
+    };
+    checkTauri();
 
-  const removeToast = useCallback((id: string) => {
-    setToasts((prev) => prev.filter((t) => t.id !== id));
-  }, []);
+    if (sessions.length === 0) {
+      createSession();
+    } else if (!currentSessionId) {
+      selectSession(sessions[0].id);
+    }
+  }, [sessions.length, currentSessionId, createSession, selectSession, sessions]);
 
   // ========================================
   // Handlers
@@ -76,20 +90,26 @@ function App() {
   const handleClearHistory = useCallback(() => {
     if (confirm('Wyczyścić historię czatu?')) {
       clearHistory();
-      addToast('Historia wyczyszczona', 'info');
+      toast.info('Historia wyczyszczona');
     }
-  }, [clearHistory, addToast]);
+  }, [clearHistory]);
 
   const executeCommand = useCallback(async (cmd: string) => {
     addMessage({ role: 'system', content: `> ${STATUS.EXECUTING} ${cmd}`, timestamp: Date.now() });
+    
+    if (!isTauri) {
+       updateLastMessage('\n\n[WEB SIMULATION] Command executed: ' + cmd);
+       return;
+    }
+
     try {
       const result = await invoke<string>(TAURI_COMMANDS.RUN_SYSTEM_COMMAND, { command: cmd });
       updateLastMessage('\n\nRESULT:\n```\n' + result + '\n```\n');
     } catch (err) {
       updateLastMessage('\n\nERROR:\n' + String(err));
-      addToast(`Błąd komendy: ${err}`, 'error');
+      toast.error(`Błąd komendy: ${err}`);
     }
-  }, [addMessage, updateLastMessage, addToast]);
+  }, [addMessage, updateLastMessage, isTauri]);
 
   const handleSubmit = useCallback(async (userPrompt: string, attachedImage: string | null) => {
     let displayContent = userPrompt;
@@ -99,15 +119,28 @@ function App() {
     addMessage({ role: 'assistant', content: '', timestamp: Date.now() });
 
     setIsStreaming(true);
+    
+    // Web Simulation Mode
+    if (!isTauri) {
+        setTimeout(() => {
+          updateLastMessage(STATUS.SWARM_INIT + '\n\n');
+          setTimeout(() => {
+             updateLastMessage("\n[SYMULACJA TRYBU WEB]\nBackend Tauri nie jest dostępny (Web Mode).\nAplikacja działa w trybie offline/demo.\n\nOdebrano: " + userPrompt);
+             setIsStreaming(false);
+          }, 800);
+        }, 100);
+        return;
+    }
+
     try {
       updateLastMessage(STATUS.SWARM_INIT + '\n\n');
       await invoke(TAURI_COMMANDS.SPAWN_SWARM_AGENT, { objective: userPrompt });
     } catch (error) {
       updateLastMessage(`\n[${STATUS.SWARM_ERROR}: ${error}]`);
-      addToast('Błąd Roju Agentów', 'error');
+      toast.error('Błąd Roju Agentów');
       setIsStreaming(false);
     }
-  }, [addMessage, updateLastMessage, addToast]);
+  }, [addMessage, updateLastMessage, isTauri]);
 
   // ========================================
   // Stream Listeners
@@ -116,12 +149,12 @@ function App() {
     onChunk: updateLastMessage,
     onComplete: () => {
       setIsStreaming(false);
-      // Optional: addToast('Zadanie ukończone', 'success');
+      // Optional: toast.success('Zadanie ukończone');
     },
     onError: (error: unknown) => {
       console.error('[App] Stream error:', error);
       setIsStreaming(false);
-      addToast('Przerwano strumieniowanie', 'error');
+      toast.error('Przerwano strumieniowanie');
     },
   });
 
@@ -149,6 +182,27 @@ function App() {
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [handleClearHistory]);
+
+  // ========================================
+  // Context Menu Actions Listener
+  // ========================================
+  useEffect(() => {
+    const handleContextAction = (e: Event) => {
+        const customEvent = e as CustomEvent<{ action: string; content: string }>;
+        const { action, content } = customEvent.detail;
+
+        if (action === 'ask') {
+            handleSubmit(content, null);
+        } else if (action === 'analyze') {
+            handleSubmit(`[ANALIZA KODU/TEKSTU]\n\n\`\`\`\n${content}\n\`\`\`\n\nPrzeanalizuj powyższy fragment. Wskaż błędy, potencjalne problemy i zaproponuj optymalizację.`, null);
+        } else if (action === 'run') {
+            handleSubmit(`Chcę uruchomić komendę:\n\`${content}\`\n\nCzy jest bezpieczna? Jeśli tak, wykonaj ją.`, null);
+        }
+    };
+
+    window.addEventListener('gemini-context-action', handleContextAction);
+    return () => window.removeEventListener('gemini-context-action', handleContextAction);
+  }, [handleSubmit]);
 
   // ========================================
   // Effects & Memos
@@ -185,13 +239,16 @@ function App() {
 
   return (
     <main className={cn(
-      "container mx-auto p-4 h-screen flex flex-col gap-4 overflow-hidden transition-all duration-500",
+      "container mx-auto p-1 h-screen flex flex-col gap-1 overflow-hidden transition-all duration-500 relative",
       "bg-[url('/background.webp')] bg-cover bg-center bg-no-repeat bg-blend-overlay",
-      isDark ? "bg-black/90" : "bg-white/90"
+      isDark ? "bg-black/30" : "bg-white/40"
     )}>
+      <WitcherRunes isDark={isDark} />
+      <SystemContextMenu />
+      
       <SettingsModal isOpen={isSettingsOpen} onClose={handleCloseSettings} />
       <ShortcutsModal isOpen={isShortcutsOpen} onClose={() => setIsShortcutsOpen(false)} />
-      <ToastContainer toasts={toasts} onRemove={removeToast} />
+      <Toaster position="top-right" theme={isDark ? 'dark' : 'light'} />
 
       <Header 
         isDark={isDark}
@@ -203,29 +260,35 @@ function App() {
         onToggleTheme={handleToggleTheme}
       />
 
-      <div className="flex-1 grid grid-cols-1 md:grid-cols-[280px_1fr_280px] gap-4 overflow-hidden min-h-0 relative">
-        <SessionSidebar 
-          sessions={sessions}
-          currentSessionId={currentSessionId}
-          onCreateSession={createSession}
-          onSelectSession={selectSession}
-          onDeleteSession={deleteSession}
-          onUpdateTitle={updateSessionTitle}
-        />
+      <div className="flex-1 flex gap-1 overflow-hidden min-h-0 relative">
+        <div className="w-[200px] shrink-0 flex flex-col">
+          <SessionSidebar 
+            sessions={sessions}
+            currentSessionId={currentSessionId}
+            onCreateSession={createSession}
+            onSelectSession={selectSession}
+            onDeleteSession={deleteSession}
+            onUpdateTitle={updateSessionTitle}
+          />
+        </div>
         
-        <ChatContainer 
-          messages={currentMessages}
-          isStreaming={isStreaming}
-          onSubmit={handleSubmit}
-          onExecuteCommand={executeCommand}
-        />
+        <div className="flex-1 min-w-0 flex flex-col">
+          <ChatContainer 
+            messages={currentMessages}
+            isStreaming={isStreaming}
+            onSubmit={handleSubmit}
+            onExecuteCommand={executeCommand}
+          />
+        </div>
         
-        <RightSidebar 
-          count={count}
-          onIncrement={increment}
-          onDecrement={decrement}
-          onExport={() => addToast('Export not implemented yet', 'info')}
-        />
+        <div className="w-[200px] shrink-0 flex flex-col">
+          <RightSidebar 
+            count={count}
+            onIncrement={increment}
+            onDecrement={decrement}
+            onExport={() => toast.info('Export not implemented yet')}
+          />
+        </div>
       </div>
 
       <StatusFooter 

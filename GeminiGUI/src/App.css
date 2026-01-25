@@ -31,16 +31,16 @@
   --matrix-bg-primary: #0a1f0a;
   --matrix-bg-secondary: #001a00;
   --matrix-accent: #00ff41;
-  --matrix-text: #c0ffc0;
-  --matrix-text-dim: #80c080;
-  --matrix-glass-bg: rgba(0, 31, 0, 0.85);
-  --matrix-panel-bg: rgba(10, 20, 10, 0.8);
-  --matrix-border: rgba(0, 255, 65, 0.15);
-  --matrix-input-bg: rgba(0, 0, 0, 0.5);
+  --matrix-text: #e2e8f0; /* Slate-200 */
+  --matrix-text-dim: #94a3b8; /* Slate-400 */
+  --matrix-glass-bg: rgba(0, 31, 0, 0.4); /* More transparent (0.6 -> 0.4) */
+  --matrix-panel-bg: rgba(10, 20, 10, 0.4); /* More transparent (0.6 -> 0.4) */
+  --matrix-border: rgba(0, 255, 65, 0.3); 
+  --matrix-input-bg: rgba(0, 0, 0, 0.4);
   --bg-image: url('/background.webp');
   --bg-overlay: rgba(10, 31, 10, 0.85);
   
-  --glass-blur: blur(24px) saturate(200%);
+  --glass-blur: blur(16px) saturate(180%);
   --glass-radius: 12px;
 }
 
@@ -50,34 +50,15 @@
 [data-theme='light'] {
   --matrix-bg-primary: #f0fdf4;
   --matrix-bg-secondary: #ffffff;
-  --matrix-accent: #059669; /* Emerald 600 - Darker green for contrast */
-  --matrix-text: #064e3b;   /* Emerald 900 */
-  --matrix-text-dim: #34d399; /* Emerald 400 */
-  --matrix-glass-bg: rgba(255, 255, 255, 0.7);
-  --matrix-panel-bg: rgba(255, 255, 255, 0.6);
+  --matrix-accent: #059669; 
+  --matrix-text: #334155;   /* Slate-700 (Gray) instead of Black/Green */
+  --matrix-text-dim: #64748b; /* Slate-500 (Dim Gray) */
+  --matrix-glass-bg: rgba(255, 255, 255, 0.5);
+  --matrix-panel-bg: rgba(255, 255, 255, 0.4);
   --matrix-border: rgba(5, 150, 105, 0.2);
   --matrix-input-bg: rgba(255, 255, 255, 0.5);
   --bg-image: url('/backgroundlight.webp');
   --bg-overlay: rgba(255, 255, 255, 0.6);
-}
-
-html, body {
-  background: var(--matrix-bg-primary);
-  color: var(--matrix-text);
-  font-family: var(--font-mono);
-  overflow: hidden;
-  height: 100vh;
-  margin: 0;
-  transition: background 0.3s ease, color 0.3s ease;
-}
-
-/* Matrix Background with Image */
-.matrix-bg {
-    background-image: linear-gradient(var(--bg-overlay), var(--bg-overlay)), var(--bg-image);
-    background-size: cover;
-    background-position: center;
-    background-attachment: fixed;
-    transition: background-image 0.5s ease-in-out;
 }
 
 /* ============================================
@@ -88,7 +69,7 @@ html, body {
   backdrop-filter: var(--glass-blur);
   -webkit-backdrop-filter: var(--glass-blur);
   border: 1px solid var(--matrix-border);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1); /* Softer shadow */
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2), 0 0 0 1px rgba(0, 255, 65, 0.1) inset; /* Enhanced shadow */
   border-radius: var(--glass-radius);
   transition: background 0.3s ease, border-color 0.3s ease;
 }
@@ -150,12 +131,38 @@ html, body {
 }
 
 /* ============================================
+   SELECTION & INTERACTION STYLES
+   ============================================ */
+::selection {
+    background: var(--matrix-accent);
+    color: var(--matrix-bg-secondary);
+    text-shadow: none;
+}
+
+/* Prevent selecting UI elements */
+img, button, header, footer, .sidebar-item, .status-badge, .noselect {
+    user-select: none;
+    -webkit-user-select: none;
+}
+
+/* Ensure message content is selectable */
+.markdown-body, .matrix-input {
+    user-select: text;
+    cursor: text;
+}
+
+/* Helper for selectable areas */
+.select-safe {
+    user-select: text;
+}
+
+/* ============================================
    MARKDOWN STYLES
    ============================================ */
 .markdown-body p { margin-bottom: 0.5em; }
 .markdown-body p:last-child { margin-bottom: 0; }
 .markdown-body pre { 
-    background: rgba(0,0,0,0.3); 
+    background: rgba(0,0,0,0.5); /* Darker background for code blocks */
     padding: 0.5em; 
     border-radius: 4px; 
     overflow-x: auto; 
@@ -163,22 +170,24 @@ html, body {
     margin: 0.5em 0;
 }
 .markdown-body code { 
-    background: rgba(0,0,0,0.2); 
+    background: rgba(255,255,255,0.1); /* Lighter bg for inline code */
     padding: 0.1em 0.3em; 
     border-radius: 2px;
     font-family: var(--font-mono);
     font-size: 0.9em;
+    color: #ffffff;
 }
 .markdown-body pre code { 
     background: transparent; 
     padding: 0; 
+    color: var(--matrix-text);
 }
 .markdown-body ul, .markdown-body ol { margin-left: 1.5em; margin-bottom: 0.5em; }
 .markdown-body li { margin-bottom: 0.2em; }
 .markdown-body strong { color: var(--matrix-accent); font-weight: bold; }
 .markdown-body a { color: var(--matrix-accent); text-decoration: underline; }
-.markdown-body h1, .markdown-body h2, .markdown-body h3 {
-    color: var(--matrix-text);
+.markdown-body h1, .markdown-body h2, .markdown-body h3, .markdown-body h4, .markdown-body h5, .markdown-body h6 {
+    color: var(--matrix-accent); /* Headers stay Green */
     margin-top: 0.5em;
     margin-bottom: 0.2em;
     font-weight: bold;
@@ -190,4 +199,5 @@ html, body {
     margin-left: 0;
     font-style: italic;
     opacity: 0.8;
+    color: var(--matrix-text-dim);
 }

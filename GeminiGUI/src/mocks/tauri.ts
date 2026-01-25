@@ -87,7 +87,7 @@ export const getCurrentWindow = () => ({
 });
 
 export const WebviewWindow = {
-  getByLabel: async (label: string) => {
+  getByLabel: async (_label: string) => {
     return { show: async () => {} };
   }
 };

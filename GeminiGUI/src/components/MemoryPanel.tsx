@@ -73,7 +73,7 @@ export const MemoryPanel: React.FC = () => {
 
     const fetchKnowledgeGraph = useCallback(async () => {
         try {
-            const graph = await invoke<KnowledgeGraph>('get_knowledge_graph');
+            const graph = await invoke<KnowledgeGraph>('get_knowledge_graph') || { nodes: [], edges: [] };
             setKnowledgeGraph(graph);
             setError(null);
         } catch (e) {
@@ -89,7 +89,7 @@ export const MemoryPanel: React.FC = () => {
             const memories = await invoke<MemoryEntry[]>('get_agent_memories', {
                 agentName: selectedAgent,
                 topK: 10
-            });
+            }) || [];
             setAgentMemories(memories);
             setError(null);
         } catch (e) {

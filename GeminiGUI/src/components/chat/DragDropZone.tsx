@@ -92,7 +92,7 @@ export const DragDropZone = memo<DragDropZoneProps>(
 
     return (
       <section
-        className="md:col-span-2 flex flex-col gap-4 min-h-0 relative"
+        className="flex flex-col h-full min-h-0 relative"
         onDragEnter={handleDrag}
         onDragLeave={handleDrag}
         onDragOver={handleDrag}

@@ -47,7 +47,7 @@ const RightSidebarComponent: React.FC<RightSidebarProps> = ({
   };
 
   return (
-    <aside className="hidden lg:flex lg:col-span-1 flex-col gap-4 overflow-y-auto pr-1">
+    <aside className="flex col-span-1 flex-col gap-2 overflow-y-auto pr-1 h-full">
 
       <MemoryPanel />
 

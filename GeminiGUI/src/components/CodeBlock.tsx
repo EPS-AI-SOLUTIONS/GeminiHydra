@@ -12,14 +12,27 @@ interface CodeBlockProps {
 const CodeBlockComponent: React.FC<CodeBlockProps> = ({ language, value, onRun }) => {
   const [copied, setCopied] = useState(false);
   const [isRunning, setIsRunning] = useState(false);
+  const codeRef = useRef<HTMLPreElement>(null);
 
-  const handleCopy = async () => {
+  const handleCopy = async (e?: React.MouseEvent) => {
+    e?.stopPropagation();
     await navigator.clipboard.writeText(value);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const handleSave = async () => {
+  const handleSelectAll = () => {
+    if (codeRef.current) {
+        const range = document.createRange();
+        range.selectNodeContents(codeRef.current);
+        const sel = window.getSelection();
+        sel?.removeAllRanges();
+        sel?.addRange(range);
+    }
+  };
+
+  const handleSave = async (e: React.MouseEvent) => {
+    e.stopPropagation();
     try {
       const filePath = await save({
         filters: [{
@@ -123,9 +136,13 @@ const CodeBlockComponent: React.FC<CodeBlockProps> = ({ language, value, onRun }
 
   return (
     <div className="rounded-md border border-[var(--matrix-border)] bg-black/40 overflow-hidden my-2">
-      <div className="flex justify-between items-center px-3 py-1.5 bg-white/5 border-b border-[var(--matrix-border)]">
+      <div 
+        onClick={handleSelectAll}
+        className="flex justify-between items-center px-3 py-1.5 bg-white/5 border-b border-[var(--matrix-border)] cursor-pointer hover:bg-white/10 transition-colors select-none"
+        title="Kliknij, aby zaznaczyć całość"
+      >
         <span className="text-xs font-mono text-[var(--matrix-text-dim)] uppercase">{language || 'tekst'}</span>
-        <div className="flex gap-2">
+        <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
 
           {(language === 'python' || language === 'js' || language === 'javascript' || language === 'bash' || language === 'sh') && (
               <button
@@ -155,7 +172,7 @@ const CodeBlockComponent: React.FC<CodeBlockProps> = ({ language, value, onRun }
           </button>
         </div>
       </div>
-      <pre className="p-3 overflow-x-auto text-sm font-mono text-[var(--matrix-text)] bg-transparent m-0">
+      <pre ref={codeRef} className="p-3 overflow-x-auto text-sm font-mono text-[var(--matrix-text)] bg-transparent m-0 select-text cursor-text">
         <code>{value}</code>
       </pre>
     </div>

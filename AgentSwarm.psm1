@@ -34,22 +34,42 @@ $script:DijkstraChain = @(
     @{ Name = "gemini-2.5-flash";       Role = "Ostatnia deska ratunku (Last Resort)" }
 )
 
+# FIX: Ensure PSScriptRoot is set
+if (-not $PSScriptRoot) { $PSScriptRoot = $PWD.Path }
 
-$script:AgentPersonas = @{
-    "Geralt"   = "Oversee security. Analyze code changes for vulnerabilities. VETO unsafe changes."
-    "Yennefer" = "Focus on design patterns and code purity. Propose elegant, scalable solutions."
-    "Triss"    = "QA role. Create test scenarios and actively try to break implemented features."
-    "Jaskier"  = "Do not code. Translate final technical reports into user-friendly summaries."
-    "Vesemir"  = "Mentor. Review Dijkstra's plan for logic and efficiency. Approve or reject."
-    "Ciri"     = "Speed role. Execute simple, atomic tasks: find file, read snippet, list directory."
-    "Eskel"    = "DevOps specialist. Ensure the application builds and deploys correctly (`npm run build`)."
-    "Lambert"  = "Debugger. Analyze and fix errors when any agent's task fails."
-    "Zoltan"   = "Data master. Analyze and modify `.json`, `.csv`, `.yml` files."
-    "Regis"    = "Synthesizer/Researcher. Create technical summaries and search web if swarm is stuck."
-    "Dijkstra" = "Master strategist. Create JSON plans with dependencies, assign agents and grimoires."
-    "Philippa" = "API specialist. Handle all interactions with external APIs."
+$script:AgentPersonas = @{}
+$agentsJsonPath = Join-Path $PSScriptRoot "data\agents.json"
+
+if (Test-Path $agentsJsonPath) {
+    try {
+        $loadedAgents = Get-Content $agentsJsonPath -Raw | ConvertFrom-Json
+        foreach ($name in $loadedAgents.PSObject.Properties.Name) {
+            $script:AgentPersonas[$name] = $loadedAgents.$name.prompt
+        }
+        Write-Host " [SYSTEM] Loaded $($script:AgentPersonas.Count) Agent Personas from external Grimoire." -ForegroundColor DarkGray
+    } catch {
+        Write-Warning "Failed to load agents.json: $_"
+    }
 }
-$script:PromptPrefix = "**META-INSTRUCTION:** Think Step-by-Step. Analyze persona, mission, and context. Formulate a plan. Execute concisely. RETURN ONLY RAW CONTENT. IF YOU NEED TO EXECUTE A SYSTEM COMMAND (File ops, Git, etc.), START YOUR RESPONSE WITH 'EXEC: ' FOLLOWED BY THE POWERSHELL COMMAND. DO NOT USE MARKDOWN BLOCKS."
+
+if ($script:AgentPersonas.Count -eq 0) {
+    Write-Warning "Using Hardcoded Fallback Personas."
+    $script:AgentPersonas = @{
+        "Geralt"   = "Oversee security. Analyze code changes for vulnerabilities. VETO unsafe changes."
+        "Yennefer" = "Focus on design patterns and code purity. Propose elegant, scalable solutions."
+        "Triss"    = "QA role. Create test scenarios and actively try to break implemented features."
+        "Jaskier"  = "Do not code. Translate final technical reports into user-friendly summaries."
+        "Vesemir"  = "Mentor. Review Dijkstra's plan for logic and efficiency. Approve or reject."
+        "Ciri"     = "Speed role. Execute simple, atomic tasks: find file, read snippet, list directory."
+        "Eskel"    = "DevOps specialist. Ensure the application builds and deploys correctly (`npm run build`)."
+        "Lambert"  = "Debugger. Analyze and fix errors when any agent's task fails."
+        "Zoltan"   = "Data master. Analyze and modify `.json`, `.csv`, `.yml` files."
+        "Regis"    = "Synthesizer/Researcher. Create technical summaries and search web if swarm is stuck."
+        "Dijkstra" = "Master strategist. Create JSON plans with dependencies, assign agents and grimoires."
+        "Philippa" = "API specialist. Handle all interactions with external APIs."
+    }
+}
+$script:PromptPrefix = "**META-INSTRUCTION:** Think Step-by-Step. Analyze persona, mission, and context. Formulate a plan. Execute concisely. RETURN ONLY RAW CONTENT. IF YOU NEED TO EXECUTE A SYSTEM COMMAND (File ops, Git, etc.), START YOUR RESPONSE WITH 'EXEC: ' FOLLOWED BY THE VALID POWERSHELL COMMAND. DO NOT USE MARKDOWN BLOCKS. **CRITICAL:** YOU ARE ON WINDOWS POWERSHELL. DO NOT USE 'grep', 'sed', 'awk'. USE 'Select-String', 'Get-Content', 'New-Item'. ENSURE ALL BRACES '{}' ARE BALANCED."
 
 # --- Core Memory Architecture ---
 $baseMemPath = Join-Path $PSScriptRoot ".serena" | Join-Path -ChildPath "memories"
@@ -58,8 +78,8 @@ $script:CachePath = Join-Path $baseMemPath "cache"
 $script:KnowledgeGraphPath = Join-Path $baseMemPath "knowledge_graph.json"
 $script:LogPath = Join-Path $PSScriptRoot "agent_swarm.log"
 
-New-Item -ItemType Directory -Path $script:VectorDbPath -Force -ErrorAction SilentlyContinue | Out-Null
-New-Item -ItemType Directory -Path $script:CachePath -Force -ErrorAction SilentlyContinue | Out-Null
+if ($script:VectorDbPath) { New-Item -ItemType Directory -Path $script:VectorDbPath -Force -ErrorAction SilentlyContinue | Out-Null }
+if ($script:CachePath) { New-Item -ItemType Directory -Path $script:CachePath -Force -ErrorAction SilentlyContinue | Out-Null }
 
 # FIXED LOGGING FUNCTION
 function Write-SwarmLog {
