@@ -15,7 +15,16 @@ import { CodeBlock } from '../CodeBlock';
 import type { Message } from '../../types';
 import { UI } from '../../constants';
 
-// ... (Types remain same) ...
+// ============================================================================
+// TYPES
+// ============================================================================
+
+export interface MessageListProps {
+  messages: Message[];
+  isStreaming?: boolean;
+  onExecuteCommand?: (cmd: string) => void;
+  onContextMenu?: (e: React.MouseEvent, message: Message) => void;
+}
 
 // ============================================================================
 // MESSAGE ITEM
@@ -133,7 +142,12 @@ EmptyState.displayName = 'EmptyState';
 // ============================================================================
 
 export const MessageList = memo<MessageListProps>(
-  ({ messages, isStreaming, onExecuteCommand, onContextMenu }) => {
+  ({
+    messages,
+    isStreaming = false,
+    onExecuteCommand = () => {},
+    onContextMenu = () => {}
+  }) => {
     const virtuosoRef = useRef<VirtuosoHandle>(null);
 
     if (messages.length === 0) {

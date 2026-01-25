@@ -1,5 +1,5 @@
-import { useEffect, useState, useCallback, useRef } from 'react';
-import { Copy, Scissors, Clipboard, Maximize, Brain, FileCode, Terminal, ArrowRight } from 'lucide-react';
+import { useEffect, useState, useRef } from 'react';
+import { Copy, Scissors, Clipboard, Maximize, Brain, FileCode, Terminal } from 'lucide-react';
 
 export const SystemContextMenu = () => {
   const [visible, setVisible] = useState(false);

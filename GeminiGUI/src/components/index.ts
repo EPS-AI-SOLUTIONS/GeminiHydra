@@ -19,6 +19,18 @@ export { BridgePanel } from './BridgePanel';
 // Utility Components
 export { CodeBlock } from './CodeBlock';
 export { ErrorBoundary } from './ErrorBoundary';
+export { SuspenseFallback } from './SuspenseFallback';
+
+// Lazy Components (Code Splitting)
+export {
+  SettingsModalLazy,
+  MemoryPanelLazy,
+  BridgePanelLazy,
+  ShortcutsModalLazy,
+  ErrorBoundaryLazy,
+  LazyComponentWrapper,
+  WithSuspense,
+} from './LazyComponents';
 
 // UI Components
 export { Button } from './ui';

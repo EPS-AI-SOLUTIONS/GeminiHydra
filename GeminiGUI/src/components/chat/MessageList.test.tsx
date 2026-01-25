@@ -39,6 +39,8 @@ vi.mock('framer-motion', () => ({
 vi.mock('lucide-react', () => ({
   FileText: () => <span data-testid="icon-file-text">FileText</span>,
   Terminal: () => <span data-testid="icon-terminal">Terminal</span>,
+  Copy: () => <span data-testid="icon-copy">Copy</span>,
+  Check: () => <span data-testid="icon-check">Check</span>,
 }));
 
 // Mock CodeBlock component
