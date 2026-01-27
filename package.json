@@ -46,7 +46,7 @@
     "dotenv": "^16.4.5",
     "envalid": "^8.0.0",
     "i18next": "^25.5.2",
-    "marked": "^15.0.12",
+    "marked": "^17.0.1",
     "marked-terminal": "^7.3.0",
     "node-notifier": "^10.0.1",
     "ora": "^8.2.0",
