@@ -49,6 +49,18 @@ export { BasicMode } from './modes/BasicMode.js';
 export { EnhancedMode } from './modes/EnhancedMode.js';
 export { SwarmMode } from './modes/SwarmMode.js';
 
+// Re-export session manager
+export { SessionManager, createSessionManager } from './session/SessionManager.js';
+
+// Re-export input enhancements
+export {
+  GhostTextPreview,
+  ExternalEditor,
+  KeyboardShortcuts,
+  FilePreview,
+  ContextProgress
+} from './input/InputEnhancements.js';
+
 /**
  * Main entry point - run CLI
  */
@@ -129,11 +141,29 @@ export default {
   CODENAME
 };
 
+// Global error handlers
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('Unhandled Rejection at:', promise);
+  console.error('Reason:', reason);
+  process.exit(1);
+});
+
+process.on('uncaughtException', (error) => {
+  console.error('Uncaught Exception:', error.message);
+  if (error.stack) {
+    console.error(error.stack);
+  }
+  process.exit(1);
+});
+
 // Run if executed directly
 const isMain = process.argv[1]?.includes('cli-unified');
 if (isMain) {
   main().catch(error => {
     console.error('Fatal error:', error.message);
+    if (error.stack) {
+      console.error(error.stack);
+    }
     process.exit(1);
   });
 }

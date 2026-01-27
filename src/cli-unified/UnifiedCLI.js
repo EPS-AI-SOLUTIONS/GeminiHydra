@@ -19,6 +19,7 @@ import { QueryProcessor, createQueryProcessor } from './processing/QueryProcesso
 import { BasicMode } from './modes/BasicMode.js';
 import { EnhancedMode } from './modes/EnhancedMode.js';
 import { SwarmMode } from './modes/SwarmMode.js';
+import { SessionManager, createSessionManager } from './session/SessionManager.js';
 
 /**
  * Unified CLI main class
@@ -75,6 +76,12 @@ export class UnifiedCLI extends EventEmitter {
     });
 
     this.streaming = this.config.get('ui.streamingEnabled');
+
+    // Initialize session manager
+    this.session = createSessionManager({
+      autoSave: true,
+      autoSaveInterval: 30000
+    });
 
     // Mode instance
     this.mode = null;
@@ -147,6 +154,18 @@ export class UnifiedCLI extends EventEmitter {
     this.output.print(theme.colors.primary(`╚══════════════════════════════════════╝`));
     this.output.newline();
 
+    // Greeting message
+    const greetings = [
+      'Witaj, wędrowcze. Czym mogę służyć?',
+      'Gotowy do pracy. Co dziś robimy?',
+      'System uruchomiony. Jestem do dyspozycji.',
+      'Cześć! Gotowy na wyzwania.',
+      'Witcher Swarm aktywny. Zadawaj pytania.'
+    ];
+    const greeting = greetings[Math.floor(Math.random() * greetings.length)];
+    this.output.print(theme.colors.success(`🐍 ${greeting}`));
+    this.output.newline();
+
     this.output.dim(`Type /help for commands, /exit to quit`);
     this.output.newline();
   }
@@ -202,8 +221,10 @@ export class UnifiedCLI extends EventEmitter {
           if (result.type === 'command' && typeof result.result === 'string') {
             this.output.print(result.result);
           } else if (result.type === 'query') {
-            if (!this.streaming) {
+            if (!this.streaming && result.result?.response) {
               this.output.renderMarkdown(result.result.response);
+            } else if (!this.streaming && !result.result?.response) {
+              this.output.dim('[No response received]');
             }
           }
         }
@@ -211,7 +232,10 @@ export class UnifiedCLI extends EventEmitter {
         this.output.newline();
 
       } catch (error) {
-        this.output.error(error.message);
+        this.output.error(error.message || 'Unknown error');
+        if (error.stack && process.env.DEBUG) {
+          this.output.dim(error.stack);
+        }
         this.output.newline();
       }
     }
@@ -220,18 +244,40 @@ export class UnifiedCLI extends EventEmitter {
   }
 
   /**
-   * Shutdown CLI
+   * Shutdown CLI gracefully
    */
-  shutdown() {
+  async shutdown() {
     this.running = false;
-    this.input.close();
-    this.config.saveConfig();
 
+    // Stop spinner if running
+    try {
+      this.output.stopSpinner();
+    } catch {
+      // Ignore spinner errors
+    }
+
+    // Close input
+    try {
+      this.input.close();
+    } catch {
+      // Ignore input close errors
+    }
+
+    // Save config
+    try {
+      this.config.saveConfig();
+    } catch (error) {
+      console.error('Failed to save config:', error.message);
+    }
+
+    // Emit exit events
     eventBus.emit(EVENT_TYPES.CLI_EXIT);
     this.emit('exit');
 
     this.output.success('Goodbye!');
-    process.exit(0);
+
+    // Give time for cleanup
+    setTimeout(() => process.exit(0), 100);
   }
 
   /**

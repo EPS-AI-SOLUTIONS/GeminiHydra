@@ -233,6 +233,25 @@ export class UnifiedInputHandler extends EventEmitter {
 
       console.log(this.#theme.colors.dim('(Enter empty line or Ctrl+D to finish, Ctrl+C to cancel)'));
 
+      // Cleanup function to remove listener
+      const cleanup = () => {
+        this.removeListener('sigint', sigintHandler);
+      };
+
+      const sigintHandler = () => {
+        this.#inMultilineMode = false;
+        const value = this.#multilineBuffer.join('\n');
+
+        if (value.trim()) {
+          if (this.#history) {
+            this.#history.add(value);
+          }
+          resolve({ value, multiline: true, cancelled: false });
+        } else {
+          resolve({ value: '', multiline: true, cancelled: true });
+        }
+      };
+
       const readLine = (isFirst) => {
         const currentPrompt = isFirst ? prompt : continuationPrompt;
 
@@ -241,6 +260,8 @@ export class UnifiedInputHandler extends EventEmitter {
           (line) => {
             if (line === '') {
               this.#inMultilineMode = false;
+              cleanup(); // Remove sigint handler
+
               const value = this.#multilineBuffer.join('\n');
 
               if (this.#history && value.trim()) {
@@ -262,20 +283,6 @@ export class UnifiedInputHandler extends EventEmitter {
             readLine(false);
           }
         );
-      };
-
-      const sigintHandler = () => {
-        this.#inMultilineMode = false;
-        const value = this.#multilineBuffer.join('\n');
-
-        if (value.trim()) {
-          if (this.#history) {
-            this.#history.add(value);
-          }
-          resolve({ value, multiline: true, cancelled: false });
-        } else {
-          resolve({ value: '', multiline: true, cancelled: true });
-        }
       };
 
       this.once('sigint', sigintHandler);
@@ -518,5 +525,19 @@ export { VimModeHandler, VIM_MODES } from './VimModeHandler.js';
 export { TemplateExpander, BUILTIN_TEMPLATES } from './TemplateExpander.js';
 export { MacroRecorder } from './MacroRecorder.js';
 export { AutocompleteEngine } from './AutocompleteEngine.js';
+
+// Export new enhancements
+export {
+  GhostTextPreview,
+  ExternalEditor,
+  KeyboardShortcuts,
+  FilePreview,
+  ContextProgress,
+  createGhostTextPreview,
+  createExternalEditor,
+  createKeyboardShortcuts,
+  createFilePreview,
+  createContextProgress
+} from './InputEnhancements.js';
 
 export default UnifiedInputHandler;

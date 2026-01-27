@@ -219,6 +219,129 @@ export class EnhancedMode extends EventEmitter {
         }
       }
     });
+
+    // Session commands
+    parser.register({
+      name: 'session',
+      aliases: ['ses'],
+      description: 'Manage conversation sessions',
+      usage: '/session [new|save|load|list|export|delete] [name|id]',
+      category: 'session',
+      handler: async (args) => {
+        const session = this.cli.session;
+        if (!session) return 'Session manager not available';
+
+        switch (args[0]) {
+          case 'new':
+            session.create(args.slice(1).join(' ') || null);
+            return `New session: ${session.getCurrent().name}`;
+
+          case 'save':
+            if (session.save()) {
+              return `Saved: ${session.getCurrent().name}`;
+            }
+            return 'No active session to save';
+
+          case 'load':
+            if (!args[1]) {
+              const recent = session.loadRecent();
+              if (recent) return `Loaded: ${recent.name} (${recent.messages.length} messages)`;
+              return 'No sessions found';
+            }
+            try {
+              const loaded = session.load(args[1]);
+              return `Loaded: ${loaded.name} (${loaded.messages.length} messages)`;
+            } catch (e) {
+              return `Error: ${e.message}`;
+            }
+
+          case 'list':
+            const sessions = session.list();
+            if (sessions.length === 0) return 'No saved sessions';
+            return sessions
+              .slice(0, 10)
+              .map(s => `${s.id.slice(0, 12)}... | ${s.name} | ${s.messageCount} msgs`)
+              .join('\n');
+
+          case 'export':
+            const format = args[1] || 'md';
+            try {
+              const exported = session.export(format);
+              return `Exported ${format.toUpperCase()}:\n${exported.slice(0, 500)}${exported.length > 500 ? '\n...' : ''}`;
+            } catch (e) {
+              return `Error: ${e.message}`;
+            }
+
+          case 'delete':
+            if (!args[1]) return 'Usage: /session delete <id>';
+            if (session.delete(args[1])) {
+              return `Deleted session: ${args[1]}`;
+            }
+            return 'Session not found';
+
+          case 'rename':
+            if (!args[1]) return 'Usage: /session rename <new-name>';
+            session.rename(args.slice(1).join(' '));
+            return `Renamed to: ${session.getCurrent().name}`;
+
+          default:
+            const current = session.getCurrent();
+            if (!current) return 'No active session. Use /session new';
+            return [
+              `Session: ${current.name}`,
+              `ID: ${current.id}`,
+              `Messages: ${current.messages.length}`,
+              `Tokens: ${current.metadata.totalTokens}`,
+              `Created: ${new Date(current.created).toLocaleString()}`
+            ].join('\n');
+        }
+      }
+    });
+
+    // Shortcuts help
+    parser.register({
+      name: 'shortcuts',
+      aliases: ['keys'],
+      description: 'Show keyboard shortcuts',
+      category: 'help',
+      handler: async () => {
+        return [
+          'Keyboard Shortcuts:',
+          '',
+          '  Ctrl+U     Clear line',
+          '  Ctrl+R     Reverse search history',
+          '  Ctrl+L     Clear screen',
+          '  Ctrl+E     Open external editor',
+          '  Ctrl+P     Preview file at cursor',
+          '  Tab        Autocomplete',
+          '  Alt+Enter  Multiline mode',
+          '  F1         Show this help',
+          '',
+          'Type /help for all commands'
+        ].join('\n');
+      }
+    });
+
+    // Tokens/context status
+    parser.register({
+      name: 'tokens',
+      aliases: ['ctx-size'],
+      description: 'Show token usage',
+      category: 'context',
+      handler: async () => {
+        const session = this.cli.session?.getCurrent();
+        const tokens = session?.metadata?.totalTokens || 0;
+        const maxTokens = 128000;
+        const percent = ((tokens / maxTokens) * 100).toFixed(1);
+        const bar = '█'.repeat(Math.floor(percent / 5)) + '░'.repeat(20 - Math.floor(percent / 5));
+
+        return [
+          'Token Usage:',
+          `[${bar}] ${percent}%`,
+          `${tokens.toLocaleString()} / ${maxTokens.toLocaleString()} tokens`
+        ].join('\n');
+      }
+    });
   }
 
   /**

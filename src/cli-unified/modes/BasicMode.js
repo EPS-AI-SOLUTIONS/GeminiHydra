@@ -125,11 +125,26 @@ export class BasicMode extends EventEmitter {
     this.cli.output.startSpinner('Thinking...');
 
     try {
+      let firstToken = true;
       const result = await this.cli.queryProcessor.process(input, {
-        autoAgent: false
+        autoAgent: false,
+        onToken: this.cli.streaming ? (token) => {
+          if (firstToken) {
+            this.cli.output.stopSpinner(); // Stop spinner before first token
+            this.cli.output.newline();
+            firstToken = false;
+          }
+          this.cli.output.streamWrite(token);
+        } : null
       });
 
-      this.cli.output.stopSpinnerSuccess('Done');
+      if (this.cli.streaming) {
+        this.cli.output.streamFlush();
+        this.cli.output.newline();
+        this.cli.output.success('Done');
+      } else {
+        this.cli.output.stopSpinnerSuccess('Done');
+      }
       return { type: 'query', result };
     } catch (error) {
       this.cli.output.stopSpinnerFail(error.message);
