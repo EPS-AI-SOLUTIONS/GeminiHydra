@@ -1,0 +1,28 @@
+# Serena project configuration for GeminiHydra
+# https://github.com/oraios/serena
+
+project:
+  name: gemini-hydra
+  root: .
+
+# Language support
+languages:
+  - typescript
+  - javascript
+
+# Files to include
+include:
+  - "src/**/*.ts"
+  - "bin/**/*.ts"
+
+# Files to exclude
+exclude:
+  - "node_modules/**"
+  - "dist/**"
+  - "**/*.d.ts"
+  - ".git/**"
+
+# Symbol indexing options
+indexing:
+  max_file_size: 1000000  # 1MB
+  follow_symlinks: false

@@ -1,0 +1,392 @@
+@import 'tailwindcss';
+
+/* ============================================
+   GeminiHydra GUI - Matrix Glass Theme
+   Based on Tissaia Design System
+   ============================================ */
+
+/* JetBrains Mono for monospace aesthetic */
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap');
+
+/* ============================================
+   CSS Variables - Theme System
+   ============================================ */
+:root {
+  /* Dark Mode (Default) - Matrix Green Theme */
+  --matrix-bg-primary: #0a1f0a;
+  --matrix-bg-secondary: #001a00;
+  --matrix-bg-tertiary: #0d2a0d;
+  --matrix-accent: #00ff41;
+  --matrix-accent-dim: #00cc33;
+  --matrix-accent-glow: #33ff66;
+  --matrix-text: #c0ffc0;
+  --matrix-text-dim: #80c080;
+  --matrix-border: #1a3a1a;
+  --matrix-error: #ff4444;
+  --matrix-warning: #ffaa00;
+  --matrix-success: #00ff41;
+
+  /* Glass effect values */
+  --glass-bg: rgba(0, 0, 0, 0.4);
+  --glass-border: rgba(255, 255, 255, 0.1);
+  --glass-blur: 16px;
+}
+
+/* Light Mode - White Wolf Theme */
+.light {
+  --matrix-bg-primary: #f5f8f5;
+  --matrix-bg-secondary: #e8ede8;
+  --matrix-bg-tertiary: #dce3dc;
+  --matrix-accent: #2d6a4f;
+  --matrix-accent-dim: #40916c;
+  --matrix-accent-glow: #52b788;
+  --matrix-text: #1a2a1a;
+  --matrix-text-dim: #4a5a4a;
+  --matrix-border: #c8d8c8;
+  --matrix-error: #d32f2f;
+  --matrix-warning: #ed6c02;
+  --matrix-success: #2e7d32;
+
+  --glass-bg: rgba(255, 255, 255, 0.6);
+  --glass-border: rgba(0, 0, 0, 0.1);
+}
+
+/* ============================================
+   Base Styles
+   ============================================ */
+html {
+  font-size: 87.5%;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  background-color: var(--matrix-bg-primary);
+  color: var(--matrix-text);
+  min-height: 100vh;
+  overflow: hidden;
+}
+
+code, pre, .font-mono {
+  font-family: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
+}
+
+#root {
+  width: 100%;
+  height: 100vh;
+}
+
+/* ============================================
+   Glass Panel Components
+   ============================================ */
+.glass-panel {
+  background: var(--glass-bg);
+  backdrop-filter: blur(var(--glass-blur)) saturate(180%);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(180%);
+  border: 1px solid var(--glass-border);
+  border-radius: 12px;
+}
+
+.glass-panel-solid {
+  background: var(--matrix-bg-secondary);
+  border: 1px solid var(--matrix-border);
+  border-radius: 12px;
+}
+
+/* ============================================
+   Scrollbar Styling
+   ============================================ */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, var(--matrix-accent), var(--matrix-accent-dim));
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--matrix-accent-glow);
+}
+
+/* ============================================
+   Animations
+   ============================================ */
+@keyframes pulse-glow {
+  0%, 100% {
+    box-shadow: 0 0 5px var(--matrix-accent), 0 0 10px var(--matrix-accent);
+  }
+  50% {
+    box-shadow: 0 0 10px var(--matrix-accent), 0 0 20px var(--matrix-accent), 0 0 30px var(--matrix-accent);
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes scan-line {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+.animate-pulse-glow {
+  animation: pulse-glow 2s ease-in-out infinite;
+}
+
+.animate-shimmer {
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    var(--matrix-accent) 50%,
+    transparent 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+}
+
+.animate-fade-in {
+  animation: fade-in 0.3s ease-out;
+}
+
+/* ============================================
+   Text Glow Effects
+   ============================================ */
+.text-glow {
+  text-shadow: 0 0 10px var(--matrix-accent), 0 0 20px var(--matrix-accent);
+}
+
+.text-glow-subtle {
+  text-shadow: 0 0 5px var(--matrix-accent);
+}
+
+/* ============================================
+   Background Patterns
+   ============================================ */
+.bg-grid-pattern {
+  background-image:
+    linear-gradient(rgba(0, 255, 65, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 255, 65, 0.03) 1px, transparent 1px);
+  background-size: 20px 20px;
+}
+
+.light .bg-grid-pattern {
+  background-image:
+    linear-gradient(rgba(45, 106, 79, 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(45, 106, 79, 0.05) 1px, transparent 1px);
+}
+
+/* ============================================
+   Button Styles
+   ============================================ */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+  font-weight: 500;
+  font-size: 0.875rem;
+  transition: all 0.2s ease;
+  cursor: pointer;
+  border: 1px solid transparent;
+}
+
+.btn-primary {
+  background: var(--matrix-accent);
+  color: var(--matrix-bg-primary);
+  border-color: var(--matrix-accent);
+}
+
+.btn-primary:hover {
+  background: var(--matrix-accent-glow);
+  box-shadow: 0 0 15px var(--matrix-accent);
+}
+
+.btn-secondary {
+  background: var(--glass-bg);
+  color: var(--matrix-text);
+  border-color: var(--matrix-border);
+}
+
+.btn-secondary:hover {
+  background: var(--matrix-bg-tertiary);
+  border-color: var(--matrix-accent-dim);
+}
+
+.btn-ghost {
+  background: transparent;
+  color: var(--matrix-text-dim);
+  border-color: transparent;
+}
+
+.btn-ghost:hover {
+  color: var(--matrix-accent);
+  background: rgba(0, 255, 65, 0.1);
+}
+
+.btn-danger {
+  background: var(--matrix-error);
+  color: white;
+  border-color: var(--matrix-error);
+}
+
+.btn-danger:hover {
+  box-shadow: 0 0 15px var(--matrix-error);
+}
+
+/* ============================================
+   Input Styles
+   ============================================ */
+.input {
+  width: 100%;
+  padding: 0.625rem 0.875rem;
+  background: var(--glass-bg);
+  border: 1px solid var(--matrix-border);
+  border-radius: 8px;
+  color: var(--matrix-text);
+  font-size: 0.875rem;
+  transition: all 0.2s ease;
+}
+
+.input:focus {
+  outline: none;
+  border-color: var(--matrix-accent);
+  box-shadow: 0 0 0 2px rgba(0, 255, 65, 0.2);
+}
+
+.input::placeholder {
+  color: var(--matrix-text-dim);
+}
+
+/* ============================================
+   Badge Styles
+   ============================================ */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.25rem 0.5rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+.badge-default {
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--matrix-text-dim);
+  border: 1px solid var(--glass-border);
+}
+
+.badge-accent {
+  background: rgba(0, 255, 65, 0.1);
+  color: var(--matrix-accent);
+  border: 1px solid rgba(0, 255, 65, 0.2);
+}
+
+.badge-success {
+  background: rgba(0, 255, 65, 0.15);
+  color: var(--matrix-success);
+}
+
+.badge-warning {
+  background: rgba(255, 170, 0, 0.15);
+  color: var(--matrix-warning);
+}
+
+.badge-error {
+  background: rgba(255, 68, 68, 0.15);
+  color: var(--matrix-error);
+}
+
+/* ============================================
+   Card Styles
+   ============================================ */
+.card {
+  background: var(--glass-bg);
+  border: 1px solid var(--matrix-border);
+  border-radius: 12px;
+  padding: 1rem;
+  transition: all 0.2s ease;
+}
+
+.card:hover {
+  border-color: var(--matrix-accent-dim);
+}
+
+.card-interactive:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+}
+
+/* ============================================
+   Progress Bar
+   ============================================ */
+.progress-bar {
+  height: 4px;
+  background: var(--matrix-bg-tertiary);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.progress-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--matrix-accent-dim), var(--matrix-accent));
+  border-radius: 2px;
+  transition: width 0.3s ease;
+}
+
+.progress-bar-animated .progress-bar-fill {
+  position: relative;
+}
+
+.progress-bar-animated .progress-bar-fill::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+  animation: scan-line 1.5s ease-in-out infinite;
+}
+
+/* ============================================
+   Reduced Motion
+   ============================================ */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
