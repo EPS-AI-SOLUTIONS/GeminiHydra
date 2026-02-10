@@ -5,12 +5,9 @@
  */
 
 import { SwarmTask } from '../../types/index.js';
+import type { TaskPriority } from '../../types/task.js';
 
-// =============================================================================
-// TYPES
-// =============================================================================
-
-export type TaskPriority = 'critical' | 'high' | 'normal' | 'low' | 'background';
+export type { TaskPriority };
 
 export interface PrioritizedTask extends SwarmTask {
   priority: TaskPriority;
@@ -26,7 +23,7 @@ export interface PrioritizedTask extends SwarmTask {
 export const PRIORITY_WEIGHTS: Record<TaskPriority, number> = {
   critical: 100,
   high: 75,
-  normal: 50,
+  medium: 50,
   low: 25,
   background: 10
 };
@@ -37,7 +34,7 @@ export const PRIORITY_WEIGHTS: Record<TaskPriority, number> = {
 export const PRIORITY_KEYWORDS: Record<TaskPriority, string[]> = {
   critical: ['urgent', 'critical', 'emergency', 'pilne', 'krytyczne', 'natychmiast', 'asap', 'blocker'],
   high: ['important', 'high', 'soon', 'ważne', 'priorytet', 'szybko', 'priority'],
-  normal: ['normal', 'standard', 'regular', 'normalne', 'standardowe'],
+  medium: ['normal', 'standard', 'regular', 'normalne', 'standardowe', 'medium'],
   low: ['low', 'minor', 'later', 'niskie', 'później', 'when possible'],
   background: ['background', 'whenever', 'optional', 'w tle', 'opcjonalne', 'nice to have']
 };
@@ -64,7 +61,7 @@ export function detectTaskPriority(taskDescription: string): TaskPriority {
   if (lower.includes('refactor') || lower.includes('cleanup')) return 'low';
   if (lower.includes('documentation') || lower.includes('dokumentacja')) return 'background';
 
-  return 'normal';
+  return 'medium';
 }
 
 /**
@@ -138,7 +135,7 @@ export function getPriorityLabel(priority: TaskPriority): { label: string; color
   const labels: Record<TaskPriority, { label: string; color: string }> = {
     critical: { label: 'CRITICAL', color: 'red' },
     high: { label: 'HIGH', color: 'yellow' },
-    normal: { label: 'NORMAL', color: 'blue' },
+    medium: { label: 'MEDIUM', color: 'blue' },
     low: { label: 'LOW', color: 'gray' },
     background: { label: 'BACKGROUND', color: 'dim' }
   };

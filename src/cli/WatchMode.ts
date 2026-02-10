@@ -12,8 +12,8 @@
 import fs from 'fs';
 import path from 'path';
 import chalk from 'chalk';
-import { Swarm } from '../core/Swarm.js';
-import { Agent } from '../core/Agent.js';
+import { Swarm } from '../core/swarm/Swarm.js';
+import { Agent } from '../core/agent/Agent.js';
 
 interface WatchOptions {
   patterns?: string[];       // Glob patterns to watch

@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap');
+/* GeminiHydra - Matrix Glass Theme (Tissaia Design System) */
 
 @import "tailwindcss";
 
@@ -6,82 +6,71 @@
    TAILWIND v4 THEME CONFIGURATION
    ============================================ */
 @theme {
-  /* Witcher-inspired color palette */
+  --color-matrix-bg-primary: #0a1f0a;
+  --color-matrix-bg-secondary: #001a00;
+  --color-matrix-bg-tertiary: #0d2a0d;
+  --color-matrix-accent: #00ff41;
+  --color-matrix-accent-dim: #00cc33;
+  --color-matrix-accent-glow: #33ff66;
+  --color-matrix-text: #c0ffc0;
+  --color-matrix-text-dim: #80c080;
+  --color-matrix-border: #1a3a1a;
+  --color-matrix-glass: rgba(10, 31, 10, 0.8);
+  --color-matrix-glass-light: rgba(255, 255, 255, 0.05);
+
+  --font-mono: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
+  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+
+  --shadow-matrix-glow: 0 0 20px rgba(0, 255, 65, 0.3);
+  --shadow-matrix-glow-sm: 0 0 10px rgba(0, 255, 65, 0.2);
+  --shadow-glass: 0 8px 32px rgba(0, 0, 0, 0.3);
+
+  /* Witcher-inspired accents */
   --color-witcher-silver: #c0c0c0;
   --color-witcher-gold: #ffd700;
   --color-witcher-blood: #8b0000;
   --color-witcher-dark: #1a1a2e;
   --color-witcher-steel: #4a5568;
 
-  /* Matrix emerald palette */
-  --color-matrix-bg: #0a1f0a;
-  --color-matrix-bg-dark: #001a00;
-  --color-matrix-accent: #00ff41;
-  --color-matrix-accent-dim: #00cc33;
-  --color-matrix-text: #c0ffc0;
-  --color-matrix-text-dim: #80c080;
-  --color-matrix-border: #1a3a1a;
-
-  /* Fonts */
-  --font-mono: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
-  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
-
   /* Animations */
   --animate-pulse-slow: pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
   --animate-glow: glow 2s ease-in-out infinite alternate;
-
-  /* Shadows */
-  --shadow-glow: 0 0 18px rgba(0, 255, 65, 0.3), 0 0 36px rgba(0, 255, 65, 0.15);
-  --shadow-glow-sm: 0 0 10px rgba(0, 255, 65, 0.2);
-  --shadow-glass: 0 8px 32px rgba(0, 0, 0, 0.3);
-}
-
-@keyframes glow {
-  0% { box-shadow: 0 0 5px #fbbf24; }
-  100% { box-shadow: 0 0 20px #fbbf24; }
 }
 
 /* ============================================
-   ROOT VARIABLES (DARK / DEFAULT)
+   ROOT VARIABLES (DARK MODE - DEFAULT)
    ============================================ */
 :root {
-  --background: 10 31 10;
-  --foreground: 220 252 231;
-  --accent: 0 255 65;
-  --glass: 0 255 65;
-  color-scheme: dark;
-
-  /* Spacing scale (0.25rem = 4px increments) */
-  --space-1: 0.25rem;  /* 4px */
-  --space-2: 0.5rem;   /* 8px */
-  --space-3: 0.75rem;  /* 12px */
-  --space-4: 1rem;     /* 16px */
-  --space-5: 1.25rem;  /* 20px */
-  --space-6: 1.5rem;   /* 24px */
-  --space-8: 2rem;     /* 32px */
-  --space-10: 2.5rem;  /* 40px */
-  --space-12: 3rem;    /* 48px */
-
-  /* Border radius scale */
-  --radius-sm: 0.25rem;
-  --radius-md: 0.5rem;
-  --radius-lg: 0.75rem;
-  --radius-xl: 1rem;
-
-  /* Theme colors */
   --matrix-bg-primary: #0a1f0a;
   --matrix-bg-secondary: #001a00;
+  --matrix-bg-tertiary: #0d2a0d;
   --matrix-accent: #00ff41;
+  --matrix-accent-dim: #00cc33;
+  --matrix-accent-glow: #33ff66;
+  --matrix-text-primary: #c0ffc0;
+  --matrix-text-secondary: #80c080;
+  --matrix-border: #1a3a1a;
+  --matrix-glass-bg: rgba(0, 31, 0, 0.7);
+
+  /* Glass physics */
+  --glass-light-bg: rgba(255, 255, 255, 0.4);
+  --glass-light-border: 1px solid rgba(255, 255, 255, 0.3);
+  --glass-light-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+  --glass-light-text: #1a1a1a;
+
+  --glass-dark-bg: rgba(17, 25, 40, 0.75);
+  --glass-dark-border: 1px solid rgba(255, 255, 255, 0.125);
+  --glass-dark-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+  --glass-dark-text: #ffffff;
+
+  --glass-blur: blur(16px) saturate(180%);
+  --glass-radius: 12px;
+
+  /* GeminiHydra compat aliases */
   --matrix-text: #e2e8f0;
   --matrix-text-dim: #94a3b8;
-  --matrix-glass-bg: rgba(0, 31, 0, 0.25);
   --matrix-panel-bg: rgba(10, 20, 10, 0.25);
-  --matrix-border: rgba(0, 255, 65, 0.08);
   --matrix-input-bg: rgba(0, 0, 0, 0.3);
-  --bg-image: url('/background.webp');
-  --bg-overlay: rgba(10, 31, 10, 0.5);
-
-  /* Dark mode specific colors (Fix #38) */
   --matrix-hover-bg: rgba(0, 255, 65, 0.08);
   --matrix-active-bg: rgba(0, 255, 65, 0.12);
   --matrix-divider: rgba(0, 255, 65, 0.06);
@@ -96,34 +85,27 @@
   --matrix-warning-bg: rgba(113, 63, 18, 0.2);
   --matrix-success: #4ade80;
   --matrix-success-bg: rgba(20, 83, 45, 0.2);
-
-  --glass-blur: blur(20px) saturate(200%);
-  --glass-radius: 16px;
 }
 
 /* ============================================
-   LIGHT THEME OVERRIDES
+   LIGHT MODE (The White Wolf)
    ============================================ */
+:root.light,
 [data-theme='light'] {
-  --background: 245 250 246;
-  --foreground: 5 46 22;
-  --accent: 0 153 51;
-  --glass: 0 153 51;
-  color-scheme: light;
+  --matrix-bg-primary: #f5f8f5;
+  --matrix-bg-secondary: #e8ede8;
+  --matrix-accent: #2d6a4f;
+  --matrix-accent-dim: #1b4332;
+  --matrix-accent-glow: #40916c;
+  --matrix-text-primary: #1a2a1a;
+  --matrix-text-secondary: #2d3d2d;
+  --matrix-border: #d0e0d0;
+  --matrix-glass-bg: rgba(255, 255, 255, 0.92);
 
-  --matrix-bg-primary: #f0fdf4;
-  --matrix-bg-secondary: #ffffff;
-  --matrix-accent: #047857;
   --matrix-text: #1e293b;
   --matrix-text-dim: #475569;
-  --matrix-glass-bg: rgba(255, 255, 255, 0.75);
   --matrix-panel-bg: rgba(255, 255, 255, 0.7);
-  --matrix-border: rgba(5, 150, 105, 0.18);
   --matrix-input-bg: rgba(255, 255, 255, 0.8);
-  --bg-image: url('/backgroundlight.webp');
-  --bg-overlay: rgba(255, 255, 255, 0.3);
-
-  /* Light mode specific colors (Fix #38) */
   --matrix-hover-bg: rgba(5, 150, 105, 0.08);
   --matrix-active-bg: rgba(5, 150, 105, 0.12);
   --matrix-divider: rgba(5, 150, 105, 0.08);
@@ -143,198 +125,230 @@
 /* ============================================
    BASE STYLES
    ============================================ */
+html {
+  font-size: 80%;
+  height: 100%;
+  background: var(--matrix-bg-primary);
+}
+
 body {
-  @apply antialiased;
-  font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-  font-feature-settings: "rlig" 1, "calt" 1;
-  background-color: rgb(var(--background));
-  color: var(--matrix-text);
-  background-image:
-    radial-gradient(circle at top, rgba(0, 255, 65, 0.12), transparent 45%),
-    linear-gradient(135deg, #0a1f0a 0%, #001a00 100%);
-  background-size: cover;
-  background-attachment: fixed;
-  background-position: center;
-  overflow: hidden;
-  height: 100vh;
   margin: 0;
-  transition: background 0.3s ease, color 0.3s ease;
+  background: var(--matrix-bg-primary);
+  color: #f0f5f0;
+  font-family: 'JetBrains Mono', monospace;
+  font-feature-settings: "rlig" 1, "calt" 1;
+  overflow: hidden;
+  height: 100%;
 }
 
+:root.light body,
 [data-theme='light'] body {
-  background-image:
-    radial-gradient(circle at top, rgba(5, 150, 105, 0.08), transparent 45%),
-    linear-gradient(135deg, #f0fdf4 0%, #ecfdf5 100%);
+  background: var(--matrix-bg-primary);
+  color: var(--matrix-text-primary);
 }
 
-[data-theme='light'] .message-bubble-assistant {
-  background: rgba(255, 255, 255, 0.8);
-  color: var(--matrix-text);
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
-  border: 1px solid rgba(5, 150, 105, 0.08);
+:root.light html,
+[data-theme='light'] html {
+  background: var(--matrix-bg-primary);
 }
 
-[data-theme='light'] .message-bubble-user {
-  background: var(--matrix-accent);
-  color: #ffffff;
-  box-shadow: 0 4px 20px rgba(5, 150, 105, 0.25);
-}
-
-[data-theme='light'] .message-bubble-system {
-  background: rgba(219, 234, 254, 0.6);
-  color: #1e3a5f;
-}
-
-[data-theme='light'] .markdown-body code {
-  background: rgba(0, 0, 0, 0.07);
-  color: var(--matrix-text);
-}
-
-[data-theme='light'] .markdown-body pre {
-  background: rgba(0, 0, 0, 0.06);
-  color: var(--matrix-text);
-}
-
-[data-theme='light'] .markdown-body pre code {
-  color: var(--matrix-text);
-}
-
-[data-theme='light'] .glass-panel {
-  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.08);
-  background: rgba(255, 255, 255, 0.7);
-  border: 1px solid rgba(5, 150, 105, 0.1);
-}
-
-[data-theme='light'] .matrix-input {
-  background: rgba(255, 255, 255, 0.7);
-  color: var(--matrix-text);
-}
-
-[data-theme='light'] .glass-button {
-  background: color-mix(in srgb, var(--matrix-accent) 12%, white);
-  color: var(--matrix-accent);
-}
-
-[data-theme='light'] .glass-button:hover {
-  background: color-mix(in srgb, var(--matrix-accent) 20%, white);
-}
-
-/* Status approved light theme handled by CSS variable --matrix-badge-bg */
-
-/* Alert light theme overrides handled by CSS variables --matrix-error-bg etc. */
-
-[data-theme='light'] .data-box,
-[data-theme='light'] .data-box-scroll {
-  background: rgba(0, 0, 0, 0.04);
-}
-
-/* Light theme: footer */
-[data-theme='light'] footer.glass-panel {
-  background: rgba(255, 255, 255, 0.75);
-}
-
-/* Light theme: header */
-[data-theme='light'] header {
-  background: rgba(255, 255, 255, 0.75);
-  border-bottom: 1px solid rgba(5, 150, 105, 0.1);
-}
-
-/* Light theme: sidebar items */
-[data-theme='light'] .sidebar-item {
-  color: var(--matrix-text);
-}
-
-[data-theme='light'] .sidebar-item:hover {
-  background: rgba(5, 150, 105, 0.08);
-}
-
-/* Light theme: scrollbar in markdown */
-[data-theme='light'] .markdown-body strong {
-  color: var(--matrix-accent);
-}
-
-@media (prefers-reduced-motion: reduce) {
-  * {
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
-    scroll-behavior: auto !important;
-  }
+#root {
+  height: 100%;
+  width: 100%;
 }
 
 /* ============================================
-   CUSTOM SCROLLBAR
+   SCROLLBAR
    ============================================ */
 ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 6px;
+  height: 6px;
 }
 
 ::-webkit-scrollbar-track {
-  @apply bg-emerald-950;
+  background: transparent;
+  border-radius: 10px;
 }
 
 ::-webkit-scrollbar-thumb {
-  @apply bg-emerald-800 rounded-full;
+  background: linear-gradient(180deg, rgba(0, 255, 65, 0.4), rgba(0, 200, 50, 0.2));
+  border-radius: 10px;
+  transition: all 0.3s ease;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  @apply bg-emerald-700;
+  background: linear-gradient(180deg, rgba(0, 255, 65, 0.7), rgba(0, 200, 50, 0.5));
+  box-shadow: 0 0 8px rgba(0, 255, 65, 0.4);
 }
 
-[data-theme='light'] ::-webkit-scrollbar-track {
-  @apply bg-emerald-100;
+::-webkit-scrollbar-corner {
+  background: transparent;
 }
 
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(0, 255, 65, 0.4) transparent;
+}
+
+:root.light ::-webkit-scrollbar-thumb,
 [data-theme='light'] ::-webkit-scrollbar-thumb {
-  @apply bg-emerald-300;
+  background: linear-gradient(180deg, rgba(45, 106, 79, 0.5), rgba(45, 106, 79, 0.25));
 }
 
+:root.light ::-webkit-scrollbar-thumb:hover,
 [data-theme='light'] ::-webkit-scrollbar-thumb:hover {
-  @apply bg-emerald-400;
+  background: linear-gradient(180deg, rgba(45, 106, 79, 0.7), rgba(45, 106, 79, 0.45));
+  box-shadow: 0 0 6px rgba(45, 106, 79, 0.3);
+}
+
+:root.light *,
+[data-theme='light'] * {
+  scrollbar-color: rgba(45, 106, 79, 0.4) transparent;
 }
 
 /* Selection */
 ::selection {
   background: var(--matrix-accent);
-  color: var(--matrix-bg-secondary);
+  color: black;
   text-shadow: none;
 }
 
+:root.light ::selection,
 [data-theme='light'] ::selection {
-  @apply bg-emerald-200 text-emerald-900;
+  background: #a7f3d0;
+  color: #064e3b;
 }
 
 /* ============================================
-   USER SELECTION CONTROL
+   GLASS PANEL STYLES (Tissaia Design)
    ============================================ */
-/* Prevent selecting UI elements */
-img, button, header, footer, .sidebar-item, .status-badge, .noselect {
-  user-select: none;
-  -webkit-user-select: none;
-}
-
-/* Ensure message content is selectable */
-.markdown-body, .matrix-input {
-  user-select: text;
-  cursor: text;
-}
-
-/* ============================================
-   GLASS MORPHISM COMPONENTS
-   ============================================ */
-.glass {
-  @apply bg-emerald-900/30 backdrop-blur-xl border border-emerald-400/20;
-}
-
-.glass-panel {
-  background: var(--matrix-panel-bg);
+.glass-panel-light {
+  background: rgba(255, 255, 255, 0.3);
   backdrop-filter: var(--glass-blur);
   -webkit-backdrop-filter: var(--glass-blur);
   border: none;
-  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+  box-shadow: var(--glass-light-shadow);
+  color: var(--glass-light-text);
   border-radius: var(--glass-radius);
-  transition: background 0.3s ease;
+}
+
+.glass-panel-dark {
+  background: rgba(0, 0, 0, 0.3);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border: none;
+  box-shadow: var(--glass-dark-shadow);
+  color: var(--glass-dark-text);
+  border-radius: var(--glass-radius);
+}
+
+/* Legacy glass-panel */
+.glass-panel {
+  background: var(--matrix-panel-bg);
+  backdrop-filter: blur(20px) saturate(200%);
+  -webkit-backdrop-filter: blur(20px) saturate(200%);
+  border-radius: 1rem;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.25);
+}
+
+:root.light .glass-panel,
+[data-theme='light'] .glass-panel {
+  background: rgba(255, 255, 255, 0.7);
+  border-color: rgba(45, 106, 79, 0.15);
+  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.08);
+}
+
+.glass-card {
+  background: rgba(15, 25, 40, 0.65);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-radius: 1rem;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.25);
+}
+
+:root.light .glass-card,
+[data-theme='light'] .glass-card {
+  background: rgba(255, 255, 255, 0.55);
+  border-color: rgba(45, 106, 79, 0.2);
+  box-shadow: 0 8px 32px rgba(0, 50, 0, 0.1);
+}
+
+.glass-input {
+  background: rgba(10, 20, 30, 0.6);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+:root.light .glass-input,
+[data-theme='light'] .glass-input {
+  background: rgba(255, 255, 255, 0.7);
+  border-color: rgba(45, 106, 79, 0.2);
+}
+
+.glass-button {
+  background: rgba(0, 255, 65, 0.1);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(0, 255, 65, 0.3);
+  transition: all 0.2s ease;
+  cursor: pointer;
+  color: var(--matrix-accent);
+  font-family: var(--font-mono);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.glass-button:hover {
+  background: rgba(0, 255, 65, 0.2);
+  border-color: rgba(0, 255, 65, 0.5);
+  box-shadow: 0 0 20px rgba(0, 255, 65, 0.2);
+}
+
+.glass-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+:root.light .glass-button,
+[data-theme='light'] .glass-button {
+  background: rgba(45, 106, 79, 0.1);
+  border-color: rgba(45, 106, 79, 0.2);
+}
+
+:root.light .glass-button:hover,
+[data-theme='light'] .glass-button:hover {
+  background: rgba(45, 106, 79, 0.2);
+  border-color: rgba(45, 106, 79, 0.4);
+  box-shadow: 0 0 15px rgba(45, 106, 79, 0.15);
+}
+
+/* ============================================
+   UTILITY CLASSES
+   ============================================ */
+.text-glow {
+  text-shadow: 0 0 10px rgba(0, 255, 65, 0.5);
+}
+
+.matrix-rain-bg {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100'%3E%3Ctext fill='%2300ff4120' font-family='monospace' font-size='10'%3E%3Ctspan x='10' y='20'%3E01%3C/tspan%3E%3Ctspan x='30' y='40'%3E10%3C/tspan%3E%3Ctspan x='50' y='60'%3E11%3C/tspan%3E%3Ctspan x='70' y='80'%3E00%3C/tspan%3E%3C/text%3E%3C/svg%3E");
+  background-size: 100px 100px;
+}
+
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+.scrollbar-thin::-webkit-scrollbar {
+  width: 4px;
 }
 
 /* ============================================
@@ -345,52 +359,27 @@ img, button, header, footer, .sidebar-item, .status-badge, .noselect {
          text-emerald-950 font-medium transition-colors cursor-pointer;
 }
 
-.glass-button {
-  background: color-mix(in srgb, var(--matrix-accent) 10%, transparent);
-  backdrop-filter: blur(8px);
-  border: none;
-  color: var(--matrix-accent);
-  transition: all 0.2s ease;
-  cursor: pointer;
-  padding: var(--space-2) var(--space-4);
-  border-radius: var(--radius-lg);
-  font-family: var(--font-mono);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-}
-
-.glass-button:hover {
-  background: color-mix(in srgb, var(--matrix-accent) 20%, transparent);
-  box-shadow: 0 0 20px color-mix(in srgb, var(--matrix-accent) 15%, transparent);
-}
-
-.glass-button:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-  box-shadow: none;
-}
-
 /* ============================================
    INPUT STYLES
    ============================================ */
 .matrix-input {
   background: var(--matrix-input-bg);
   border: none;
-  border-radius: var(--radius-lg);
+  border-radius: 0.75rem;
   color: var(--matrix-text);
   backdrop-filter: blur(8px);
 }
 
 .matrix-input:focus {
   outline: none;
-  box-shadow: 0 0 0 2px color-mix(in srgb, var(--matrix-accent) 30%, transparent);
+  box-shadow: 0 0 0 2px var(--matrix-focus-ring);
 }
 
 /* ============================================
    STATUS BADGES
    ============================================ */
 .status-badge {
-  padding: var(--space-1) var(--space-3);
+  padding: 0.25rem 0.75rem;
   border-radius: 9999px;
   font-size: 0.75rem;
   font-weight: bold;
@@ -400,30 +389,59 @@ img, button, header, footer, .sidebar-item, .status-badge, .noselect {
 .status-pending {
   background: var(--matrix-warning-bg);
   color: var(--matrix-warning);
-  border: none;
 }
 
 .status-approved {
   background: var(--matrix-badge-bg);
   color: var(--matrix-accent);
-  border: none;
 }
 
 /* ============================================
-   MATRIX BACKGROUND
+   MESSAGE BUBBLES
    ============================================ */
-.matrix-bg {
-  background-color: var(--matrix-bg-primary);
-  background-image:
-    radial-gradient(circle at top, rgba(0, 255, 65, 0.08), transparent 50%),
-    linear-gradient(180deg, var(--matrix-bg-primary) 0%, var(--matrix-bg-secondary) 100%);
-  transition: background-image 0.5s ease-in-out;
+.message-bubble-user {
+  @apply max-w-[95%] p-3 rounded-xl text-sm overflow-hidden relative;
+  @apply font-bold font-sans;
+  background: var(--matrix-accent);
+  color: black;
+  box-shadow: 0 2px 12px color-mix(in srgb, var(--matrix-accent) 15%, transparent);
 }
 
-[data-theme='light'] .matrix-bg {
-  background-image:
-    radial-gradient(circle at top, rgba(5, 150, 105, 0.08), transparent 50%),
-    linear-gradient(180deg, var(--matrix-bg-primary) 0%, var(--matrix-bg-secondary) 100%);
+.message-bubble-assistant {
+  @apply max-w-[95%] p-4 rounded-xl text-sm overflow-hidden relative;
+  @apply font-mono backdrop-blur-xl;
+  background: rgba(0, 0, 0, 0.35);
+  color: var(--matrix-text);
+  border-left: 2px solid color-mix(in srgb, var(--matrix-accent) 25%, transparent);
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.15);
+}
+
+.message-bubble-system {
+  @apply max-w-[95%] p-3 rounded-xl text-sm overflow-hidden relative;
+  @apply font-mono text-xs backdrop-blur-xl;
+  background: rgba(30, 58, 138, 0.25);
+  color: #bfdbfe;
+}
+
+:root.light .message-bubble-assistant,
+[data-theme='light'] .message-bubble-assistant {
+  background: rgba(255, 255, 255, 0.8);
+  color: var(--matrix-text);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  border: 1px solid rgba(5, 150, 105, 0.08);
+}
+
+:root.light .message-bubble-user,
+[data-theme='light'] .message-bubble-user {
+  background: var(--matrix-accent);
+  color: #ffffff;
+  box-shadow: 0 4px 20px rgba(5, 150, 105, 0.25);
+}
+
+:root.light .message-bubble-system,
+[data-theme='light'] .message-bubble-system {
+  background: rgba(219, 234, 254, 0.6);
+  color: #1e3a5f;
 }
 
 /* ============================================
@@ -432,17 +450,17 @@ img, button, header, footer, .sidebar-item, .status-badge, .noselect {
 .markdown-body p { margin-bottom: 0.5em; }
 .markdown-body p:last-child { margin-bottom: 0; }
 .markdown-body pre {
-  background: var(--matrix-code-bg, rgba(0,0,0,0.3));
-  padding: var(--space-3);
-  border-radius: var(--radius-lg);
+  background: var(--matrix-code-bg);
+  padding: 0.75rem;
+  border-radius: 0.75rem;
   overflow-x: auto;
   border: none;
-  margin: var(--space-2) 0;
+  margin: 0.5rem 0;
 }
 .markdown-body code {
   background: rgba(255,255,255,0.1);
   padding: 0.1em 0.3em;
-  border-radius: var(--radius-sm);
+  border-radius: 0.25rem;
   font-family: var(--font-mono);
   font-size: 0.9em;
   color: #ffffff;
@@ -471,147 +489,267 @@ img, button, header, footer, .sidebar-item, .status-badge, .noselect {
   color: var(--matrix-text-dim);
 }
 
-/* ============================================
-   ANIMATIONS
-   ============================================ */
-.animate-in {
-  animation: animateIn 0.3s ease-out;
+:root.light .markdown-body code,
+[data-theme='light'] .markdown-body code {
+  background: rgba(0, 0, 0, 0.07);
+  color: var(--matrix-text);
 }
 
-@keyframes animateIn {
-  from {
-    opacity: 0;
-    transform: translateY(10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-/* Hide scrollbar utility */
-.scrollbar-hide {
-  -ms-overflow-style: none;
-  scrollbar-width: none;
-}
-
-.scrollbar-hide::-webkit-scrollbar {
-  display: none;
+:root.light .markdown-body pre,
+[data-theme='light'] .markdown-body pre {
+  background: rgba(0, 0, 0, 0.06);
+  color: var(--matrix-text);
 }
 
 /* ============================================
-   REUSABLE PANEL COMPONENTS
+   PROGRESS BAR
    ============================================ */
-
-/* Panel Header - common styling for panel headers */
-.panel-header {
-  @apply flex justify-between items-center pb-2;
-  color: var(--matrix-text-dim);
-}
-
-.panel-header-title {
-  @apply flex items-center gap-2 font-semibold text-sm;
-}
-
-/* ============================================
-   ERROR/ALERT COMPONENTS
-   ============================================ */
-
-/* Error Alert - for error messages in panels */
-.error-alert {
-  @apply text-xs rounded-xl;
-  padding: var(--space-2);
-  background: var(--matrix-error-bg);
-  color: var(--matrix-error);
-}
-
-/* Warning Alert */
-.warning-alert {
-  @apply text-[10px] rounded-xl text-center;
-  padding: var(--space-1) var(--space-2);
-  background: var(--matrix-warning-bg);
-  color: var(--matrix-warning);
-  border: none;
-}
-
-/* Success Alert */
-.success-alert {
-  @apply text-[10px] rounded-xl text-center;
-  padding: var(--space-1) var(--space-2);
-  background: var(--matrix-success-bg);
-  color: var(--matrix-success);
-  border: none;
-}
-
-/* ============================================
-   PROGRESS BAR COMPONENTS
-   ============================================ */
-
-/* Progress Bar Container */
 .progress-bar {
   @apply w-full rounded-full h-2.5 overflow-hidden;
   background: rgba(0, 0, 0, 0.15);
-  border: none;
 }
 
-/* Progress Bar Fill */
 .progress-bar-fill {
   @apply h-2.5 rounded-full transition-all duration-300;
   background: var(--matrix-accent);
 }
 
 /* ============================================
-   MESSAGE BUBBLE COMPONENTS
+   DATA DISPLAY
    ============================================ */
-
-/* User message bubble */
-.message-bubble-user {
-  @apply max-w-[95%] p-3 rounded-xl text-sm overflow-hidden relative;
-  @apply font-bold font-sans;
-  background: var(--matrix-accent);
-  color: black;
-  box-shadow: 0 4px 20px color-mix(in srgb, var(--matrix-accent) 25%, transparent);
-}
-
-/* Assistant message bubble */
-.message-bubble-assistant {
-  @apply max-w-[95%] p-3 rounded-xl text-sm overflow-hidden relative;
-  @apply font-mono backdrop-blur-xl;
-  background: rgba(0, 0, 0, 0.35);
-  color: var(--matrix-text);
-  border: none;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
-}
-
-/* System message bubble */
-.message-bubble-system {
-  @apply max-w-[95%] p-3 rounded-xl text-sm overflow-hidden relative;
-  @apply font-mono text-xs backdrop-blur-xl;
-  background: rgba(30, 58, 138, 0.25);
-  color: #bfdbfe;
-  border: none;
-}
-
-/* ============================================
-   DATA DISPLAY COMPONENTS
-   ============================================ */
-
-/* Data Box - for displaying code/data content */
 .data-box {
   @apply text-xs font-mono p-2 rounded-lg;
   background: rgba(0, 0, 0, 0.15);
-  border: none;
 }
 
-/* Data Box with scroll */
 .data-box-scroll {
   @apply text-xs font-mono p-2 rounded-lg overflow-auto;
   background: rgba(0, 0, 0, 0.15);
-  border: none;
 }
 
 /* ============================================
-   FOCUS-VISIBLE STATES (Fix #37 - Accessibility)
+   WELCOME SCREEN
+   ============================================ */
+.welcome-screen {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1.5rem;
+  padding: 2rem;
+  animation: welcomeFadeIn 0.4s ease-out;
+}
+
+.welcome-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+  text-align: center;
+}
+
+.welcome-logo-icon {
+  width: 56px;
+  height: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 16px;
+  background: color-mix(in srgb, var(--matrix-accent) 10%, transparent);
+  color: var(--matrix-accent);
+  filter: drop-shadow(0 0 12px color-mix(in srgb, var(--matrix-accent) 25%, transparent));
+}
+
+.welcome-title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  letter-spacing: -0.025em;
+  color: var(--matrix-accent);
+}
+
+.welcome-subtitle {
+  font-size: 0.8rem;
+  max-width: 28rem;
+  color: var(--matrix-text-dim);
+  line-height: 1.5;
+}
+
+.welcome-status {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-size: 0.7rem;
+  font-family: var(--font-mono);
+  color: var(--matrix-text-dim);
+}
+
+.welcome-status-pill {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.25rem 0.625rem;
+  border-radius: 9999px;
+  background: color-mix(in srgb, var(--matrix-accent) 8%, transparent);
+  border: 1px solid color-mix(in srgb, var(--matrix-accent) 12%, transparent);
+}
+
+.welcome-status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+}
+
+.welcome-status-dot--ok {
+  background: var(--matrix-success);
+  box-shadow: 0 0 6px var(--matrix-success);
+}
+
+.welcome-status-dot--warn {
+  background: var(--matrix-warning);
+  box-shadow: 0 0 6px var(--matrix-warning);
+}
+
+.welcome-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.625rem;
+  max-width: 28rem;
+  width: 100%;
+}
+
+@media (min-width: 768px) {
+  .welcome-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+.welcome-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.625rem;
+  padding: 0.75rem;
+  border-radius: 12px;
+  text-align: left;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  background: var(--matrix-panel-bg);
+  backdrop-filter: blur(8px);
+  border: 1px solid transparent;
+  color: inherit;
+  font-family: inherit;
+}
+
+.welcome-card:hover {
+  background: var(--matrix-hover-bg);
+  border-color: color-mix(in srgb, var(--matrix-accent) 20%, transparent);
+}
+
+.welcome-card:active {
+  transform: scale(0.98);
+}
+
+.welcome-card-icon {
+  padding: 0.375rem;
+  border-radius: 8px;
+  flex-shrink: 0;
+  background: color-mix(in srgb, var(--matrix-accent) 10%, transparent);
+  color: var(--matrix-accent);
+}
+
+.welcome-card-label {
+  display: block;
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--matrix-text);
+}
+
+.welcome-card-desc {
+  display: block;
+  font-size: 0.675rem;
+  margin-top: 0.125rem;
+  color: var(--matrix-text-dim);
+}
+
+.welcome-hints {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+  font-size: 0.675rem;
+  color: var(--matrix-text-dim);
+  opacity: 0.5;
+}
+
+.welcome-hints kbd {
+  display: inline-block;
+  padding: 0.125rem 0.375rem;
+  border-radius: 4px;
+  font-size: 0.6rem;
+  font-family: var(--font-mono);
+  background: color-mix(in srgb, var(--matrix-accent) 8%, transparent);
+  color: var(--matrix-text);
+  border: 1px solid color-mix(in srgb, var(--matrix-accent) 12%, transparent);
+}
+
+:root.light .welcome-card,
+[data-theme='light'] .welcome-card {
+  background: rgba(255, 255, 255, 0.6);
+}
+
+:root.light .welcome-card:hover,
+[data-theme='light'] .welcome-card:hover {
+  background: rgba(5, 150, 105, 0.08);
+}
+
+/* ============================================
+   ALERTS
+   ============================================ */
+.error-alert {
+  @apply text-xs rounded-xl;
+  padding: 0.5rem;
+  background: var(--matrix-error-bg);
+  color: var(--matrix-error);
+}
+
+.warning-alert {
+  @apply text-[10px] rounded-xl text-center;
+  padding: 0.25rem 0.5rem;
+  background: var(--matrix-warning-bg);
+  color: var(--matrix-warning);
+}
+
+.success-alert {
+  @apply text-[10px] rounded-xl text-center;
+  padding: 0.25rem 0.5rem;
+  background: var(--matrix-success-bg);
+  color: var(--matrix-success);
+}
+
+/* ============================================
+   DROPZONE
+   ============================================ */
+.dropzone {
+  border: 2px dashed rgba(255, 255, 255, 0.2);
+  border-radius: 0.75rem;
+  padding: 2rem;
+  text-align: center;
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.dropzone:hover,
+.dropzone.active {
+  border-color: #00ff41;
+  background: rgba(0, 255, 65, 0.05);
+}
+
+.dropzone.active {
+  transform: scale(1.02);
+}
+
+/* ============================================
+   FOCUS STATES (Accessibility)
    ============================================ */
 button:focus-visible,
 a:focus-visible,
@@ -624,91 +762,74 @@ select:focus-visible,
   outline-offset: 2px;
 }
 
-.glass-button:focus-visible {
-  outline: 2px solid var(--matrix-accent);
-  outline-offset: 2px;
-  box-shadow: 0 0 0 4px var(--matrix-focus-ring);
+/* ============================================
+   USER SELECTION CONTROL
+   ============================================ */
+img, button, header, footer, .sidebar-item, .status-badge, .noselect {
+  user-select: none;
+  -webkit-user-select: none;
 }
 
-.btn-primary:focus-visible {
-  outline: 2px solid var(--matrix-accent);
-  outline-offset: 2px;
-}
-
-.matrix-input:focus-visible {
-  outline: 2px solid var(--matrix-accent);
-  outline-offset: 2px;
-  box-shadow: 0 0 0 4px var(--matrix-focus-ring);
-}
-
-.sidebar-item:focus-visible {
-  outline: 2px solid var(--matrix-accent);
-  outline-offset: -2px;
-  border-radius: var(--radius-md);
+.markdown-body, .matrix-input {
+  user-select: text;
+  cursor: text;
 }
 
 /* ============================================
-   RESPONSIVE BREAKPOINTS (Fix #36)
+   ANIMATIONS
    ============================================ */
+@keyframes glow {
+  0% { box-shadow: 0 0 5px rgba(0, 255, 65, 0.3); }
+  100% { box-shadow: 0 0 20px rgba(0, 255, 65, 0.3); }
+}
 
-/* Small screens: phones (max-width: 640px) */
+@keyframes shimmer {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
+@keyframes pulse-slow {
+  0%, 100% { opacity: 0.4; }
+  50% { opacity: 0.8; }
+}
+
+@keyframes welcomeFadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-pulse-slow {
+  animation: pulse-slow 3s ease-in-out infinite;
+}
+
+.animate-in {
+  animation: welcomeFadeIn 0.3s ease-out;
+}
+
+/* ============================================
+   REDUCED MOTION
+   ============================================ */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* ============================================
+   RESPONSIVE
+   ============================================ */
 @media (max-width: 640px) {
-  :root {
-    --glass-radius: 12px;
-  }
-
-  body {
-    font-size: 14px;
-  }
-
-  /* Collapse sidebar on small screens */
-  .sidebar-collapse-sm {
-    display: none;
-  }
-
   .message-bubble-user,
   .message-bubble-assistant,
   .message-bubble-system {
     max-width: 100%;
   }
-
-  .glass-button {
-    padding: var(--space-1) var(--space-2);
-    font-size: 0.75rem;
-  }
-
-  .glass-panel {
-    border-radius: var(--radius-lg);
-  }
-
-  .markdown-body pre {
-    padding: var(--space-2);
-    font-size: 0.8em;
-  }
-
-  .status-badge {
-    padding: var(--space-1) var(--space-2);
-    font-size: 0.65rem;
-  }
 }
 
-/* Medium screens: tablets (max-width: 768px) */
-@media (max-width: 768px) {
-  /* Sidebar narrower on tablets */
-  .sidebar-narrow-md {
-    width: 160px;
-  }
-
-  .panel-header-title {
-    font-size: 0.8rem;
-  }
-
-  .markdown-body h1 { font-size: 1.25em; }
-  .markdown-body h2 { font-size: 1.15em; }
-  .markdown-body h3 { font-size: 1.05em; }
-}
-
-/* Large screens: desktops (min-width: 1024px) */
 @media (min-width: 1024px) {
   .message-bubble-user,
   .message-bubble-assistant,
@@ -723,17 +844,16 @@ select:focus-visible,
 .skip-link {
   position: absolute;
   top: -100%;
-  left: var(--space-4);
-  padding: var(--space-2) var(--space-4);
+  left: 1rem;
+  padding: 0.5rem 1rem;
   background: var(--matrix-accent);
   color: var(--matrix-bg-primary);
-  border-radius: var(--radius-md);
+  border-radius: 0.5rem;
   z-index: 9999;
   font-weight: bold;
   text-decoration: none;
 }
 
 .skip-link:focus {
-  top: var(--space-4);
+  top: 1rem;
 }
-

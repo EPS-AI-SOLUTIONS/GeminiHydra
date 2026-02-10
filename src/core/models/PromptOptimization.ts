@@ -28,13 +28,13 @@ export const MODEL_PROMPT_CONFIGS: Record<string, ModelPromptConfig> = {
     temperature: MODEL_TEMPERATURES.fast_scout,  // 1.1 for faster exploration
     styleHints: 'Prioritize speed and clarity.'
   },
-  'llama3.2:3b': {
+  'qwen3:4b': {
     systemPrefix: 'You are a helpful assistant.',
     responseFormat: 'Keep responses focused and practical.',
     temperature: MODEL_TEMPERATURES.local,  // 0.7 for local models
     styleHints: 'Be straightforward.'
   },
-  'qwen2.5-coder:1.5b': {
+  'qwen3:8b': {
     systemPrefix: 'You are a coding assistant.',
     responseFormat: 'Focus on code and technical details.',
     temperature: MODEL_TEMPERATURES.local,  // 0.7 for local models
@@ -43,7 +43,7 @@ export const MODEL_PROMPT_CONFIGS: Record<string, ModelPromptConfig> = {
 };
 
 export function optimizePromptForModel(prompt: string, model: string): string {
-  const config = MODEL_PROMPT_CONFIGS[model] || MODEL_PROMPT_CONFIGS['gemini-3-flash-preview'];
+  const config = MODEL_PROMPT_CONFIGS[model] || MODEL_PROMPT_CONFIGS['gemini-3-pro-preview'];
 
   return `${config.systemPrefix}
 

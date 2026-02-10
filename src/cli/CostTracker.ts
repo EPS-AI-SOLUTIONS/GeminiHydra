@@ -102,7 +102,7 @@ export class CostTracker {
    * Calculate cost for usage
    */
   private calculateCost(model: string, inputTokens: number, outputTokens: number): number {
-    const pricing = PRICING[model as keyof typeof PRICING] || PRICING['gemini-3-flash-preview'];
+    const pricing = PRICING[model as keyof typeof PRICING] || PRICING['gemini-3-pro-preview'];
     const inputCost = (inputTokens / 1_000_000) * pricing.input;
     const outputCost = (outputTokens / 1_000_000) * pricing.output;
     return inputCost + outputCost;

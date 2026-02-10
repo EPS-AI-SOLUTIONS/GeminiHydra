@@ -133,7 +133,7 @@ describe('ModelService', () => {
 
   describe('getOllamaModels', () => {
     it('should call invoke with GET_OLLAMA_MODELS command', async () => {
-      const mockModels = ['llama3.2:3b', 'phi3:mini'];
+      const mockModels = ['qwen3:4b', 'qwen3:1.7b'];
       mockInvoke.mockResolvedValueOnce(mockModels);
 
       const result = await ModelService.getOllamaModels();
@@ -155,7 +155,7 @@ describe('ModelService', () => {
   describe('getGeminiModels', () => {
     it('should call invoke with GET_GEMINI_MODELS command and apiKey', async () => {
       const apiKey = 'test-api-key-123';
-      const mockModels = ['gemini-3-flash-preview', 'gemini-3-pro-preview'];
+      const mockModels = ['gemini-3-pro-preview', 'gemini-3-pro-preview'];
       mockInvoke.mockResolvedValueOnce(mockModels);
 
       const result = await ModelService.getGeminiModels(apiKey);
@@ -190,7 +190,7 @@ describe('ModelService', () => {
   describe('getGeminiModelsSorted', () => {
     it('should call invoke with GET_GEMINI_MODELS_SORTED command and apiKey', async () => {
       const apiKey = 'test-api-key-456';
-      const mockModels = ['gemini-3-pro-preview', 'gemini-3-flash-preview'];
+      const mockModels = ['gemini-3-pro-preview', 'gemini-3-pro-preview'];
       mockInvoke.mockResolvedValueOnce(mockModels);
 
       const result = await ModelService.getGeminiModelsSorted(apiKey);
@@ -204,7 +204,7 @@ describe('ModelService', () => {
     });
 
     it('should return models sorted by capability', async () => {
-      const mockModels = ['gemini-3-pro-preview', 'gemini-3-flash-preview'];
+      const mockModels = ['gemini-3-pro-preview', 'gemini-3-pro-preview'];
       mockInvoke.mockResolvedValueOnce(mockModels);
 
       const result = await ModelService.getGeminiModelsSorted('api-key');
@@ -226,7 +226,7 @@ describe('PromptService', () => {
 
   describe('promptOllama', () => {
     it('should call invoke with PROMPT_OLLAMA command and all parameters', async () => {
-      const model = 'llama3.2:3b';
+      const model = 'qwen3:4b';
       const prompt = 'Test prompt';
       const systemPrompt = 'You are a helpful assistant';
       mockInvoke.mockResolvedValueOnce('Response');
@@ -247,7 +247,7 @@ describe('PromptService', () => {
     });
 
     it('should work without systemPrompt parameter', async () => {
-      const model = 'phi3:mini';
+      const model = 'qwen3:1.7b';
       const prompt = 'Another test';
       mockInvoke.mockResolvedValueOnce('Another response');
 
@@ -264,7 +264,7 @@ describe('PromptService', () => {
 
   describe('promptOllamaStream', () => {
     it('should call invoke with PROMPT_OLLAMA_STREAM command and all parameters', async () => {
-      const model = 'qwen2.5-coder:1.5b';
+      const model = 'qwen3:4b';
       const prompt = 'Write code';
       const systemPrompt = 'You are a code generator';
       mockInvoke.mockResolvedValueOnce(undefined);
@@ -282,10 +282,10 @@ describe('PromptService', () => {
     it('should work without systemPrompt', async () => {
       mockInvoke.mockResolvedValueOnce(undefined);
 
-      await PromptService.promptOllamaStream('llama3.2:1b', 'Stream test');
+      await PromptService.promptOllamaStream('qwen3:0.6b', 'Stream test');
 
       expect(mockInvoke).toHaveBeenCalledWith(TAURI_COMMANDS.PROMPT_OLLAMA_STREAM, {
-        model: 'llama3.2:1b',
+        model: 'qwen3:0.6b',
         prompt: 'Stream test',
         systemPrompt: undefined,
       });
@@ -327,7 +327,7 @@ describe('PromptService', () => {
       mockInvoke.mockResolvedValueOnce(undefined);
 
       await PromptService.promptGeminiStream(
-        'gemini-3-flash-preview',
+        'gemini-3-pro-preview',
         'prompt',
         apiKey
       );
@@ -340,7 +340,7 @@ describe('PromptService', () => {
       mockInvoke.mockResolvedValueOnce(undefined);
 
       await PromptService.promptGeminiStream(
-        'gemini-3-flash-preview',
+        'gemini-3-pro-preview',
         'Simple prompt',
         'api-key'
       );

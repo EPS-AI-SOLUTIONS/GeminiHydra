@@ -3,7 +3,7 @@
  *
  * Monitors for prompt drift throughout the execution pipeline.
  * Ensures that the execution stays aligned with the original user intent
- * across all phases: PRE-A, A, B, C, D
+ * across all phases: A, B, C, D
  *
  * Drift Score:
  *   0 = Perfect alignment with original intent
@@ -35,7 +35,7 @@ export interface DriftCheck {
 /**
  * Swarm execution phases
  */
-export type SwarmPhase = 'PRE-A' | 'A' | 'B' | 'C' | 'D';
+export type SwarmPhase = 'A' | 'B' | 'C' | 'D';
 
 /**
  * Configuration for drift detection sensitivity
@@ -210,12 +210,6 @@ export class AntiDriftMonitor {
 
     // Phase-specific suggestions
     switch (driftCheck.phase) {
-      case 'PRE-A':
-        suggestions.push(
-          'PRE-A CORRECTION: Re-translate objective preserving original intent words. ' +
-          'Do NOT interpret or expand scope - translate only.'
-        );
-        break;
       case 'A':
         suggestions.push(
           'PHASE A CORRECTION: Regenerate plan focusing only on: ' +
@@ -287,7 +281,6 @@ export class AntiDriftMonitor {
 
     // Calculate overall drift as weighted average (later phases weighted more)
     const phaseWeights: Record<SwarmPhase, number> = {
-      'PRE-A': 1.0,
       'A': 1.5,
       'B': 2.0,
       'C': 1.5,
@@ -350,7 +343,7 @@ export class AntiDriftMonitor {
     recommendation: string;
   } {
     const summary = this.getDriftSummary();
-    const phaseOrder: SwarmPhase[] = ['PRE-A', 'A', 'B', 'C', 'D'];
+    const phaseOrder: SwarmPhase[] = ['A', 'B', 'C', 'D'];
     const currentIndex = phaseOrder.indexOf(currentPhase);
     const remainingPhases = phaseOrder.length - currentIndex - 1;
 
@@ -528,11 +521,6 @@ import { antiDriftMonitor, SwarmPhase } from './AntiDriftMonitor.js';
 antiDriftMonitor.setOriginalIntent("Implement user authentication with OAuth2");
 
 // At each phase transition
-const preAResult = antiDriftMonitor.checkDrift(refinedObjective, 'PRE-A');
-if (preAResult.hasDrift) {
-  console.log(antiDriftMonitor.suggestCorrection(preAResult));
-}
-
 const phaseAResult = antiDriftMonitor.checkDrift(planJson, 'A');
 const phaseBResult = antiDriftMonitor.checkDrift(executionResults, 'B');
 const phaseCResult = antiDriftMonitor.checkDrift(healedResults, 'C');

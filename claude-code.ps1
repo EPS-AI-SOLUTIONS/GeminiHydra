@@ -1,4 +1,9 @@
 # GeminiHydra - Claude Code Launcher
+
+# UTF-8 Encoding Fix: Ensure Polish characters display correctly
+[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+$OutputEncoding = [System.Text.Encoding]::UTF8
+
 $logFile = "C:\Users\BIURODOM\Desktop\GeminiHydra\claude-launcher.log"
 
 function Write-Log {

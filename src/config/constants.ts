@@ -18,15 +18,15 @@ export const MAX_TASKS = 3;
 export const DEFAULT_TIMEOUT = 60000;
 
 // Model configuration
-export const DEFAULT_MODEL = 'gemini-2.0-flash';
+export const DEFAULT_MODEL = 'gemini-3-pro-preview';
 
 // Pipeline models
 export const PIPELINE_MODELS = {
   PHASE_A: 'gemini-3-pro-preview',    // Dijkstra Planning
-  PHASE_BA: 'gemini-3-flash-preview', // Translation & Refinement
-  PHASE_B: 'llama-3.2-3b',            // Local execution (llama-cpp-python)
-  PHASE_C: 'gemini-3-flash-preview',  // Self-Healing
-  PHASE_D: 'gemini-3-flash-preview',  // Synthesis
+  PHASE_BA: 'gemini-3-pro-preview',   // Translation & Refinement
+  PHASE_B: 'qwen3-4b',                // Local execution (llama.cpp / Qwen3)
+  PHASE_C: 'gemini-3-pro-preview',    // Self-Healing
+  PHASE_D: 'gemini-3-pro-preview',    // Synthesis
 } as const;
 
 // Phase names for display

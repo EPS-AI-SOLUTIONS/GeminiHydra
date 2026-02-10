@@ -10,7 +10,7 @@ import { registerSerenaCommands as _registerSerenaCommands } from './SerenaComma
 import { registerSerenaAgentCommands as _registerSerenaAgentCommands } from './SerenaAgentCommands.js';
 import { registerMCPCommands as _registerMCPCommands } from './MCPCommands.js';
 import { registerDiagnosticCommands as _registerDiagnosticCommands } from './CommandDiagnostics.js';
-import { registerHelpCommand as _registerHelpCommand } from './HelpSystem.js';
+import { registerHelpCommand as _registerHelpCommand } from './help/index.js';
 import { registerDocumentCommands as _registerDocumentCommands } from './DocumentCommands.js';
 
 // Core CLI modes
@@ -232,7 +232,7 @@ export {
   searchCommands,
   memoryCommands,
   registerNativeCommands
-} from './NativeCommands.js';
+} from './nativecommands/index.js';
 
 // Document Commands (Word, Excel, PDF)
 export {
@@ -261,17 +261,17 @@ export {
   addCommandNotes,
   setCommandSeeAlso,
   deprecateCommand
-} from './HelpSystem.js';
+} from './help/index.js';
 
 export type {
   CommandExample,
   CommandHelpMeta,
   CategoryConfig,
   ExportFormat
-} from './HelpSystem.js';
+} from './help/index.js';
 
 // Internal import for initialization
-import { registerNativeCommands as _registerNativeCommands } from './NativeCommands.js';
+import { registerNativeCommands as _registerNativeCommands } from './nativecommands/index.js';
 
 /**
  * Initialize all CLI commands with the registry

@@ -11,8 +11,8 @@
 
 import chalk from 'chalk';
 import ora from 'ora';
-import { Agent } from '../core/Agent.js';
-import { Swarm } from '../core/Swarm.js';
+import { Agent } from '../core/agent/Agent.js';
+import { Swarm } from '../core/swarm/Swarm.js';
 
 interface PipelineStage {
   task: string;

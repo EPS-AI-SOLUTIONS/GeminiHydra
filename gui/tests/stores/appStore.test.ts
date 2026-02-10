@@ -23,7 +23,7 @@ beforeEach(() => {
       streaming: true,
       verbose: false,
       language: 'pl',
-      model: 'gemini-2.5-flash',
+      model: 'gemini-3-pro-preview',
       temperature: 0.7,
       maxTokens: 8192,
     },
@@ -51,7 +51,7 @@ describe('appStore', () => {
       const { settings } = useAppStore.getState();
       expect(settings.theme).toBe('dark');
       expect(settings.streaming).toBe(true);
-      expect(settings.model).toBe('gemini-2.5-flash');
+      expect(settings.model).toBe('gemini-3-pro-preview');
     });
 
     it('has sidebar open by default', () => {

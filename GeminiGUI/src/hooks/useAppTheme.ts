@@ -1,23 +1,23 @@
 /**
- * useAppTheme - Theme Management Hook
+ * useAppTheme - Theme Management Hook (Adapter)
  * @module hooks/useAppTheme
  *
- * Handles theme persistence and DOM updates.
+ * Backward-compatible adapter that delegates to ThemeContext.
+ * Existing components using useAppTheme() continue to work unchanged.
  */
 
-import { useEffect } from 'react';
-import { useAppStore } from '../store/useAppStore';
-import type { Theme } from '../types';
+import { useTheme } from '../contexts/ThemeContext';
 
 interface UseAppThemeReturn {
-  theme: Theme;
+  theme: 'dark' | 'light';
   toggleTheme: () => void;
-  setTheme: (theme: Theme) => void;
+  setTheme: (theme: 'dark' | 'light' | 'system') => void;
   isDark: boolean;
 }
 
 /**
- * Hook for managing application theme
+ * Hook for managing application theme.
+ * Now delegates to ThemeContext (supports dark/light/system).
  *
  * @example
  * ```tsx
@@ -25,34 +25,13 @@ interface UseAppThemeReturn {
  * ```
  */
 export const useAppTheme = (): UseAppThemeReturn => {
-  const theme = useAppStore((state) => state.theme);
-  const toggleTheme = useAppStore((state) => state.toggleTheme);
-
-  // Apply theme to DOM
-  useEffect(() => {
-    document.documentElement.setAttribute('data-theme', theme);
-
-    // Update meta theme-color for mobile browsers
-    const metaThemeColor = document.querySelector('meta[name="theme-color"]');
-    if (metaThemeColor) {
-      metaThemeColor.setAttribute(
-        'content',
-        theme === 'dark' ? '#0a1f0a' : '#f0fdf4'
-      );
-    }
-  }, [theme]);
-
-  const setTheme = (newTheme: Theme) => {
-    if (newTheme !== theme) {
-      toggleTheme();
-    }
-  };
+  const { resolvedTheme, toggleTheme, setTheme } = useTheme();
 
   return {
-    theme,
+    theme: resolvedTheme,
     toggleTheme,
     setTheme,
-    isDark: theme === 'dark',
+    isDark: resolvedTheme === 'dark',
   };
 };
 

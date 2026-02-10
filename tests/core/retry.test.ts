@@ -131,10 +131,11 @@ describe('withRetry', () => {
     const fn = vi.fn().mockRejectedValue(error);
 
     const resultPromise = withRetry(fn, { maxRetries: 2, baseDelay: 100, jitter: false });
+    // Attach a no-op catch to prevent unhandled rejection warning during timer advancement
+    resultPromise.catch(() => {});
 
-    // Fast-forward through all delays
-    await vi.advanceTimersByTimeAsync(100);
-    await vi.advanceTimersByTimeAsync(200);
+    // Fast-forward through all delays - advance enough to cover all retries
+    await vi.advanceTimersByTimeAsync(500);
 
     await expect(resultPromise).rejects.toThrow('timeout');
     expect(fn).toHaveBeenCalledTimes(3); // initial + 2 retries
@@ -199,13 +200,15 @@ describe('withTimeout', () => {
     });
 
     const resultPromise = withTimeout(fn, 500, 'Custom timeout message');
+    // Attach a no-op catch to prevent unhandled rejection warning during timer advancement
+    resultPromise.catch(() => {});
     await vi.advanceTimersByTimeAsync(500);
 
     await expect(resultPromise).rejects.toThrow(TimeoutError);
     await expect(resultPromise).rejects.toThrow('Custom timeout message');
 
-    // Clear remaining timers to prevent unhandled rejections
-    vi.clearAllTimers();
+    // Advance remaining timers so fn's setTimeout resolves before cleanup
+    await vi.advanceTimersByTimeAsync(1000);
   });
 });
 

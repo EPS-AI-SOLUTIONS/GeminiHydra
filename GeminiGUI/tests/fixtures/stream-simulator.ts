@@ -202,22 +202,22 @@ export function createSwarmAgentMessages(): AgentMessage[] {
     {
       name: 'Geralt',
       message: 'Sprawdzam bezpieczeństwo operacji. Nie wykryto zagrożeń.',
-      model: 'llama3.2:3b',
+      model: 'qwen3:4b',
     },
     {
       name: 'Yennefer',
       message: 'Proponuję użycie wzorca projektowego Observer.',
-      model: 'qwen2.5-coder:1.5b',
+      model: 'qwen3:4b',
     },
     {
       name: 'Triss',
       message: 'Przygotowuję testy jednostkowe dla nowej funkcjonalności.',
-      model: 'qwen2.5-coder:1.5b',
+      model: 'qwen3:4b',
     },
     {
       name: 'Jaskier',
       message: 'Wszystko gotowe! Zadanie wykonane z powodzeniem.',
-      model: 'llama3.2:3b',
+      model: 'qwen3:4b',
     },
   ];
 }

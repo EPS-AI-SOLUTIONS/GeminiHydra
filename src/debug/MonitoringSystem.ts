@@ -634,7 +634,7 @@ export class DryRunMode {
     this.results.totalEstimatedTokens += estimatedTokens;
 
     // Calculate cost
-    const model = task.model || 'gemini-3-flash';
+    const model = task.model || 'gemini-3-pro-preview';
     const costPer1K = DryRunMode.COST_PER_1K[model as keyof typeof DryRunMode.COST_PER_1K] || 0.001;
     this.results.estimatedCost += (estimatedTokens / 1000) * costPer1K;
 

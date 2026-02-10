@@ -6,6 +6,10 @@ param(
     [string[]]$Arguments
 )
 
+# UTF-8 Encoding Fix: Ensure Polish characters display correctly
+[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+$OutputEncoding = [System.Text.Encoding]::UTF8
+
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 
 # Check if Windows Terminal is available

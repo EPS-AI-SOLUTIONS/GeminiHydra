@@ -14,9 +14,17 @@ import { PoolExhaustedError, TimeoutError } from '../../src/core/errors.js';
 
 describe('ConnectionPool', () => {
   let pool: ConnectionPool;
+  // Track promises that need cleanup to prevent unhandled rejection warnings
+  let pendingPromises: Promise<any>[];
 
-  afterEach(() => {
+  beforeEach(() => {
+    pendingPromises = [];
+  });
+
+  afterEach(async () => {
     pool?.drain();
+    // Wait for all tracked promises to settle (they may reject from drain)
+    await Promise.allSettled(pendingPromises);
   });
 
   describe('constructor', () => {
@@ -68,8 +76,10 @@ describe('ConnectionPool', () => {
         await promise1;
         return 1;
       });
+      pendingPromises.push(exec1);
 
       const exec2 = pool.execute(async () => 2);
+      pendingPromises.push(exec2);
 
       // First should be executing, second should be queued
       expect(pool.getStatus().active).toBe(1);
@@ -92,19 +102,15 @@ describe('ConnectionPool', () => {
         await new Promise(r => setTimeout(r, 100));
         return 'blocking';
       });
+      pendingPromises.push(blocking);
 
       // Fill queue
       const queued = pool.execute(async () => 'queued');
+      pendingPromises.push(queued);
 
       // Third should fail
       await expect(pool.execute(async () => 'overflow'))
         .rejects.toThrow(PoolExhaustedError);
-
-      pool.drain();
-
-      // Handle the rejected promises to prevent unhandled rejection warnings
-      await blocking.catch(() => {});
-      await queued.catch(() => {});
     });
 
     it('should handle execution errors', async () => {
@@ -122,16 +128,18 @@ describe('ConnectionPool', () => {
     it('should timeout queued requests', async () => {
       vi.useFakeTimers();
 
-      pool = new ConnectionPool({ maxConcurrent: 1, acquireTimeout: 1000 });
+      const localPool = new ConnectionPool({ maxConcurrent: 1, acquireTimeout: 1000 });
 
       // Block the pool with a long-running task
-      const blockingPromise = pool.execute(async () => {
+      const blockingPromise = localPool.execute(async () => {
         await new Promise(r => setTimeout(r, 5000));
         return 'blocking';
       });
 
       // Queue a request that will timeout waiting in queue
-      const timeoutPromise = pool.execute(async () => 'should timeout');
+      const timeoutPromise = localPool.execute(async () => 'should timeout');
+      // Attach a no-op catch to prevent unhandled rejection warning during timer advancement
+      timeoutPromise.catch(() => {});
 
       // Advance time past timeout for queued request
       await vi.advanceTimersByTimeAsync(1100);
@@ -139,12 +147,15 @@ describe('ConnectionPool', () => {
       // timeoutPromise should reject with TimeoutError
       await expect(timeoutPromise).rejects.toThrow(TimeoutError);
 
-      // Clean up all pending timers before switching to real timers
-      vi.clearAllTimers();
+      // Drain pool and advance remaining timers to settle everything
+      localPool.drain();
+      await vi.advanceTimersByTimeAsync(10000);
+
+      // Clean up
       vi.useRealTimers();
 
-      // blockingPromise will never resolve since we cleared timers, so ignore it
-      blockingPromise.catch(() => {});
+      // Settle the blocking promise
+      await blockingPromise.catch(() => {});
     });
   });
 
@@ -161,13 +172,9 @@ describe('ConnectionPool', () => {
       const blocking = pool.execute(async () => {
         await new Promise(r => setTimeout(r, 100));
       });
+      pendingPromises.push(blocking);
 
       expect(pool.hasCapacity()).toBe(true);
-
-      pool.drain();
-
-      // Handle the rejected promise to prevent unhandled rejection warnings
-      await blocking.catch(() => {});
     });
 
     it('should return false when fully exhausted', async () => {
@@ -177,17 +184,13 @@ describe('ConnectionPool', () => {
       const exec1 = pool.execute(async () => {
         await new Promise(r => setTimeout(r, 100));
       });
+      pendingPromises.push(exec1);
 
       // Fill queue
       const exec2 = pool.execute(async () => {});
+      pendingPromises.push(exec2);
 
       expect(pool.hasCapacity()).toBe(false);
-
-      pool.drain();
-
-      // Handle the rejected promises to prevent unhandled rejection warnings
-      await exec1.catch(() => {});
-      await exec2.catch(() => {});
     });
   });
 
@@ -266,10 +269,13 @@ describe('ConnectionPool', () => {
       const blocking = pool.execute(async () => {
         await new Promise(r => setTimeout(r, 1000));
       });
+      pendingPromises.push(blocking);
 
       // Queue some requests
       const queued1 = pool.execute(async () => 1);
+      pendingPromises.push(queued1);
       const queued2 = pool.execute(async () => 2);
+      pendingPromises.push(queued2);
 
       // Drain
       const drained = pool.drain();
@@ -298,9 +304,12 @@ describe('ConnectionPool', () => {
         await promise1;
         order.push(1);
       });
+      pendingPromises.push(exec1);
 
       const exec2 = pool.execute(async () => { order.push(2); });
+      pendingPromises.push(exec2);
       const exec3 = pool.execute(async () => { order.push(3); });
+      pendingPromises.push(exec3);
 
       resolve1!();
       await Promise.all([exec1, exec2, exec3]);
@@ -319,9 +328,12 @@ describe('ConnectionPool', () => {
         await promise1;
         order.push(1);
       });
+      pendingPromises.push(exec1);
 
       const exec2 = pool.execute(async () => { order.push(2); });
+      pendingPromises.push(exec2);
       const exec3 = pool.execute(async () => { order.push(3); });
+      pendingPromises.push(exec3);
 
       resolve1!();
       await Promise.all([exec1, exec2, exec3]);
@@ -482,9 +494,15 @@ describe('RateLimiter', () => {
 
 describe('ManagedPool', () => {
   let managedPool: ManagedPool;
+  let managedPendingPromises: Promise<any>[];
 
-  afterEach(() => {
+  beforeEach(() => {
+    managedPendingPromises = [];
+  });
+
+  afterEach(async () => {
     managedPool?.drain();
+    await Promise.allSettled(managedPendingPromises);
   });
 
   describe('constructor', () => {
@@ -550,9 +568,11 @@ describe('ManagedPool', () => {
       const blocking = managedPool.execute(async () => {
         await new Promise(r => setTimeout(r, 1000));
       });
+      managedPendingPromises.push(blocking);
 
       // Queue a second task (will be queued since pool is busy)
       const queued = managedPool.execute(async () => {});
+      managedPendingPromises.push(queued);
 
       // Small delay to ensure the second task gets queued
       await new Promise(r => setTimeout(r, 10));

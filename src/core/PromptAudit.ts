@@ -11,7 +11,7 @@
 
 export interface PromptTransformation {
   timestamp: number;
-  source: string;           // e.g., "PhasePreA", "ToT", "Dijkstra"
+  source: string;           // e.g., "ToT", "Dijkstra"
   reason: string;           // Why the change was made
   before: string;           // Text before transformation
   after: string;            // Text after transformation

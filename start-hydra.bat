@@ -1,4 +1,5 @@
 @echo off
+chcp 65001 >nul
 setlocal enabledelayedexpansion
 title GeminiHydra - Witcher Swarm
 cd /d "%~dp0"

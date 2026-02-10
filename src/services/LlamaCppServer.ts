@@ -29,30 +29,30 @@ export interface ServerStatus {
 
 // Popularne małe modele GGUF do pobrania
 export const RECOMMENDED_MODELS = {
-  'llama-3.2-1b': {
-    repo: 'hugging-quants/Llama-3.2-1B-Instruct-Q4_K_M-GGUF',
-    file: 'llama-3.2-1b-instruct-q4_k_m.gguf',
-    size: '0.8GB',
+  'qwen3-4b': {
+    repo: 'Qwen/Qwen3-4B-GGUF',
+    file: 'Qwen3-4B-Q4_K_M.gguf',
+    size: '2.6GB',
   },
-  'llama-3.2-3b': {
-    repo: 'hugging-quants/Llama-3.2-3B-Instruct-Q4_K_M-GGUF',
-    file: 'llama-3.2-3b-instruct-q4_k_m.gguf',
-    size: '2.0GB',
+  'qwen3-1.7b': {
+    repo: 'Qwen/Qwen3-1.7B-GGUF',
+    file: 'Qwen3-1.7B-Q4_K_M.gguf',
+    size: '1.1GB',
   },
-  'phi-3-mini': {
-    repo: 'microsoft/Phi-3-mini-4k-instruct-gguf',
-    file: 'Phi-3-mini-4k-instruct-q4.gguf',
-    size: '2.2GB',
+  'qwen3-8b': {
+    repo: 'Qwen/Qwen3-8B-GGUF',
+    file: 'Qwen3-8B-Q4_K_M.gguf',
+    size: '5.2GB',
   },
-  'qwen2.5-1.5b': {
-    repo: 'Qwen/Qwen2.5-1.5B-Instruct-GGUF',
-    file: 'qwen2.5-1.5b-instruct-q4_k_m.gguf',
-    size: '1.0GB',
+  'qwen3-0.6b': {
+    repo: 'Qwen/Qwen3-0.6B-GGUF',
+    file: 'Qwen3-0.6B-Q4_K_M.gguf',
+    size: '0.5GB',
   },
-  'tinyllama': {
-    repo: 'TheBloke/TinyLlama-1.1B-Chat-v1.0-GGUF',
-    file: 'tinyllama-1.1b-chat-v1.0.Q4_K_M.gguf',
-    size: '0.7GB',
+  'qwen3-14b': {
+    repo: 'Qwen/Qwen3-14B-GGUF',
+    file: 'Qwen3-14B-Q4_K_M.gguf',
+    size: '9.0GB',
   },
 } as const;
 

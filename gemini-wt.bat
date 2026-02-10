@@ -1,4 +1,5 @@
 @echo off
+chcp 65001 >nul
 REM GeminiHydra - Windows Terminal Launcher
 REM Fix #10: Windows Terminal provides better stdin handling than cmd.exe
 

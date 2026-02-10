@@ -80,3 +80,13 @@ export {
   selectApiConfigStatus,
   selectRuntimeSettings,
 } from './selectors';
+
+// ============================================================================
+// PAGINATION SELECTORS
+// ============================================================================
+
+export {
+  selectPaginatedMessages,
+  selectTotalPages,
+  selectPaginationInfo,
+} from './selectors';

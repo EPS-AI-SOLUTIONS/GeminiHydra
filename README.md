@@ -96,13 +96,6 @@ Each agent is designed for specific task types:
                                |
                                v
                     +------------------+
-                    |   PHASE PRE-A    |
-                    | Translation &    |
-                    | Classification   |
-                    +------------------+
-                               |
-                               v
-                    +------------------+
                     |    PHASE A       |
                     | Dijkstra Planning|
                     | (Creates Plan)   |
@@ -442,7 +435,6 @@ The default YOLO configuration enables full autonomous execution:
 
 ```typescript
 {
-  enablePhasePreA: true,    // Translation & Classification
   enablePhaseC: true,       // Self-Healing
   maxRepairCycles: 1,       // Number of repair attempts
   forceModel: 'auto'        // 'auto', 'flash', or 'pro'
@@ -519,7 +511,6 @@ GeminiHydra/
 |   |-- core/              # Core execution engine
 |   |   |-- Agent.ts       # Agent implementation
 |   |   |-- Swarm.ts       # Main orchestration
-|   |   |-- PhasePreA.ts   # Translation & Classification
 |   |   |-- PhaseC.ts      # Self-Healing
 |   |   +-- GraphProcessor.ts
 |   |-- mcp/               # MCP integration

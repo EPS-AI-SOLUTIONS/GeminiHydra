@@ -409,3 +409,9 @@ export function withRetryContext(
   }
   return error;
 }
+
+// ============================================================================
+// Centralized Error Handler (re-export)
+// ============================================================================
+
+export { ErrorHandler, type ErrorCategory, type ErrorHandleResult, type GeminiHydraError } from './ErrorHandler.js';

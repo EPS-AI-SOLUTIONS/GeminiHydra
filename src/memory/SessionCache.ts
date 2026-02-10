@@ -203,7 +203,7 @@ export class SessionCache {
   }
 
   /**
-   * Set refined objective (from Phase PRE-A)
+   * Set refined objective
    */
   async setRefinedObjective(objective: string): Promise<void> {
     await this.set('refinedObjective', objective);

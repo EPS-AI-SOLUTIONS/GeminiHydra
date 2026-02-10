@@ -17,7 +17,7 @@ export interface ConsensusResult {
 
 export async function getConsensus(
   prompt: string,
-  models: string[] = ['gemini-3-pro-preview', 'gemini-3-flash-preview'],
+  models: string[] = ['gemini-3-pro-preview'],
   expectedType: ExpectedResponseType = 'text'
 ): Promise<ConsensusResult> {
   const responses: Array<{ model: string; response: string; score: number }> = [];

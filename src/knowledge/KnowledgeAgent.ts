@@ -60,7 +60,7 @@ export interface TrainingConfig {
 
 export class KnowledgeAgent {
   private initialized = false;
-  private agentModel = 'gemini-3-flash-preview';
+  private agentModel = 'gemini-3-pro-preview';
   private localModel = 'geminihydra-knowledge'; // Our custom model name
 
   constructor() {}
@@ -202,8 +202,8 @@ Lines: ${file.lines ?? 0}
   }> {
     try {
       const model = genAI.getGenerativeModel({
-        model: 'gemini-3-flash-preview',
-        generationConfig: { temperature: 0.1, maxOutputTokens: 200 }
+        model: 'gemini-3-pro-preview',
+        generationConfig: { temperature: 0.8, maxOutputTokens: 512 }
       });
 
       const prompt = `Analyze this Q&A exchange for learning value. Return JSON only.
@@ -310,7 +310,7 @@ Return JSON:
   private async queryGemini(question: string, context: string): Promise<{ answer: string; confidence: number }> {
     const model = genAI.getGenerativeModel({
       model: this.agentModel,
-      generationConfig: { temperature: 0.3, maxOutputTokens: 2048 }
+      generationConfig: { temperature: 1.0, maxOutputTokens: 4096 }
     });
 
     const prompt = `You are a knowledgeable assistant. Use the provided context to answer the question accurately.
@@ -454,7 +454,7 @@ Instructions:
     await this.init();
 
     const {
-      baseModel = 'llama3.2:3b',
+      baseModel = 'qwen3:4b',
       modelName = 'geminihydra-knowledge',
       systemPrompt = 'You are a knowledgeable assistant trained on GeminiHydra project knowledge. Answer questions accurately based on your training.'
     } = config;

@@ -11,23 +11,23 @@ import type { HydraConfig, ProviderConfig, SwarmConfig, PathConfig, FeatureFlags
 const DEFAULT_CONFIG: HydraConfig = {
   provider: {
     type: 'gemini',
-    model: 'gemini-2.0-flash',
+    model: 'gemini-3-pro-preview',
   },
   models: {
     phaseA: 'gemini-3-pro-preview',
-    phaseBA: 'gemini-3-flash-preview',
-    phaseB: 'llama-3.2-3b',
-    phaseC: 'gemini-3-flash-preview',
-    phaseD: 'gemini-3-flash-preview',
+    phaseBA: 'gemini-3-pro-preview',
+    phaseB: 'qwen3-4b',
+    phaseC: 'gemini-3-pro-preview',
+    phaseD: 'gemini-3-pro-preview',
   },
   localLLM: {
     baseUrl: 'http://localhost:8000',  // llama-cpp-python default port
     models: [
-      { name: 'llama-3.2-1b', difficulty: ['simple'], contextSize: 2048, description: 'Small, fast' },
-      { name: 'llama-3.2-3b', difficulty: ['simple', 'moderate'], contextSize: 4096, description: 'Balanced' },
-      { name: 'llama-3.1-8b', difficulty: ['moderate', 'complex'], contextSize: 8192, description: 'Large' },
+      { name: 'qwen3-0.6b', difficulty: ['simple'], contextSize: 32768, description: 'Ultra-fast scout' },
+      { name: 'qwen3-4b', difficulty: ['simple', 'medium'], contextSize: 262144, description: 'Primary workhorse' },
+      { name: 'qwen3-8b', difficulty: ['medium', 'complex'], contextSize: 131072, description: 'High quality' },
     ],
-    defaultModel: 'llama-3.2-3b',
+    defaultModel: 'qwen3-4b',
   },
   swarm: {
     maxTasks: 3,
@@ -271,7 +271,7 @@ export function validateEnvVars(): void {
   ];
 
   const optionalVars: { name: string; description: string; defaultHint: string }[] = [
-    { name: 'HYDRA_MODEL', description: 'Model override', defaultHint: 'gemini-2.0-flash' },
+    { name: 'HYDRA_MODEL', description: 'Model override', defaultHint: 'gemini-3-pro-preview' },
     { name: 'HYDRA_MAX_TASKS', description: 'Max swarm tasks', defaultHint: '3' },
     { name: 'HYDRA_TIMEOUT', description: 'Swarm timeout in ms', defaultHint: '60000' },
     { name: 'HYDRA_HEADLESS', description: 'Headless mode', defaultHint: 'false' },

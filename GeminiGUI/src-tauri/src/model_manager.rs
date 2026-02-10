@@ -278,7 +278,9 @@ impl ModelManager {
         .to_string();
 
         // Extract architecture
-        let architecture = if lower.contains("llama") {
+        let architecture = if lower.contains("qwen3") {
+            "qwen3"
+        } else if lower.contains("llama") {
             "llama"
         } else if lower.contains("qwen") {
             "qwen2"
@@ -305,7 +307,16 @@ impl ModelManager {
         let lower = filename.to_lowercase();
 
         // Common context lengths based on model family
-        if lower.contains("llama-3") || lower.contains("llama3") {
+        if lower.contains("qwen3") {
+            // Qwen3: 4B has 256K, 8B/14B/32B have 128K, 0.6B/1.7B have 32K
+            if lower.contains("4b") {
+                262144
+            } else if lower.contains("0.6b") || lower.contains("1.7b") {
+                32768
+            } else {
+                131072 // 8B, 14B, 32B
+            }
+        } else if lower.contains("llama-3") || lower.contains("llama3") {
             128000
         } else if lower.contains("qwen2.5") || lower.contains("qwen2-5") {
             32768
@@ -348,67 +359,49 @@ pub struct RecommendedModel {
 pub fn get_recommended_models() -> Vec<RecommendedModel> {
     vec![
         RecommendedModel {
-            name: "Llama 3.2 3B Instruct".to_string(),
-            repo_id: "bartowski/Llama-3.2-3B-Instruct-GGUF".to_string(),
-            filename: "Llama-3.2-3B-Instruct-Q4_K_M.gguf".to_string(),
-            size_gb: 2.0,
-            description: "Fast and capable 3B model from Meta. Great for general tasks.".to_string(),
+            name: "Qwen3 4B".to_string(),
+            repo_id: "Qwen/Qwen3-4B-GGUF".to_string(),
+            filename: "Qwen3-4B-Q4_K_M.gguf".to_string(),
+            size_gb: 2.6,
+            description: "Primary workhorse. Thinking mode, 256K context, tool calling. Great for general tasks.".to_string(),
             min_vram_gb: 4,
             category: "general".to_string(),
         },
         RecommendedModel {
-            name: "Qwen 2.5 Coder 1.5B".to_string(),
-            repo_id: "Qwen/Qwen2.5-Coder-1.5B-Instruct-GGUF".to_string(),
-            filename: "qwen2.5-coder-1.5b-instruct-q4_k_m.gguf".to_string(),
+            name: "Qwen3 1.7B".to_string(),
+            repo_id: "Qwen/Qwen3-1.7B-GGUF".to_string(),
+            filename: "Qwen3-1.7B-Q4_K_M.gguf".to_string(),
             size_gb: 1.1,
-            description: "Small but powerful coding model. Low VRAM requirements.".to_string(),
+            description: "Fast lightweight model. 32K context, thinking mode. Low VRAM.".to_string(),
             min_vram_gb: 2,
-            category: "coding".to_string(),
+            category: "general".to_string(),
         },
         RecommendedModel {
-            name: "Qwen 2.5 Coder 7B".to_string(),
-            repo_id: "Qwen/Qwen2.5-Coder-7B-Instruct-GGUF".to_string(),
-            filename: "qwen2.5-coder-7b-instruct-q4_k_m.gguf".to_string(),
-            size_gb: 4.7,
-            description: "High-quality coding model. Excellent for complex coding tasks.".to_string(),
+            name: "Qwen3 8B".to_string(),
+            repo_id: "Qwen/Qwen3-8B-GGUF".to_string(),
+            filename: "Qwen3-8B-Q4_K_M.gguf".to_string(),
+            size_gb: 5.2,
+            description: "High quality model. 128K context, excellent for coding and complex tasks.".to_string(),
             min_vram_gb: 6,
             category: "coding".to_string(),
         },
         RecommendedModel {
-            name: "DeepSeek Coder V2 Lite".to_string(),
-            repo_id: "deepseek-ai/DeepSeek-Coder-V2-Lite-Instruct-GGUF".to_string(),
-            filename: "deepseek-coder-v2-lite-instruct-q4_k_m.gguf".to_string(),
+            name: "Qwen3 0.6B".to_string(),
+            repo_id: "Qwen/Qwen3-0.6B-GGUF".to_string(),
+            filename: "Qwen3-0.6B-Q4_K_M.gguf".to_string(),
+            size_gb: 0.5,
+            description: "Ultra-fast scout model. 32K context. Perfect for simple atomic tasks.".to_string(),
+            min_vram_gb: 1,
+            category: "general".to_string(),
+        },
+        RecommendedModel {
+            name: "Qwen3 14B".to_string(),
+            repo_id: "Qwen/Qwen3-14B-GGUF".to_string(),
+            filename: "Qwen3-14B-Q4_K_M.gguf".to_string(),
             size_gb: 9.0,
-            description: "Powerful coding model with MOE architecture.".to_string(),
+            description: "Premium quality for complex reasoning and coding. 128K context.".to_string(),
             min_vram_gb: 10,
             category: "coding".to_string(),
-        },
-        RecommendedModel {
-            name: "Mistral 7B Instruct".to_string(),
-            repo_id: "TheBloke/Mistral-7B-Instruct-v0.2-GGUF".to_string(),
-            filename: "mistral-7b-instruct-v0.2.Q4_K_M.gguf".to_string(),
-            size_gb: 4.4,
-            description: "Well-balanced general purpose model.".to_string(),
-            min_vram_gb: 6,
-            category: "general".to_string(),
-        },
-        RecommendedModel {
-            name: "Llama 3.2 1B Instruct".to_string(),
-            repo_id: "bartowski/Llama-3.2-1B-Instruct-GGUF".to_string(),
-            filename: "Llama-3.2-1B-Instruct-Q4_K_M.gguf".to_string(),
-            size_gb: 0.8,
-            description: "Ultra-fast tiny model. Good for simple tasks.".to_string(),
-            min_vram_gb: 2,
-            category: "general".to_string(),
-        },
-        RecommendedModel {
-            name: "Phi-3 Mini 3.8B".to_string(),
-            repo_id: "microsoft/Phi-3-mini-4k-instruct-gguf".to_string(),
-            filename: "Phi-3-mini-4k-instruct-q4.gguf".to_string(),
-            size_gb: 2.4,
-            description: "Microsoft's efficient small model.".to_string(),
-            min_vram_gb: 4,
-            category: "general".to_string(),
         },
     ]
 }
@@ -421,23 +414,23 @@ mod tests {
     fn test_parse_model_name() {
         let manager = ModelManager::new(PathBuf::from("."));
 
-        let (quant, params, arch) = manager.parse_model_name("Llama-3.2-3B-Instruct-Q4_K_M.gguf");
+        let (quant, params, arch) = manager.parse_model_name("Qwen3-4B-Q4_K_M.gguf");
         assert_eq!(quant, "Q4_K_M");
-        assert_eq!(params, "3B");
-        assert_eq!(arch, "llama");
+        assert_eq!(params, "4B");
+        assert_eq!(arch, "qwen3");
 
-        let (quant, params, arch) = manager.parse_model_name("qwen2.5-coder-7b-instruct-q5_k_s.gguf");
-        assert_eq!(quant, "Q5_K_S");
-        assert_eq!(params, "7B");
-        assert_eq!(arch, "qwen2");
+        let (quant, params, arch) = manager.parse_model_name("Qwen3-8B-Q4_K_M.gguf");
+        assert_eq!(quant, "Q4_K_M");
+        assert_eq!(params, "8B");
+        assert_eq!(arch, "qwen3");
     }
 
     #[test]
     fn test_estimate_context_length() {
         let manager = ModelManager::new(PathBuf::from("."));
 
-        assert_eq!(manager.estimate_context_length("Llama-3.2-3B-Instruct-Q4_K_M.gguf"), 128000);
-        assert_eq!(manager.estimate_context_length("qwen2.5-coder-7b-instruct.gguf"), 32768);
+        assert_eq!(manager.estimate_context_length("Qwen3-4B-Q4_K_M.gguf"), 262144);
+        assert_eq!(manager.estimate_context_length("Qwen3-8B-Q4_K_M.gguf"), 131072);
         assert_eq!(manager.estimate_context_length("unknown-model.gguf"), 4096);
     }
 

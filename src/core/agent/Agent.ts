@@ -16,7 +16,10 @@ import { logger } from '../LiveLogger.js';
 import { promptInjectionDetector } from '../PromptInjectionDetector.js';
 import { AGENT_SYSTEM_PROMPTS, EXECUTION_EVIDENCE_RULES } from '../PromptSystem.js';
 import { geminiSemaphore, ollamaSemaphore } from '../TrafficControl.js';
-import { AGENT_PERSONAS, DIJKSTRA_CHAIN, genAI, MODEL_TIERS } from './models.js';
+import { AGENT_PERSONAS, DIJKSTRA_CHAIN, genAI, initializeGeminiModels, MODEL_TIERS } from './models.js';
+
+// Re-export symbols that consumers expect to import from this module
+export { AGENT_PERSONAS, initializeGeminiModels };
 import { getEnhancedAdaptiveTemperature, getTemperatureController } from './temperature.js';
 import type { ThinkOptions } from './types.js';
 import {

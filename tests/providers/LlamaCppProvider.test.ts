@@ -338,9 +338,9 @@ describe('LlamaCppProvider', () => {
         expect(model).toBe(LLAMA_CPP_MODELS.simple[0]);
       });
 
-      it('should return first model for moderate', () => {
-        const model = LlamaCppProvider.getRecommendedModel('moderate');
-        expect(model).toBe(LLAMA_CPP_MODELS.moderate[0]);
+      it('should return first model for medium', () => {
+        const model = LlamaCppProvider.getRecommendedModel('medium');
+        expect(model).toBe(LLAMA_CPP_MODELS.medium[0]);
       });
 
       it('should return first model for complex', () => {
@@ -351,8 +351,8 @@ describe('LlamaCppProvider', () => {
 
     describe('getModelsForDifficulty', () => {
       it('should return all models for difficulty', () => {
-        const models = LlamaCppProvider.getModelsForDifficulty('moderate');
-        expect(models).toBe(LLAMA_CPP_MODELS.moderate);
+        const models = LlamaCppProvider.getModelsForDifficulty('medium');
+        expect(models).toBe(LLAMA_CPP_MODELS.medium);
       });
     });
   });
@@ -396,13 +396,13 @@ describe('createLlamaCppProvider', () => {
 describe('LLAMA_CPP_MODELS', () => {
   it('should have models for all difficulty levels', () => {
     expect(LLAMA_CPP_MODELS.simple).toBeDefined();
-    expect(LLAMA_CPP_MODELS.moderate).toBeDefined();
+    expect(LLAMA_CPP_MODELS.medium).toBeDefined();
     expect(LLAMA_CPP_MODELS.complex).toBeDefined();
   });
 
   it('should have non-empty model lists', () => {
     expect(LLAMA_CPP_MODELS.simple.length).toBeGreaterThan(0);
-    expect(LLAMA_CPP_MODELS.moderate.length).toBeGreaterThan(0);
+    expect(LLAMA_CPP_MODELS.medium.length).toBeGreaterThan(0);
     expect(LLAMA_CPP_MODELS.complex.length).toBeGreaterThan(0);
   });
 });

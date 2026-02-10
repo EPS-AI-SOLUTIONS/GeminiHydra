@@ -85,7 +85,7 @@
                                                          "@anthropic-ai/mcp-server-brave"
                                                      ],
                                             "env":  {
-                                                        "BRAVE_API_KEY":  "BSAXJ2S-GwXLGx8yHnaMJ2cX1w51DRi"
+                                                        "BRAVE_API_KEY":  "${BRAVE_API_KEY}"
                                                     }
                                         },
                        "fetch":  {

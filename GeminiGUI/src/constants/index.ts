@@ -62,23 +62,24 @@ export const STATUS = {
 // ============================================================================
 
 export const LLAMA_MODELS = {
-  LLAMA_3_2_3B: 'Llama-3.2-3B-Instruct-Q4_K_M.gguf',
-  QWEN_CODER_1_5B: 'qwen2.5-coder-1.5b-instruct-q4_k_m.gguf',
-  QWEN_CODER_7B: 'qwen2.5-coder-7b-instruct-q4_k_m.gguf',
-  DEEPSEEK_CODER_LITE: 'deepseek-coder-v2-lite-instruct-q4_k_m.gguf',
-  MISTRAL_7B: 'mistral-7b-instruct-v0.2.Q4_K_M.gguf',
-  LLAMA_3_2_1B: 'Llama-3.2-1B-Instruct-Q4_K_M.gguf',
-  PHI_3_MINI: 'Phi-3-mini-4k-instruct-q4.gguf',
+  /** Qwen3 4B - Primary workhorse, thinking mode, 256K context */
+  QWEN3_4B: 'Qwen3-4B-Q4_K_M.gguf',
+  /** Qwen3 1.7B - Fast lightweight model, 32K context */
+  QWEN3_1_7B: 'Qwen3-1.7B-Q4_K_M.gguf',
+  /** Qwen3 8B - High quality model, 128K context */
+  QWEN3_8B: 'Qwen3-8B-Q4_K_M.gguf',
+  /** Qwen3 0.6B - Ultra-fast scout model, 32K context */
+  QWEN3_0_6B: 'Qwen3-0.6B-Q4_K_M.gguf',
+  /** Qwen3 14B - Premium quality for complex tasks */
+  QWEN3_14B: 'Qwen3-14B-Q4_K_M.gguf',
 } as const;
 
 export const HUGGINGFACE_REPOS = {
-  [LLAMA_MODELS.LLAMA_3_2_3B]: 'bartowski/Llama-3.2-3B-Instruct-GGUF',
-  [LLAMA_MODELS.QWEN_CODER_1_5B]: 'Qwen/Qwen2.5-Coder-1.5B-Instruct-GGUF',
-  [LLAMA_MODELS.QWEN_CODER_7B]: 'Qwen/Qwen2.5-Coder-7B-Instruct-GGUF',
-  [LLAMA_MODELS.DEEPSEEK_CODER_LITE]: 'deepseek-ai/DeepSeek-Coder-V2-Lite-Instruct-GGUF',
-  [LLAMA_MODELS.MISTRAL_7B]: 'TheBloke/Mistral-7B-Instruct-v0.2-GGUF',
-  [LLAMA_MODELS.LLAMA_3_2_1B]: 'bartowski/Llama-3.2-1B-Instruct-GGUF',
-  [LLAMA_MODELS.PHI_3_MINI]: 'microsoft/Phi-3-mini-4k-instruct-gguf',
+  [LLAMA_MODELS.QWEN3_4B]: 'Qwen/Qwen3-4B-GGUF',
+  [LLAMA_MODELS.QWEN3_1_7B]: 'Qwen/Qwen3-1.7B-GGUF',
+  [LLAMA_MODELS.QWEN3_8B]: 'Qwen/Qwen3-8B-GGUF',
+  [LLAMA_MODELS.QWEN3_0_6B]: 'Qwen/Qwen3-0.6B-GGUF',
+  [LLAMA_MODELS.QWEN3_14B]: 'Qwen/Qwen3-14B-GGUF',
 } as const;
 
 // ============================================================================
@@ -87,31 +88,13 @@ export const HUGGINGFACE_REPOS = {
 
 export const GEMINI_MODELS: GeminiModelInfo[] = [
   {
-    id: 'gemini-2.5-flash',
+    id: 'gemini-3-pro-preview',
     provider: 'google',
-    name: 'models/gemini-2.5-flash',
-    label: 'Gemini 2.5 Flash',
+    name: 'models/gemini-3-pro-preview',
+    label: 'Gemini 3 Pro (Preview)',
     contextWindow: 1048576,
     capabilities: { vision: true, functionCalling: true, jsonMode: true },
-    metadata: { isExperimental: false, fetchedAt: Date.now() },
-  },
-  {
-    id: 'gemini-2.5-pro',
-    provider: 'google',
-    name: 'models/gemini-2.5-pro',
-    label: 'Gemini 2.5 Pro',
-    contextWindow: 1048576,
-    capabilities: { vision: true, functionCalling: true, jsonMode: true },
-    metadata: { isExperimental: false, fetchedAt: Date.now() },
-  },
-  {
-    id: 'gemini-2.5-flash-lite',
-    provider: 'google',
-    name: 'models/gemini-2.5-flash-lite',
-    label: 'Gemini 2.5 Flash Lite',
-    contextWindow: 1048576,
-    capabilities: { vision: true, functionCalling: true, jsonMode: true },
-    metadata: { isExperimental: false, fetchedAt: Date.now() },
+    metadata: { isExperimental: true, fetchedAt: Date.now() },
   },
   {
     id: 'gemini-3-flash-preview',
@@ -122,51 +105,59 @@ export const GEMINI_MODELS: GeminiModelInfo[] = [
     capabilities: { vision: true, functionCalling: true, jsonMode: true },
     metadata: { isExperimental: true, fetchedAt: Date.now() },
   },
-  {
-    id: 'gemini-3-pro-preview',
-    provider: 'google',
-    name: 'models/gemini-3-pro-preview',
-    label: 'Gemini 3 Pro (Preview)',
-    contextWindow: 1048576,
-    capabilities: { vision: true, functionCalling: true, jsonMode: true },
-    metadata: { isExperimental: true, fetchedAt: Date.now() },
-  },
 ] as const;
 
-export const DEFAULT_GEMINI_MODEL = GEMINI_MODELS[0].id; // gemini-2.5-flash
+export const DEFAULT_GEMINI_MODEL = GEMINI_MODELS[0].id; // gemini-3-pro-preview
 
 // ============================================================================
 // DEFAULT SETTINGS
 // ============================================================================
 
 // Synced with src/core/PromptSystem.ts getIdentityContext()
-export const DEFAULT_SYSTEM_PROMPT = `Jestes GeminiHydra - lokalnym wieloagentowym systemem AI. Dzialasz na komputerze uzytkownika (Windows).
+export const DEFAULT_SYSTEM_PROMPT = `Jestes GeminiHydra - lokalnym asystentem AI opartym na Gemini 3 Pro (gemini-3-pro-preview) na Windows (PowerShell). Odpowiadasz krotko, konkretnie, bez ozdobnikow. NIE mow ze uzywasz "Gemini 1.5" - uzywasz Gemini 3 Pro Preview.
 
-KRYTYCZNE ZASADY ODPOWIADANIA:
-1. ODPOWIADAJ KONKRETNIE i BEZPOSREDNIO na pytania uzytkownika.
-2. NIE HALUCYNUJ - nie udawaj ze wykonujesz komendy. Nie pisz fikcyjnych wynikow komend.
-3. Gdy uzytkownik prosi o wylistowanie plikow, pokazanie struktury itp. - uzyj formatu: [EXECUTE: komenda] na OSOBNEJ LINII. System automatycznie wykona komende i pokaze wynik.
-4. NIE wymyslaj wynikow komend. Jesli nie mozesz czegos wykonac, powiedz o tym wprost.
-5. Odpowiadaj ZWIEZLE - nie dodawaj zbednych metafor, dygresji ani ozdobnikow chyba ze uzytkownik tego chce.
-6. Gdy uzytkownik pyta o cos konkretnego, ODPOWIEDZ na pytanie, nie opowiadaj historii.
+ZASADY:
+1. KROTKIE ODPOWIEDZI - max 2-3 zdania chyba ze temat wymaga wiecej.
+2. ZERO HALUCYNACJI - NIGDY nie wymyslaj wynikow komend. Nie pisz fikcyjnego outputu.
+3. WYKONUJ KOMENDY przez [EXECUTE: komenda] na OSOBNEJ LINII. System je wykona i pokaze wynik.
+4. NIE GRA ROLI - jestes asystentem AI, nie postacia fikcyjna.
+5. NAJPIERW WYKONAJ, POTEM KOMENTUJ - gdy trzeba sprawdzic cos w systemie, uzyj [EXECUTE:] a system automatycznie wykona komende i przesle ci wynik do analizy.
+6. NIE POWTARZAJ komendy w tekscie - napisz [EXECUTE: ...] raz, system ja wykona.
+7. GDY OTRZYMASZ WYNIKI KOMEND - przeanalizuj je i odpowiedz uzytkownikowi. Jesli komenda sie nie powiodla, zaproponuj rozwiazanie. NIE uzywaj [EXECUTE:] ponownie chyba ze naprawde potrzebujesz dodatkowych informacji.
 
-DOSTEPNE KOMENDY (uzywaj na osobnej linii):
-[EXECUTE: dir] - lista plikow
-[EXECUTE: tree /F] - struktura katalogow
-[EXECUTE: type "sciezka\\plik"] - odczyt pliku
-[EXECUTE: git status] - status git
-[EXECUTE: komenda] - dowolna komenda systemowa
+WAZNE - UZYWASZ POWERSHELL (nie CMD):
+- Komendy sa wykonywane przez PowerShell. Uzyj skladni PowerShell.
+- NIE uzywaj flag CMD jak /b /s /w - one NIE dzialaja w PowerShell.
+- "dir" dziala (alias Get-ChildItem) ale BEZ flag CMD.
+- Do rekurencyjnego listowania: Get-ChildItem -Recurse -Filter "*.json"
+- Do wyszukiwania plikow: Get-ChildItem -Recurse -Include "*.json","*.yaml"
+- Do czytania plikow: Get-Content "sciezka\\plik"
 
-PRZYKLAD PRAWIDLOWEJ ODPOWIEDZI:
-Uzytkownik: "pokaz mi strukture projektu"
-Odpowiedz: "Oto struktura projektu:
-[EXECUTE: tree /F /A]"
+FORMAT KOMEND (zawsze na osobnej linii):
+[EXECUTE: dir]
+[EXECUTE: dir config]
+[EXECUTE: Get-ChildItem -Recurse -Filter "*.json"]
+[EXECUTE: tree /F /A]
+[EXECUTE: Get-Content "sciezka\\plik"]
+[EXECUTE: git status]
+[EXECUTE: systeminfo]
 
-PRZYKLAD ZLEJ ODPOWIEDZI (NIE ROB TAK):
-"Rzucam zaklecie! [EXECUTE: dir] No i proszę, oto wynik: C:\\Users\\..."  <-- TO JEST HALUCYNACJA!
+PRZYKLAD DOBRY:
+User: "pokaz pliki"
+AI: "Pliki w biezacym katalogu:
+[EXECUTE: dir]"
 
-Twoje agenty: Dijkstra (strateg), Geralt (bezpieczenstwo), Yennefer (architekt), Triss (QA), Ciri (zwiadowca), Regis (badacz), Jaskier (komunikator), Vesemir (mentor), Eskel (DevOps), Lambert (debugger), Zoltan (dane), Philippa (API).
-Odpowiadaj po polsku.`.trim();
+User: "znajdz pliki json"
+AI: "Szukam plikow JSON:
+[EXECUTE: Get-ChildItem -Recurse -Filter "*.json" -Name]"
+
+PRZYKLAD ZLY (ZABRONIONY):
+AI: "Oto pliki: C:\\Users\\plik1.txt, plik2.txt..." <-- HALUCYNACJA! Nie znasz zawartosci dysku!
+AI: "[EXECUTE: dir /b /s *.json]" <-- ZLE! Flagi /b /s sa z CMD, nie dzialaja w PowerShell!
+
+Masz dostep do agentow: Dijkstra (strateg), Geralt (security), Yennefer (architekt), Triss (QA), Ciri (scout), Regis (research), Vesemir (review), Eskel (DevOps), Lambert (debug), Zoltan (dane), Philippa (API).
+
+Jezyk: polski. Styl: profesjonalny, zwiezly.`.trim();
 
 export const DEFAULT_OLLAMA_ENDPOINT = 'http://localhost:11434';
 
@@ -187,7 +178,7 @@ export const DEFAULT_SETTINGS: Settings = {
 
 export const FALLBACK_MODELS = {
   gemini: GEMINI_MODELS.map((m) => m.id),
-  llama: [LLAMA_MODELS.LLAMA_3_2_3B, LLAMA_MODELS.QWEN_CODER_1_5B, LLAMA_MODELS.LLAMA_3_2_1B],
+  llama: [LLAMA_MODELS.QWEN3_4B, LLAMA_MODELS.QWEN3_1_7B, LLAMA_MODELS.QWEN3_0_6B],
 } as const;
 
 // ============================================================================
@@ -195,18 +186,18 @@ export const FALLBACK_MODELS = {
 // ============================================================================
 
 export const AGENTS = {
-  GERALT: { name: 'Geralt', model: LLAMA_MODELS.LLAMA_3_2_3B, role: 'Security/VETO' },
-  YENNEFER: { name: 'Yennefer', model: LLAMA_MODELS.QWEN_CODER_1_5B, role: 'Design patterns' },
-  TRISS: { name: 'Triss', model: LLAMA_MODELS.QWEN_CODER_1_5B, role: 'QA/Testing' },
-  JASKIER: { name: 'Jaskier', model: LLAMA_MODELS.LLAMA_3_2_3B, role: 'User summaries' },
-  VESEMIR: { name: 'Vesemir', model: LLAMA_MODELS.LLAMA_3_2_3B, role: 'Plan reviewer' },
-  CIRI: { name: 'Ciri', model: LLAMA_MODELS.LLAMA_3_2_1B, role: 'Fast executor' },
-  ESKEL: { name: 'Eskel', model: LLAMA_MODELS.LLAMA_3_2_3B, role: 'DevOps/Build' },
-  LAMBERT: { name: 'Lambert', model: LLAMA_MODELS.QWEN_CODER_1_5B, role: 'Debugger' },
-  ZOLTAN: { name: 'Zoltan', model: LLAMA_MODELS.LLAMA_3_2_3B, role: 'Data master' },
-  REGIS: { name: 'Regis', model: LLAMA_MODELS.PHI_3_MINI, role: 'Researcher' },
+  GERALT: { name: 'Geralt', model: LLAMA_MODELS.QWEN3_4B, role: 'Security/VETO' },
+  YENNEFER: { name: 'Yennefer', model: LLAMA_MODELS.QWEN3_4B, role: 'Design patterns' },
+  TRISS: { name: 'Triss', model: LLAMA_MODELS.QWEN3_4B, role: 'QA/Testing' },
+  JASKIER: { name: 'Jaskier', model: LLAMA_MODELS.QWEN3_4B, role: 'User summaries' },
+  VESEMIR: { name: 'Vesemir', model: LLAMA_MODELS.QWEN3_4B, role: 'Plan reviewer' },
+  CIRI: { name: 'Ciri', model: LLAMA_MODELS.QWEN3_0_6B, role: 'Fast executor' },
+  ESKEL: { name: 'Eskel', model: LLAMA_MODELS.QWEN3_4B, role: 'DevOps/Build' },
+  LAMBERT: { name: 'Lambert', model: LLAMA_MODELS.QWEN3_4B, role: 'Debugger' },
+  ZOLTAN: { name: 'Zoltan', model: LLAMA_MODELS.QWEN3_4B, role: 'Data master' },
+  REGIS: { name: 'Regis', model: LLAMA_MODELS.QWEN3_1_7B, role: 'Researcher' },
   DIJKSTRA: { name: 'Dijkstra', model: 'gemini:dynamic', role: 'Master strategist' },
-  PHILIPPA: { name: 'Philippa', model: LLAMA_MODELS.QWEN_CODER_7B, role: 'API specialist' },
+  PHILIPPA: { name: 'Philippa', model: LLAMA_MODELS.QWEN3_8B, role: 'API specialist' },
 } as const;
 
 // ============================================================================
@@ -301,6 +292,17 @@ export const COMMAND_PATTERNS = {
   EXECUTE: /\[EXECUTE:\s*"?(.*?)"?\s*\]/,
   // Match ALL [EXECUTE: ...] patterns in a string (global)
   EXECUTE_ALL: /\[EXECUTE:\s*"?(.*?)"?\s*\]/g,
+} as const;
+
+// ============================================================================
+// AUTO-CONTINUE CONFIG
+// ============================================================================
+
+export const AUTO_CONTINUE = {
+  /** Maximum auto-continue iterations to prevent infinite EXECUTE loops */
+  MAX_ITERATIONS: 3,
+  /** Delay in ms before sending follow-up to Gemini (allows UI to render) */
+  DELAY_MS: 500,
 } as const;
 
 // ============================================================================

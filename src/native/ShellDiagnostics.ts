@@ -12,7 +12,8 @@ import { spawn, execSync } from 'child_process';
 import os from 'os';
 import path from 'path';
 import chalk from 'chalk';
-import { NativeShell, ShellType, ProcessInfo } from './NativeShell.js';
+import { NativeShell } from './nativeshell/index.js';
+import type { ShellType, ProcessInfo } from './nativeshell/index.js';
 
 // ============================================================
 // Types

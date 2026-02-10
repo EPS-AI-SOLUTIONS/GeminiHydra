@@ -14,26 +14,19 @@ import type {
 
 // Available Gemini models (Updated February 2026)
 export const GEMINI_MODELS = {
-  // Gemini 3 Series (Current - Preview)
+  // Gemini 3 Series (Preview - Current)
   'gemini-3-pro-preview': 'gemini-3-pro-preview',
   'gemini-3-flash-preview': 'gemini-3-flash-preview',
-  'gemini-3-pro-image-preview': 'gemini-3-pro-image-preview',
-
-  // Gemini 2.5 Series (Stable)
-  'gemini-2.5-pro': 'gemini-2.5-pro',
-  'gemini-2.5-flash': 'gemini-2.5-flash',
-  'gemini-2.5-flash-lite': 'gemini-2.5-flash-lite',
-
-  // Gemini 2.0 Series (Deprecated March 2026)
-  'gemini-2.0-flash': 'gemini-2.0-flash',
 
   // Legacy aliases
-  'gemini-2.0-pro': 'gemini-2.5-pro',
-  'gemini-2.0-pro-exp-02-05': 'gemini-2.5-pro',
+  'gemini-2.5-pro': 'gemini-3-pro-preview',
+  'gemini-2.5-flash': 'gemini-3-pro-preview',
+  'gemini-2.0-pro': 'gemini-3-pro-preview',
+  'gemini-2.0-flash': 'gemini-3-pro-preview',
 
   // Convenient aliases
   'pro': 'gemini-3-pro-preview',
-  'flash': 'gemini-3-flash-preview',
+  'flash': 'gemini-3-pro-preview',
 } as const;
 
 export type GeminiModelAlias = keyof typeof GEMINI_MODELS;
@@ -43,7 +36,7 @@ export class GeminiProvider implements LLMProvider {
   model: string;
   private client: GoogleGenerativeAI;
 
-  constructor(apiKey: string, model: string = 'gemini-3-flash-preview') {
+  constructor(apiKey: string, model: string = 'gemini-3-pro-preview') {
     this.client = new GoogleGenerativeAI(apiKey);
     this.model = this.resolveModel(model);
   }
@@ -193,8 +186,8 @@ export class GeminiProvider implements LLMProvider {
 export function createGeminiProviders(apiKey: string) {
   return {
     phaseA: new GeminiProvider(apiKey, 'gemini-3-pro-preview'),
-    phaseBA: new GeminiProvider(apiKey, 'gemini-3-flash-preview'),
-    phaseC: new GeminiProvider(apiKey, 'gemini-3-flash-preview'),
-    phaseD: new GeminiProvider(apiKey, 'gemini-3-flash-preview'),
+    phaseBA: new GeminiProvider(apiKey, 'gemini-3-pro-preview'),
+    phaseC: new GeminiProvider(apiKey, 'gemini-3-pro-preview'),
+    phaseD: new GeminiProvider(apiKey, 'gemini-3-pro-preview'),
   };
 }

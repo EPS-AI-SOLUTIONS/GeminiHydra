@@ -9,8 +9,8 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
-import type { Message, Session, Settings } from '../types';
-import { STORAGE_KEYS, DEFAULT_SETTINGS, LIMITS, GEMINI_MODELS } from '../constants';
+import type { Message, Session, Settings, View } from '../types';
+import { STORAGE_KEYS, DEFAULT_SETTINGS, LIMITS, GEMINI_MODELS, DEFAULT_GEMINI_MODEL } from '../constants';
 
 import {
   isValidUrl,
@@ -43,6 +43,7 @@ export const useAppStore = create<AppStateWithPagination>()(
       count: 0,
       theme: 'dark',
       provider: 'llama',
+      currentView: 'chat' as View,
 
       // ========================================
       // Pagination State
@@ -55,6 +56,8 @@ export const useAppStore = create<AppStateWithPagination>()(
         messagesPerPage: Math.max(10, Math.min(count, 200)),
         currentPage: 0 // Reset to first page when changing page size
       }),
+
+      setCurrentView: (view: View) => set({ currentView: view }),
 
       setProvider: (provider) => set({ provider }),
 
@@ -251,6 +254,17 @@ export const useAppStore = create<AppStateWithPagination>()(
             }
           }
 
+          // Sync API key to sessionStorage (never localStorage)
+          if (validated.geminiApiKey !== undefined) {
+            if (typeof window !== 'undefined') {
+              if (validated.geminiApiKey) {
+                sessionStorage.setItem('gemini-api-key', validated.geminiApiKey);
+              } else {
+                sessionStorage.removeItem('gemini-api-key');
+              }
+            }
+          }
+
           if (newSettings.systemPrompt !== undefined) {
             validated.systemPrompt = sanitizeContent(
               newSettings.systemPrompt,
@@ -279,10 +293,16 @@ export const useAppStore = create<AppStateWithPagination>()(
       partialize: (state) => ({
         count: state.count,
         theme: state.theme,
+        currentView: state.currentView,
         sessions: state.sessions,
         currentSessionId: state.currentSessionId,
         chatHistory: state.chatHistory,
-        settings: state.settings,
+        settings: {
+          ...state.settings,
+          // SECURITY: Never persist API key to localStorage
+          // Use sessionStorage or env vars instead
+          geminiApiKey: '',
+        },
       }),
       merge: (persisted, current) => {
         const p = persisted as Partial<AppStateWithPagination>;
@@ -290,7 +310,52 @@ export const useAppStore = create<AppStateWithPagination>()(
         // Ensure new settings fields have defaults when migrating from old schema
         if (p?.settings) {
           merged.settings = { ...DEFAULT_SETTINGS, ...p.settings };
+
+          // Migrate invalid model names to correct ones
+          const selectedModel = merged.settings.selectedModel;
+          const validModelIds = GEMINI_MODELS.map(m => m.id);
+
+          // Fix common incorrect model names
+          if (selectedModel === 'gemini-3.0-flash') {
+            merged.settings.selectedModel = 'gemini-3-pro-preview';
+          } else if (selectedModel === 'gemini-3.0-pro') {
+            merged.settings.selectedModel = 'gemini-3-pro-preview';
+          } else if (!validModelIds.includes(selectedModel)) {
+            // If model is not in the list, reset to default
+            merged.settings.selectedModel = DEFAULT_GEMINI_MODEL;
+          }
         }
+
+        // Migration: clean up old [CONTEXT] messages, empty placeholders, and Jaskier prompt
+        if (p?.chatHistory) {
+          const cleanedHistory: Record<string, Message[]> = {};
+          for (const [sessionId, messages] of Object.entries(p.chatHistory)) {
+            if (Array.isArray(messages)) {
+              cleanedHistory[sessionId] = messages.filter(
+                (m) => m.content.trim().length > 0 && !m.content.startsWith('[CONTEXT]')
+              );
+            }
+          }
+          merged.chatHistory = cleanedHistory;
+        }
+        // Reset session titles that start with [CONTEXT]
+        if (merged.sessions && Array.isArray(merged.sessions)) {
+          merged.sessions = merged.sessions.map((s: Session) =>
+            s.title.startsWith('[CONTEXT]') ? { ...s, title: 'New Chat' } : s
+          );
+        }
+        if (merged.settings?.systemPrompt?.includes('Jaskier')) {
+          merged.settings.systemPrompt = DEFAULT_SETTINGS.systemPrompt;
+        }
+
+        // Restore API key from sessionStorage (not persisted in localStorage)
+        const sessionApiKey = typeof window !== 'undefined'
+          ? sessionStorage.getItem('gemini-api-key') ?? ''
+          : '';
+        if (sessionApiKey && merged.settings) {
+          merged.settings.geminiApiKey = sessionApiKey;
+        }
+
         return merged;
       },
     }
@@ -298,8 +363,12 @@ export const useAppStore = create<AppStateWithPagination>()(
 );
 
 // =============================================================================
-// SELECTORS (for optimized subscriptions)
+// RE-EXPORTED SELECTORS (canonical definitions in ./selectors.ts)
 // =============================================================================
+// All selectors are defined once in ./selectors.ts and re-exported here
+// for backward compatibility. New code should import from './selectors'
+// or from the barrel '@/store'.
+//
 // NOTE: Selectors returning objects/arrays should be used with useShallow
 // to prevent unnecessary re-renders:
 //   import { useShallow } from 'zustand/shallow';
@@ -309,79 +378,45 @@ export const useAppStore = create<AppStateWithPagination>()(
 //   const pagination = useAppStore(useShallow(selectPaginationInfo));
 // Primitive selectors (string, number, boolean) do NOT need useShallow.
 
-const EMPTY_ARRAY: Message[] = [];
-
-export const selectTheme = (state: AppState) => state.theme;
-export const selectSettings = (state: AppState) => state.settings;
-export const selectSessions = (state: AppState) => state.sessions;
-export const selectCurrentSessionId = (state: AppState) => state.currentSessionId;
-export const selectChatHistory = (state: AppState) => state.chatHistory;
-
-export const selectCurrentMessages = (state: AppState): Message[] => {
-  if (!state.currentSessionId) return EMPTY_ARRAY;
-  return state.chatHistory[state.currentSessionId] || EMPTY_ARRAY;
-};
-
-export const selectIsApiKeySet = (state: AppState): boolean => {
-  return Boolean(state.settings.geminiApiKey && state.settings.geminiApiKey.length > 0);
-};
-
-export const selectSessionById = (id: string) => (state: AppState) => {
-  return state.sessions.find((session) => session.id === id);
-};
-
-export const selectMessageCount = (state: AppState): number => {
-  if (!state.currentSessionId) return 0;
-  return (state.chatHistory[state.currentSessionId] || []).length;
-};
-
-export const selectHasMessages = (state: AppState): boolean => {
-  if (!state.currentSessionId) return false;
-  const messages = state.chatHistory[state.currentSessionId] || [];
-  return messages.length > 0;
-};
-
-export const selectUseSwarm = (state: AppState): boolean => {
-  return state.settings.useSwarm;
-};
-
-export const selectOllamaEndpoint = (state: AppStateWithPagination): string => {
-  return state.settings.ollamaEndpoint ?? '';
-};
-
-// =============================================================================
-// PAGINATION SELECTORS
-// =============================================================================
-
-export const selectPaginatedMessages = (state: AppStateWithPagination): Message[] => {
-  if (!state.currentSessionId) return EMPTY_ARRAY;
-  const allMessages = state.chatHistory[state.currentSessionId] || EMPTY_ARRAY;
-
-  // For pagination, we paginate from the END (newest messages first conceptually)
-  // But display oldest-to-newest, so we slice from the end
-  const totalMessages = allMessages.length;
-  const { messagesPerPage, currentPage } = state;
-
-  // Calculate offset from the end
-  const endOffset = totalMessages - (currentPage * messagesPerPage);
-  const startOffset = Math.max(0, endOffset - messagesPerPage);
-
-  return allMessages.slice(startOffset, endOffset);
-};
-
-export const selectTotalPages = (state: AppStateWithPagination): number => {
-  if (!state.currentSessionId) return 0;
-  const allMessages = state.chatHistory[state.currentSessionId] || EMPTY_ARRAY;
-  return Math.ceil(allMessages.length / state.messagesPerPage);
-};
-
-export const selectPaginationInfo = (state: AppStateWithPagination) => ({
-  currentPage: state.currentPage,
-  totalPages: selectTotalPages(state),
-  messagesPerPage: state.messagesPerPage,
-  totalMessages: selectMessageCount(state),
-  hasNextPage: state.currentPage < selectTotalPages(state) - 1,
-  hasPreviousPage: state.currentPage > 0,
-});
+export {
+  // Basic state
+  selectTheme,
+  selectProvider,
+  selectCount,
+  selectCurrentSessionId,
+  selectCurrentView,
+  // Settings
+  selectSettings,
+  selectIsApiKeySet,
+  selectOllamaEndpoint,
+  selectSystemPrompt,
+  selectDefaultProvider,
+  selectUseSwarm,
+  selectGeminiApiKey,
+  // Sessions
+  selectSessions,
+  selectSessionById,
+  selectCurrentSession,
+  selectSessionCount,
+  selectSessionHasMessages,
+  selectSessionMetadata,
+  // Messages
+  selectChatHistory,
+  selectCurrentMessages,
+  selectMessagesBySessionId,
+  selectMessageCount,
+  selectMessageCountBySessionId,
+  selectHasMessages,
+  selectLastMessage,
+  selectLastMessageBySessionId,
+  // Composite
+  selectIsAppReady,
+  selectApiConfigStatus,
+  selectRuntimeSettings,
+  // Pagination
+  selectPaginatedMessages,
+  selectTotalPages,
+  selectPaginationInfo,
+} from './selectors';
 
 export default useAppStore;

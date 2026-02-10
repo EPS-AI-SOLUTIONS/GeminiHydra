@@ -42,31 +42,36 @@ export const useLlamaChat = (): UseLlamaChatReturn => {
   // Setup stream listener
   useEffect(() => {
     let mounted = true;
+    let unlisten: (() => void) | null = null;
 
-    const setupListener = async () => {
-      unlistenRef.current = await listen<StreamPayload>(TAURI_EVENTS.LLAMA_STREAM, (event) => {
-        if (!mounted) return;
+    listen<StreamPayload>(TAURI_EVENTS.LLAMA_STREAM, (event) => {
+      if (!mounted) return;
 
-        const { chunk, done } = event.payload;
+      const { chunk, done } = event.payload;
 
-        if (chunk) {
-          setStreamContent((prev) => prev + chunk);
-        }
+      if (chunk) {
+        setStreamContent((prev) => prev + chunk);
+      }
 
-        if (done) {
-          setIsStreaming(false);
-        }
-      });
-    };
-
-    setupListener();
+      if (done) {
+        setIsStreaming(false);
+      }
+    }).then((fn) => {
+      if (mounted) {
+        unlisten = fn;
+        unlistenRef.current = fn;
+      } else {
+        // Component unmounted before listener resolved - clean up immediately
+        fn();
+      }
+    });
 
     return () => {
       mounted = false;
-      if (unlistenRef.current) {
-        unlistenRef.current();
-        unlistenRef.current = null;
+      if (unlisten) {
+        unlisten();
       }
+      unlistenRef.current = null;
     };
   }, []);
 

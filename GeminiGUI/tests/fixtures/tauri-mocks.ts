@@ -1,15 +1,18 @@
 /**
  * Tauri API Mocks for Playwright E2E Tests
  *
- * These mocks simulate Tauri's invoke and event systems
- * to allow testing the React frontend without the Rust backend.
+ * Pre-seeds window.__TAURI_MOCK__ and window.__TAURI_INTERNALS__ BEFORE
+ * the app bundle loads. The Vite-aliased mock (src/mocks/tauri.ts) will
+ * find this pre-seeded state via getOrCreateMockState() and use it,
+ * ensuring both Playwright tests and app code share the SAME event
+ * listeners and invoke results.
  */
 
 import type { Page } from '@playwright/test';
 
 // Types for mock system
 interface MockInvokeHandlers {
-  [command: string]: (args?: Record<string, unknown>) => unknown;
+  [command: string]: unknown;
 }
 
 interface StreamPayload {
@@ -31,13 +34,12 @@ interface KnowledgeGraph {
   edges: Array<{ source: string; target: string; label: string }>;
 }
 
-// Default mock responses
-export const DEFAULT_MOCK_RESPONSES = {
+// Default mock responses (JSON-serializable values only)
+// Function-based handlers (run_system_command) are added by the Vite mock
+export const DEFAULT_MOCK_RESPONSES: Record<string, unknown> = {
   greet: 'Test Mode Active - GeminiGUI',
-  run_system_command: (args?: Record<string, unknown>) =>
-    `Mock output for: ${args?.command || 'unknown'}`,
   spawn_swarm_agent_v2: null,
-  get_ollama_models: ['llama3.2:3b', 'qwen2.5-coder:1.5b', 'phi3:mini'],
+  get_ollama_models: ['qwen3:4b', 'qwen3:4b', 'qwen3:1.7b'],
   get_gemini_models: ['gemini-3-flash-preview', 'gemini-3-pro-preview'],
   get_gemini_models_sorted: ['gemini-3-flash-preview', 'gemini-3-pro-preview'],
   get_bridge_state: { requests: [], auto_approve: false },
@@ -54,84 +56,63 @@ export const DEFAULT_MOCK_RESPONSES = {
   get_env_vars: {},
   start_ollama_server: true,
   prompt_ollama: 'Mock Ollama response',
-  prompt_ollama_stream: null, // Handled via events
-  prompt_gemini_stream: null, // Handled via events
+  prompt_ollama_stream: null,
+  prompt_gemini_stream: null,
 };
 
 /**
- * Creates the Tauri mock injection script for page.addInitScript()
+ * Creates the Tauri mock pre-seed script for page.addInitScript().
+ *
+ * This runs BEFORE any app JavaScript. It sets up:
+ * 1. window.__TAURI_MOCK__ with invokeResults, eventListeners, invokeHistory
+ * 2. window.__TAURI_INTERNALS__ for isTauri guards
+ * 3. Helper functions for Playwright test control
+ *
+ * When the Vite mock module loads later, its getOrCreateMockState() finds
+ * the existing window.__TAURI_MOCK__ and reuses it (merging function-based
+ * defaults that can't be JSON-serialized here).
  */
 export function createTauriMockScript(customHandlers: Partial<MockInvokeHandlers> = {}): string {
-  const handlersJson = JSON.stringify({
-    ...DEFAULT_MOCK_RESPONSES,
-    ...customHandlers,
-  });
+  // Filter out function values since JSON.stringify drops them
+  const serializableHandlers: Record<string, unknown> = {};
+  const merged = { ...DEFAULT_MOCK_RESPONSES, ...customHandlers };
+  for (const [key, value] of Object.entries(merged)) {
+    if (typeof value !== 'function') {
+      serializableHandlers[key] = value;
+    }
+  }
+
+  const handlersJson = JSON.stringify(serializableHandlers);
 
   return `
     (function() {
-      // Create mock store accessible from tests
+      // Pre-seed the shared mock state BEFORE the Vite mock module loads.
+      // The Vite mock's getOrCreateMockState() checks for this and reuses it.
       window.__TAURI_MOCK__ = {
         eventListeners: new Map(),
         invokeResults: ${handlersJson},
         invokeHistory: [],
       };
 
-      // Mock @tauri-apps/api/core invoke
+      // Pre-seed __TAURI_INTERNALS__ for isTauri guards in the app.
+      // The Vite mock's ensureTauriInternals() checks for this and keeps it.
       window.__TAURI_INTERNALS__ = {
         invoke: async function(cmd, args) {
-          // Record invocation for debugging
-          window.__TAURI_MOCK__.invokeHistory.push({ cmd, args, timestamp: Date.now() });
-
-          const mock = window.__TAURI_MOCK__;
-          const handler = mock.invokeResults[cmd];
-
-          if (handler !== undefined) {
-            if (typeof handler === 'function') {
-              return handler(args);
-            }
-            return handler;
-          }
-
-          console.warn('[Tauri Mock] Unmocked command:', cmd, args);
+          // Fallback invoke (overwritten by Vite mock at module load)
+          var mock = window.__TAURI_MOCK__;
+          mock.invokeHistory.push({ cmd: cmd, args: args, timestamp: Date.now() });
+          var handler = mock.invokeResults[cmd];
+          if (typeof handler === 'function') return handler(args);
+          if (handler !== undefined) return handler;
+          console.warn('[Tauri Mock Pre-seed] Unmocked command:', cmd);
           return null;
         }
       };
 
-      // Mock window.__TAURI__ for event system
-      window.__TAURI__ = {
-        event: {
-          listen: function(eventName, handler) {
-            const mock = window.__TAURI_MOCK__;
-            if (!mock.eventListeners.has(eventName)) {
-              mock.eventListeners.set(eventName, new Set());
-            }
-            mock.eventListeners.get(eventName).add(handler);
-
-            // Return unlisten function
-            return Promise.resolve(function() {
-              mock.eventListeners.get(eventName)?.delete(handler);
-            });
-          },
-          emit: function(eventName, payload) {
-            const mock = window.__TAURI_MOCK__;
-            const listeners = mock.eventListeners.get(eventName);
-            if (listeners) {
-              listeners.forEach(function(handler) {
-                handler({ payload: payload });
-              });
-            }
-            return Promise.resolve();
-          }
-        },
-        core: {
-          invoke: window.__TAURI_INTERNALS__.invoke
-        }
-      };
-
-      // Helper for tests to emit events
+      // Helper for Playwright tests to emit events to the shared listener Map
       window.__emitTauriEvent = function(eventName, payload) {
-        const mock = window.__TAURI_MOCK__;
-        const listeners = mock.eventListeners.get(eventName);
+        var mock = window.__TAURI_MOCK__;
+        var listeners = mock.eventListeners.get(eventName);
         if (listeners) {
           listeners.forEach(function(handler) {
             handler({ payload: payload });
@@ -139,12 +120,12 @@ export function createTauriMockScript(customHandlers: Partial<MockInvokeHandlers
         }
       };
 
-      // Helper to set mock invoke result
+      // Helper to set mock invoke result dynamically during tests
       window.__setMockInvokeResult = function(cmd, result) {
         window.__TAURI_MOCK__.invokeResults[cmd] = result;
       };
 
-      // Helper to get invoke history
+      // Helper to get invoke history for assertions
       window.__getInvokeHistory = function() {
         return window.__TAURI_MOCK__.invokeHistory;
       };
@@ -154,7 +135,7 @@ export function createTauriMockScript(customHandlers: Partial<MockInvokeHandlers
         window.__TAURI_MOCK__.invokeHistory = [];
       };
 
-      console.log('[Tauri Mock] Initialized successfully');
+      console.log('[Tauri Mock] Pre-seeded for Playwright tests');
     })();
   `;
 }

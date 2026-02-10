@@ -90,10 +90,16 @@ export interface Settings {
 }
 
 // ============================================================================
+// VIEW TYPES (Dashboard Navigation)
+// ============================================================================
+
+export type View = 'chat' | 'agents' | 'history' | 'settings' | 'status';
+
+// ============================================================================
 // THEME TYPES
 // ============================================================================
 
-export type Theme = 'dark' | 'light';
+export type Theme = 'dark' | 'light' | 'system';
 
 // ============================================================================
 // STREAM TYPES (Tauri Events)
@@ -138,6 +144,47 @@ export interface AgentMemory {
 // shared types at ../../../src/types/knowledge.types.ts
 
 // ============================================================================
+// AGENT TYPES (Witcher Swarm)
+// ============================================================================
+
+export type AgentRole =
+  | 'geralt' | 'dijkstra' | 'yennefer' | 'regis' | 'triss' | 'vesemir'
+  | 'jaskier' | 'ciri' | 'eskel' | 'lambert' | 'zoltan' | 'philippa';
+
+export type AgentTier = 'commander' | 'coordinator' | 'executor';
+
+export interface AgentStatus {
+  role: AgentRole;
+  tier: AgentTier;
+  status: 'idle' | 'thinking' | 'done' | 'error';
+  taskCount?: number;
+  tokensUsed?: number;
+}
+
+// ============================================================================
+// EXECUTION PLAN TYPES
+// ============================================================================
+
+export type ExecutionPhase = 'PRE-A' | 'A' | 'B' | 'C' | 'D';
+
+export interface ExecutionTask {
+  id: number;
+  agent: AgentRole;
+  description: string;
+  status: 'pending' | 'running' | 'completed' | 'failed';
+  result?: string;
+  duration?: number;
+  tokens?: number;
+}
+
+export interface ExecutionPlan {
+  objective: string;
+  tasks: ExecutionTask[];
+  phase: ExecutionPhase;
+  status: 'planning' | 'executing' | 'synthesizing' | 'completed' | 'failed';
+}
+
+// ============================================================================
 // APP STATE TYPES (Zustand Store)
 // ============================================================================
 
@@ -146,6 +193,7 @@ export interface AppState {
   count: number;
   theme: Theme;
   provider: Provider;
+  currentView: View;
 
   // Session Management
   sessions: Session[];
@@ -166,6 +214,9 @@ export interface AppState {
 
   // Actions - Theme
   toggleTheme: () => void;
+
+  // Actions - View
+  setCurrentView: (view: View) => void;
 
   // Actions - Provider
   setProvider: (provider: Provider) => void;

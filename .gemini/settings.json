@@ -57,13 +57,13 @@
     "parallelToolCalls": true
   },
   "model": {
-    "name": "gemini-2.5-pro",
+    "name": "gemini-3-pro-preview",
     "autoSelect": false,
     "preferences": {
-      "code": "gemini-2.5-pro",
-      "simple": "gemini-2.5-flash",
-      "fast": "gemini-2.0-flash-lite",
-      "default": "gemini-2.5-pro"
+      "code": "gemini-3-pro-preview",
+      "simple": "gemini-3-pro-preview",
+      "fast": "gemini-3-pro-preview",
+      "default": "gemini-3-pro-preview"
     },
     "cachePrompts": true,
     "cacheTtl": 3600
@@ -74,7 +74,7 @@
     "maxRetries": 3,
     "retryDelay": 1000,
     "fallbacks": {
-      "google": ["gemini-2.5-pro", "gemini-2.5-flash", "gemini-2.0-flash-lite"]
+      "google": ["gemini-3-pro-preview", "gemini-3-pro-preview"]
     },
     "userPreferences": {
       "language": "pl",

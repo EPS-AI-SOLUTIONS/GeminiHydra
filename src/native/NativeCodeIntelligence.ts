@@ -35,7 +35,7 @@ import * as path from 'path';
 import { glob } from 'glob';
 import { nativeLSP, SymbolInformation, DocumentSymbol, SymbolKind, Location, Range } from './NativeLSP.js';
 import { createSearch } from './NativeSearch.js';
-import { NativeFileSystem, createFileSystem } from './NativeFileSystem.js';
+import { NativeFileSystem, createFileSystem } from './nativefilesystem/NativeFileSystem.js';
 import { escapeRegex } from '../utils/regex.js';
 
 // ============================================================

@@ -77,7 +77,7 @@ export type {
 export {
   NativeFileSystem,
   createFileSystem
-} from './NativeFileSystem.js';
+} from './nativefilesystem/NativeFileSystem.js';
 
 export type {
   // NOTE: FileInfo is now exported from types.ts as the canonical unified type
@@ -85,7 +85,7 @@ export type {
   DirectoryTree,
   WatchEvent,
   NativeFileSystemConfig
-} from './NativeFileSystem.js';
+} from './nativefilesystem/index.js';
 
 // NOTE: FileSearchMatch alias REMOVED - use SearchMatch directly from types.ts
 // The old alias (SearchMatch as FileSearchMatch) was confusing and redundant
@@ -109,7 +109,7 @@ export type {
 export {
   NativeShell,
   createShell
-} from './NativeShell.js';
+} from './nativeshell/NativeShell.js';
 
 export type {
   ProcessInfo,
@@ -120,9 +120,9 @@ export type {
   ShellInfo,
   ShellTimeoutConfig,
   TimeoutProfile
-} from './NativeShell.js';
+} from './nativeshell/index.js';
 
-export { TIMEOUT_PROFILES, CwdValidationError } from './NativeShell.js';
+export { TIMEOUT_PROFILES, CwdValidationError } from './nativeshell/index.js';
 
 // Interactive Prompt Handler - for handling interactive shell prompts
 export {
@@ -418,9 +418,9 @@ export type {
 // NativeTools - Unified API
 // ============================================================
 
-import { NativeFileSystem, createFileSystem } from './NativeFileSystem.js';
+import { NativeFileSystem, createFileSystem } from './nativefilesystem/NativeFileSystem.js';
 import { NativeMemory, createMemory } from './NativeMemory.js';
-import { NativeShell, createShell } from './NativeShell.js';
+import { NativeShell, createShell } from './nativeshell/NativeShell.js';
 import { ShellManager, createShellManager } from './ShellManager.js';
 import { NativeSearch, createSearch } from './NativeSearch.js';
 import { NativeCodeIntelligence, nativeCodeIntelligence } from './NativeCodeIntelligence.js';

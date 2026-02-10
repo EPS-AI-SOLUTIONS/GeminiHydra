@@ -27,7 +27,7 @@ const DEFAULT_CONFIG: OllamaConfig = {
 };
 
 // Models to warmup on startup
-const WARMUP_MODELS = ['qwen2.5-coder:1.5b', 'llama3.2:3b'];
+const WARMUP_MODELS = ['qwen3:4b', 'qwen3:0.6b'];
 
 class OllamaManager {
   private config: OllamaConfig;
@@ -389,4 +389,5 @@ class OllamaManager {
 export const ollamaManager = new OllamaManager();
 
 // Export class for custom instances
-export { OllamaManager, OllamaConfig };
+export { OllamaManager };
+export type { OllamaConfig };

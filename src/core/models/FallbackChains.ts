@@ -27,15 +27,15 @@ export const AGENT_FALLBACK_CHAINS: Record<string, FallbackChainEntry[]> = {
     { model: GEMINI_MODELS.FLASH, temperature: MODEL_TEMPERATURES.fast_scout, role: 'Quick Analysis' }
   ],
   Yennefer: [
-    { model: 'qwen2.5-coder:1.5b', temperature: MODEL_TEMPERATURES.local, role: 'Code Primary' },
+    { model: 'qwen3:4b', temperature: MODEL_TEMPERATURES.local, role: 'Code Primary' },
     { model: GEMINI_MODELS.FLASH, temperature: MODEL_TEMPERATURES.fast_scout, role: 'Fallback' }
   ],
   Lambert: [
-    { model: 'qwen2.5-coder:1.5b', temperature: MODEL_TEMPERATURES.local, role: 'Debug Primary' },
+    { model: 'qwen3:4b', temperature: MODEL_TEMPERATURES.local, role: 'Debug Primary' },
     { model: GEMINI_MODELS.FLASH, temperature: MODEL_TEMPERATURES.flagship, role: 'Fallback' }
   ],
   default: [
-    { model: 'llama3.2:3b', temperature: MODEL_TEMPERATURES.local, role: 'Local Primary' },
+    { model: 'qwen3:4b', temperature: MODEL_TEMPERATURES.local, role: 'Local Primary' },
     { model: GEMINI_MODELS.FLASH, temperature: MODEL_TEMPERATURES.fast_scout, role: 'Cloud Fallback' }
   ]
 };

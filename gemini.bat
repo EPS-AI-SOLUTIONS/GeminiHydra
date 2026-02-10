@@ -1,4 +1,5 @@
 @echo off
+chcp 65001 >nul
 REM GeminiHydra v14.0 - School of the Wolf Edition
 REM Interactive Chat Launcher with STDIN fixes
 

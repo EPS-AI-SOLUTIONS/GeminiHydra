@@ -79,7 +79,7 @@ describe('useApi hooks', () => {
       const mockSettings = {
         theme: 'dark',
         streaming: true,
-        model: 'gemini-2.5-flash',
+        model: 'gemini-3-pro-preview',
       };
 
       vi.mocked(global.fetch).mockResolvedValueOnce({

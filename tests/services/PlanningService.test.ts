@@ -2,13 +2,16 @@
  * Tests for Planning Service
  */
 
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { PlanningService, planningService } from '../../src/services/PlanningService.js';
 
-// Mock logger
+// Mock logger (used by BaseAgentService which PlanningService imports)
 vi.mock('../../src/services/Logger.js', () => ({
   logger: {
     warn: vi.fn(),
+    debug: vi.fn(),
+    info: vi.fn(),
+    error: vi.fn(),
   },
 }));
 
@@ -128,8 +131,8 @@ That's the plan!`;
 
       const result = service.validateTasks(tasks);
 
-      // MAX_TASKS is 10
-      expect(result.length).toBeLessThanOrEqual(10);
+      // MAX_TASKS is 3
+      expect(result.length).toBeLessThanOrEqual(3);
     });
 
     it('should handle empty task list', () => {

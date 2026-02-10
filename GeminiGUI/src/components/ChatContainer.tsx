@@ -10,6 +10,7 @@ import type { Message } from '../types';
 
 // Sub-components
 import { MessageList, ChatInput, DragDropZone, ChatMessageContextMenu } from './chat';
+import { WelcomeScreen } from './WelcomeScreen';
 
 // ============================================================================
 // TYPES
@@ -94,15 +95,19 @@ export const ChatContainer = memo<ChatContainerProps>(
     return (
       <DragDropZone onImageDrop={handleImageDrop} onTextDrop={handleTextDrop}>
         <div className="flex-1 h-full flex flex-col min-h-0 relative gap-2">
-          {/* Messages Panel */}
+          {/* Messages Panel or Welcome Screen */}
           <div className="glass-panel flex-1 min-h-0 flex flex-col">
             <div className="flex-1 min-h-0">
-              <MessageList
-                messages={messages}
-                isStreaming={isStreaming}
-                onExecuteCommand={onExecuteCommand}
-                onContextMenu={handleContextMenu}
-              />
+              {messages.length === 0 ? (
+                <WelcomeScreen onQuickAction={(cmd) => handleSubmit(cmd, null)} />
+              ) : (
+                <MessageList
+                  messages={messages}
+                  isStreaming={isStreaming}
+                  onExecuteCommand={onExecuteCommand}
+                  onContextMenu={handleContextMenu}
+                />
+              )}
             </div>
           </div>
 

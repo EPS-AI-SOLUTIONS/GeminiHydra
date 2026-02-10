@@ -1,7 +1,7 @@
 /**
  * GeminiHydra - Self-Healing Service (Phase C)
  * Detects failures, generates repair tasks, executes fix cycles
- * Uses gemini-3-flash-preview for evaluation
+ * Uses gemini-3-pro-preview for evaluation
  */
 
 import type {

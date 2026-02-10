@@ -25,7 +25,7 @@ export const DEFAULT_SETTINGS: Settings = {
   streaming: true,
   verbose: false,
   language: 'pl',
-  model: 'gemini-2.5-flash',
+  model: 'gemini-3-pro-preview',
   temperature: 0.7,
   maxTokens: 8192,
 };

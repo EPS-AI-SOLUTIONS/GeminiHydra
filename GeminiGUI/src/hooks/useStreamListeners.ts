@@ -68,55 +68,65 @@ export const useStreamListeners = ({
     abortControllerRef.current = controller;
     const { signal } = controller;
 
-    // Listen to Llama/Gemini stream events
-    const unlistenLlama = listen<StreamPayload>(
-      TAURI_EVENTS.LLAMA_STREAM,
-      (event) => {
-        if (signal.aborted) return;
-        try {
-          handleStreamEvent(event.payload, signal);
-        } catch (error) {
-          console.error('[StreamListeners] Llama event error:', error);
-          onError?.(error);
-        }
-      }
-    );
+    // Track resolved unlisten functions for synchronous cleanup
+    const unlistenFns: Array<() => void> = [];
+    let cleaned = false;
 
-    // Listen to Gemini stream events
-    const unlistenGemini = listen<StreamPayload>(
-      TAURI_EVENTS.GEMINI_STREAM,
-      (event) => {
-        if (signal.aborted) return;
-        try {
-          handleStreamEvent(event.payload, signal);
-        } catch (error) {
-          console.error('[StreamListeners] Gemini event error:', error);
-          onError?.(error);
+    const setupListeners = async () => {
+      const fn1 = await listen<StreamPayload>(
+        TAURI_EVENTS.LLAMA_STREAM,
+        (event) => {
+          if (signal.aborted) return;
+          try {
+            handleStreamEvent(event.payload, signal);
+          } catch (error) {
+            console.error('[StreamListeners] Llama event error:', error);
+            onError?.(error);
+          }
         }
-      }
-    );
+      );
+      if (cleaned) { fn1(); return; }
+      unlistenFns.push(fn1);
 
-    // Listen to Swarm events
-    const unlistenSwarm = listen<StreamPayload>(
-      TAURI_EVENTS.SWARM_DATA,
-      (event) => {
-        if (signal.aborted) return;
-        try {
-          handleStreamEvent(event.payload, signal);
-        } catch (error) {
-          console.error('[StreamListeners] Swarm event error:', error);
-          onError?.(error);
+      const fn2 = await listen<StreamPayload>(
+        TAURI_EVENTS.GEMINI_STREAM,
+        (event) => {
+          if (signal.aborted) return;
+          try {
+            handleStreamEvent(event.payload, signal);
+          } catch (error) {
+            console.error('[StreamListeners] Gemini event error:', error);
+            onError?.(error);
+          }
         }
-      }
-    );
+      );
+      if (cleaned) { fn2(); return; }
+      unlistenFns.push(fn2);
+
+      const fn3 = await listen<StreamPayload>(
+        TAURI_EVENTS.SWARM_DATA,
+        (event) => {
+          if (signal.aborted) return;
+          try {
+            handleStreamEvent(event.payload, signal);
+          } catch (error) {
+            console.error('[StreamListeners] Swarm event error:', error);
+            onError?.(error);
+          }
+        }
+      );
+      if (cleaned) { fn3(); return; }
+      unlistenFns.push(fn3);
+    };
+
+    setupListeners();
 
     // Cleanup listeners on unmount or dependency change
     return () => {
+      cleaned = true;
       controller.abort();
       abortControllerRef.current = null;
-      unlistenLlama.then((f) => f());
-      unlistenGemini.then((f) => f());
-      unlistenSwarm.then((f) => f());
+      unlistenFns.forEach((fn) => fn());
     };
   }, [handleStreamEvent, onError]);
 

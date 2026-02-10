@@ -15,26 +15,36 @@ import type {
 } from '../types/index.js';
 
 // Recommended models by difficulty (GGUF format)
-export const LLAMA_CPP_MODELS = {
-  simple: [
-    'llama-3.2-1b',
-    'qwen2.5-1.5b',
-    'phi-3-mini',
-    'tinyllama-1.1b',
+export const LLAMA_CPP_MODELS: Record<TaskDifficulty, readonly string[]> = {
+  trivial: [
+    'qwen3-0.6b',
+    'qwen3-1.7b',
   ],
-  moderate: [
-    'llama-3.2-3b',
-    'qwen2.5-7b',
-    'mistral-7b',
-    'codellama-7b',
+  simple: [
+    'qwen3-0.6b',
+    'qwen3-1.7b',
+  ],
+  medium: [
+    'qwen3-4b',
+    'qwen3-8b',
   ],
   complex: [
-    'llama-3.1-8b',
-    'qwen2.5-14b',
-    'deepseek-coder-6.7b',
-    'codellama-13b',
+    'qwen3-14b',
+    'qwen3-32b',
   ],
-} as const;
+  moderate: [
+    'qwen3-4b',
+    'qwen3-8b',
+  ],
+  expert: [
+    'qwen3-14b',
+    'qwen3-32b',
+  ],
+  critical: [
+    'qwen3-14b',
+    'qwen3-32b',
+  ],
+};
 
 export interface LlamaCppConfig {
   baseUrl?: string;

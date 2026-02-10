@@ -131,8 +131,8 @@ export class GitIntegration {
     }
 
     const model = genAI.getGenerativeModel({
-      model: 'gemini-3-flash-preview',
-      generationConfig: { temperature: 0.3, maxOutputTokens: 200 }
+      model: 'gemini-3-pro-preview',
+      generationConfig: { temperature: 0.9, maxOutputTokens: 512 }
     });
 
     const prompt = `Generate a concise git commit message for these changes.
@@ -252,8 +252,8 @@ Commit message (one line, max 72 chars):`;
     const diff = await this.git(`diff ${baseBranch}...HEAD --stat`);
 
     const model = genAI.getGenerativeModel({
-      model: 'gemini-3-flash-preview',
-      generationConfig: { temperature: 0.3, maxOutputTokens: 500 }
+      model: 'gemini-3-pro-preview',
+      generationConfig: { temperature: 1.0, maxOutputTokens: 1024 }
     });
 
     const prompt = `Generate a pull request title and description.

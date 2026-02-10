@@ -20,7 +20,7 @@ import { exec } from 'child_process';
 import { promisify } from 'util';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { FileHandlers } from '../files/FileHandlers.js';
-import { Agent } from '../core/Agent.js';
+import { Agent } from '../core/agent/Agent.js';
 import { GEMINIHYDRA_DIR } from '../config/paths.config.js';
 import 'dotenv/config';
 

@@ -30,7 +30,9 @@
       "Bash(powershell -NoProfile -Command \"Set-Location ''C:\\\\Users\\\\BIURODOM\\\\Desktop\\\\GeminiHydra''; npx tsc --noEmit 2>&1\")",
       "Bash(powershell -NoProfile -Command \"cd ''C:\\\\Users\\\\BIURODOM\\\\Desktop\\\\GeminiHydra''; & npx tsc --noEmit *>&1\")",
       "Bash(powershell -NoProfile -Command \"cd ''C:\\\\Users\\\\BIURODOM\\\\Desktop\\\\GeminiHydra''; npx tsc --noEmit src/mcp/MCPManager.ts src/core/PhasePreA.ts src/core/GraphProcessor.ts src/core/PromptInjectionDetector.ts src/core/FactualGrounding.ts 2>&1; Write-Output ''FINISHED''\")",
-      "Bash(echo:*)"
+      "Bash(echo:*)",
+      "WebFetch(domain:qwen.ai)",
+      "WebFetch(domain:v2.tauri.app)"
     ],
     "deny": []
   },

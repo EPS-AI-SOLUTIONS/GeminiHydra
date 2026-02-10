@@ -38,7 +38,6 @@ interface YoloConfig {
   shellAccess?: boolean;             // Execute commands
   networkAccess?: boolean;           // API calls
   maxConcurrency?: number;           // Max 12
-  enablePhasePreA?: boolean;         // Translation/classification
   enablePhaseC?: boolean;            // Self-healing
   maxRepairCycles?: number;          // Default: 1
   forceModel?: 'flash' | 'pro' | 'auto';
@@ -58,7 +57,6 @@ interface YoloConfig {
 | `shellAccess` | `boolean` | `false` | Permits execution of shell commands |
 | `networkAccess` | `boolean` | `false` | Enables external API calls and network requests |
 | `maxConcurrency` | `number` | `4` | Maximum parallel operations (capped at 12) |
-| `enablePhasePreA` | `boolean` | `false` | Enables pre-processing phase for translation and classification |
 | `enablePhaseC` | `boolean` | `false` | Enables self-healing error recovery phase |
 | `maxRepairCycles` | `number` | `1` | Maximum attempts for self-healing repairs |
 | `forceModel` | `string` | `'auto'` | Force a specific model: `'flash'`, `'pro'`, or `'auto'` |

@@ -3,6 +3,8 @@
  * Type definitions for AI providers
  */
 
+import type { TaskDifficulty } from './task.js';
+
 // ============================================
 // Chat Completion Types (OpenAI-compatible)
 // ============================================
@@ -269,10 +271,8 @@ export interface CircuitBreakerConfig {
 // Pipeline & Task Types
 // ============================================
 
-/**
- * Task difficulty level
- */
-export type TaskDifficulty = 'simple' | 'moderate' | 'complex';
+// TaskDifficulty is now in task.ts (single source of truth)
+export type { TaskDifficulty } from './task.js';
 
 /**
  * Pipeline phase

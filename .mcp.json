@@ -9,9 +9,8 @@
       "args": ["--project-from-cwd", "--context", "claude-code"]
     },
     "document-edit": {
-      "command": "python",
-      "args": ["-m", "document_edit_mcp.server"],
-      "enabled": false
+      "command": "C:\\Users\\BIURODOM\\AppData\\Local\\Programs\\Python\\Python311\\python.exe",
+      "args": ["-m", "claude_document_mcp.server"]
     }
   }
 }

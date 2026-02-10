@@ -1,12 +1,96 @@
 {
-  "models": [
-    {
-      "name": "Model1",
-      "description": "Tutaj opis modelu"
+  "version": "14.0.0",
+  "models": {
+    "gemini": {
+      "gemini-3-pro-preview": {
+        "description": "Gemini 3 Pro Preview - primary model for complex tasks",
+        "type": "cloud",
+        "provider": "google",
+        "contextWindow": 128000,
+        "maxOutputTokens": 8192,
+        "pricing": {
+          "inputPer1M": 1.25,
+          "outputPer1M": 10.00
+        }
+      },
+      "gemini-3-flash-preview": {
+        "description": "Gemini 3 Flash Preview - fast model for simple tasks",
+        "type": "cloud",
+        "provider": "google",
+        "contextWindow": 128000,
+        "maxOutputTokens": 8192,
+        "pricing": {
+          "inputPer1M": 0.15,
+          "outputPer1M": 0.60
+        }
+      }
     },
-    {
-      "name": "Model2",
-      "description": "Tutaj opis drugiego modelu"
+    "local": {
+      "Qwen3-0.6B-Q4_K_M.gguf": {
+        "description": "Qwen3 0.6B - scout, minimal resources",
+        "type": "local",
+        "provider": "llama.cpp",
+        "contextWindow": 4096,
+        "tier": "executor"
+      },
+      "Qwen3-1.7B-Q4_K_M.gguf": {
+        "description": "Qwen3 1.7B - fast local tasks",
+        "type": "local",
+        "provider": "llama.cpp",
+        "contextWindow": 4096,
+        "tier": "executor"
+      },
+      "Qwen3-4B-Q4_K_M.gguf": {
+        "description": "Qwen3 4B - default local model, balanced",
+        "type": "local",
+        "provider": "llama.cpp",
+        "contextWindow": 8192,
+        "tier": "executor"
+      },
+      "Qwen3-8B-Q4_K_M.gguf": {
+        "description": "Qwen3 8B - coder model, complex tasks",
+        "type": "local",
+        "provider": "llama.cpp",
+        "contextWindow": 8192,
+        "tier": "coordinator"
+      },
+      "Qwen3-14B-Q4_K_M.gguf": {
+        "description": "Qwen3 14B - premium local model",
+        "type": "local",
+        "provider": "llama.cpp",
+        "contextWindow": 8192,
+        "tier": "coordinator"
+      }
+    },
+    "ollama": {
+      "qwen3:4b": {
+        "description": "Ollama Qwen3 4B - default for Phase B execution",
+        "type": "local",
+        "provider": "ollama"
+      },
+      "qwen3:0.6b": {
+        "description": "Ollama Qwen3 0.6B - minimal",
+        "type": "local",
+        "provider": "ollama"
+      },
+      "qwen3:8b": {
+        "description": "Ollama Qwen3 8B - balanced",
+        "type": "local",
+        "provider": "ollama"
+      }
     }
-  ]
+  },
+  "defaults": {
+    "primary": "gemini-3-pro-preview",
+    "fast": "gemini-3-flash-preview",
+    "local": "Qwen3-4B-Q4_K_M.gguf",
+    "ollama": "qwen3:4b"
+  },
+  "legacyAliases": {
+    "gemini-2.5-pro": "gemini-3-pro-preview",
+    "gemini-2.5-flash": "gemini-3-flash-preview",
+    "gemini-2.0-pro": "gemini-3-pro-preview",
+    "gemini-pro": "gemini-3-pro-preview",
+    "gemini-flash": "gemini-3-flash-preview"
+  }
 }

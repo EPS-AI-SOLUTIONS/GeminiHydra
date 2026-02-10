@@ -180,7 +180,7 @@ export const ChatInput = memo<ChatInputProps>(
               onKeyDown={handleKeyDown}
               onPaste={handlePaste}
               disabled={isStreaming}
-              placeholder={pendingImage ? 'Opisz cel wizualny...' : 'Wpisz polecenie dla Roju...'}
+              placeholder={pendingImage ? 'Opisz cel wizualny...' : 'Wpisz polecenie...'}
               className={cn(
                 "w-full bg-[var(--matrix-input-bg)] text-[var(--matrix-text)]",
                 "rounded-2xl px-5 py-3 pr-24", // pr-24 for counters/buttons inside
@@ -215,7 +215,7 @@ export const ChatInput = memo<ChatInputProps>(
             className={cn(
               "flex items-center justify-center p-3.5 rounded-xl transition-all duration-300 mb-[1px]", // align with textarea bottom
               "bg-[var(--matrix-accent)] text-black shadow-[0_0_15px_rgba(0,255,0,0.15)]",
-              "hover:bg-[#00ff41] hover:shadow-[0_0_25px_rgba(0,255,0,0.5)] hover:scale-105 hover:-translate-y-0.5",
+              "hover:bg-[#00ff41] hover:shadow-[0_0_12px_rgba(0,255,0,0.3)] hover:scale-[1.03]",
               "active:scale-95 active:translate-y-0",
               "disabled:opacity-20 disabled:cursor-not-allowed disabled:hover:scale-100 disabled:shadow-none disabled:bg-gray-800 disabled:text-gray-500"
             )}

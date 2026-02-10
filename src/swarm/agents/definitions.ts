@@ -9,8 +9,8 @@ import type { AgentRole, AgentSpec, ModelTier } from '../../types/swarm.js';
  * Model tiers for 3-level hierarchy
  */
 export const MODEL_TIERS: Record<ModelTier, string> = {
-  commander: 'gemini-2.0-pro-exp',      // Planning, assigning
-  coordinator: 'gemini-2.0-flash-exp',  // Synthesis, analysis, summary
+  commander: 'gemini-3-pro-preview',     // Planning, assigning
+  coordinator: 'gemini-3-pro-preview',  // Synthesis, analysis, summary
   executor: 'llama.cpp'                  // Local execution
 };
 

@@ -100,6 +100,26 @@ export const escapeForShell = (code: string): string => {
 };
 
 /**
+ * Escapes special characters for safe PowerShell execution.
+ * CRITICAL: GeminiHydra runs on Windows with PowerShell as default shell.
+ * PowerShell has different metacharacters than Bash.
+ */
+export const escapeForPowerShell = (code: string): string => {
+  return code
+    .replace(/`/g, '``')        // Escape backticks (PS escape char)
+    .replace(/"/g, '`"')        // Escape double quotes
+    .replace(/\$/g, '`$')       // Escape variable expansion
+    .replace(/;/g, '`;')        // Escape statement separator
+    .replace(/\|/g, '`|')       // Escape pipe operator
+    .replace(/&/g, '`&')        // Escape call operator
+    .replace(/\(/g, '`(')       // Escape subexpression
+    .replace(/\)/g, '`)')       // Escape subexpression
+    .replace(/\{/g, '`{')       // Escape script block
+    .replace(/\}/g, '`}')       // Escape script block
+    .replace(/\n/g, '`n');      // Escape newlines
+};
+
+/**
  * Consolidated dangerous patterns for security checks.
  * SYNC WITH: src/core/SecuritySystem.ts - DEFAULT_BLOCKED_PATTERNS
  *
@@ -232,7 +252,7 @@ export const isValidSessionId = (id: string): boolean => {
  * Validates model name format
  */
 export const isValidModelName = (model: string): boolean => {
-  // Allow alphanumeric, dots, dashes, colons (e.g., "gemini-1.5-pro", "llama3.2:3b")
+  // Allow alphanumeric, dots, dashes, colons (e.g., "gemini-3-pro-preview", "llama3.2:3b")
   return /^[a-zA-Z0-9._:-]+$/.test(model) && model.length <= 100;
 };
 

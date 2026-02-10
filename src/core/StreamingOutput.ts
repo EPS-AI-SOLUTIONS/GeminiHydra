@@ -26,7 +26,7 @@ export async function streamGeminiResponse(
   options: StreamingOptions = {}
 ): Promise<string> {
   const {
-    model = 'gemini-3-flash-preview',
+    model = 'gemini-3-pro-preview',
     temperature = 0.3,
     maxTokens = 4096,
     onToken = (t) => process.stdout.write(t),
@@ -75,7 +75,7 @@ export async function streamWithFallback(
   } else {
     // Non-TTY: collect and return at once
     const geminiModel = genAI.getGenerativeModel({
-      model: options.model || 'gemini-3-flash-preview'
+      model: options.model || 'gemini-3-pro-preview'
     });
     const result = await geminiModel.generateContent(prompt);
     return result.response.text();
@@ -89,7 +89,7 @@ export class StreamingChat {
   private model: any;
   private history: Array<{ role: string; parts: Array<{ text: string }> }> = [];
 
-  constructor(modelName: string = 'gemini-3-flash-preview') {
+  constructor(modelName: string = 'gemini-3-pro-preview') {
     this.model = genAI.getGenerativeModel({ model: modelName });
   }
 

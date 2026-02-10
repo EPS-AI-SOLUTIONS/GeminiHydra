@@ -25,6 +25,10 @@ import chalk from 'chalk';
 
 import {
   NativeShell,
+  TIMEOUT_PROFILES,
+  CwdValidationError
+} from './nativeshell/index.js';
+import type {
   ShellType,
   ShellInfo,
   ProcessInfo,
@@ -33,9 +37,7 @@ import {
   NativeShellConfig,
   ShellTimeoutConfig,
   TimeoutProfile,
-  TIMEOUT_PROFILES,
-  CwdValidationError
-} from './NativeShell.js';
+} from './nativeshell/index.js';
 
 // ============================================================
 // Types

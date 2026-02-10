@@ -374,8 +374,8 @@ describe('getAgentForDomain', () => {
 });
 
 describe('AGENT_SPECS', () => {
-  it('should have 12 agents defined', () => {
-    expect(Object.keys(AGENT_SPECS)).toHaveLength(12);
+  it('should have 13 agents defined', () => {
+    expect(Object.keys(AGENT_SPECS)).toHaveLength(13);
   });
 
   it('should have all required fields for each agent', () => {
@@ -396,7 +396,7 @@ describe('AGENT_SPECS', () => {
 
     expect(commanders).toHaveLength(1); // Dijkstra
     expect(coordinators).toHaveLength(3); // Regis, Yennefer, Jaskier
-    expect(executors).toHaveLength(8); // Rest
+    expect(executors).toHaveLength(9); // Geralt, Triss, Vesemir, Ciri, Eskel, Lambert, Zoltan, Philippa, Serena
   });
 });
 
@@ -408,8 +408,8 @@ describe('MODEL_TIERS', () => {
   });
 
   it('should map to correct model strings', () => {
-    expect(MODEL_TIERS.commander).toBe('gemini-2.0-pro-exp');
-    expect(MODEL_TIERS.coordinator).toBe('gemini-2.0-flash-exp');
+    expect(MODEL_TIERS.commander).toBe('gemini-3-pro-preview');
+    expect(MODEL_TIERS.coordinator).toBe('gemini-3-pro-preview');
     expect(MODEL_TIERS.executor).toBe('llama.cpp');
   });
 });

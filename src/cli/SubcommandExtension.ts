@@ -300,7 +300,7 @@ export class SubcommandRegistry {
         const subArgs = positional.slice(1);
 
         const fullCtx: SubcommandContext = {
-          cwd: ctx.cwd,
+          cwd: ctx.cwd as string,
           args: subArgs,
           flags,
           rawArgs: subArgs.join(' '),
@@ -343,7 +343,7 @@ export class SubcommandRegistry {
     const { positional, flags } = this.parseArgs(args);
 
     const fullCtx: SubcommandContext = {
-      cwd: ctx.cwd,
+      cwd: ctx.cwd as string,
       args: positional,
       flags,
       rawArgs: args.join(' '),

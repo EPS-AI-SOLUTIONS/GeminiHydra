@@ -9,7 +9,7 @@
  * 4. Save lessons learned to memory
  */
 
-import { Agent, AGENT_PERSONAS } from './Agent.js';
+import { Agent, AGENT_PERSONAS } from './agent/Agent.js';
 import { ExecutionResult, SwarmTask, AgentRole } from '../types/index.js';
 import chalk from 'chalk';
 

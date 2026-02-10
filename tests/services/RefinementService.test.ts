@@ -11,9 +11,11 @@ vi.mock('../../src/providers/LlamaCppProvider.js', () => ({
   LlamaCppProvider: {
     getRecommendedModel: vi.fn((difficulty: string) => {
       const models: Record<string, string> = {
+        trivial: 'llama-3.2-1b',
         simple: 'llama-3.2-1b',
-        moderate: 'llama-3.2-3b',
+        medium: 'llama-3.2-3b',
         complex: 'llama-3.1-8b',
+        expert: 'llama-3.1-8b',
       };
       return models[difficulty] || 'llama-3.2-3b';
     }),
@@ -89,7 +91,7 @@ That's my analysis.`;
       const result = await service.refine('Test');
 
       expect(result.translatedObjective).toBe('Test');
-      expect(result.difficulty).toBe('moderate');
+      expect(result.difficulty).toBe('medium');
     });
 
     it('should return fallback on invalid JSON', async () => {
@@ -101,7 +103,7 @@ That's my analysis.`;
       expect(result.originalObjective).toBe('Test objective');
       expect(result.translatedObjective).toBe('Test objective');
       expect(result.language).toBe('en');
-      expect(result.difficulty).toBe('moderate');
+      expect(result.difficulty).toBe('medium');
     });
 
     it('should return fallback on provider error', async () => {
@@ -156,13 +158,13 @@ That's my analysis.`;
       expect(result.difficulty).toBe('complex');
     });
 
-    it('should default to moderate for unknown difficulty', async () => {
+    it('should default to medium for unknown difficulty', async () => {
       const response = JSON.stringify({ difficulty: 'unknown' });
       provider = createMockProvider(response);
       service = new RefinementService(provider);
 
       const result = await service.refine('Test');
-      expect(result.difficulty).toBe('moderate');
+      expect(result.difficulty).toBe('medium');
     });
   });
 
@@ -223,13 +225,13 @@ That's my analysis.`;
       expect(result).toBe('complex');
     });
 
-    it('should default to moderate on error', async () => {
+    it('should default to medium on error', async () => {
       provider = createFailingProvider();
       service = new RefinementService(provider);
 
       const result = await service.classifyDifficulty('Test');
 
-      expect(result).toBe('moderate');
+      expect(result).toBe('medium');
     });
 
     it('should normalize response', async () => {

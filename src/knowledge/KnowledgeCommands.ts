@@ -9,7 +9,7 @@ import { knowledgeAgent } from './KnowledgeAgent.js';
 import { modelTrainer, AVAILABLE_BASE_MODELS, DEFAULT_TRAINING_CONFIG } from './ModelTrainer.js';
 
 // Re-export CommandContext from centralized location
-export { CommandContext } from '../cli/CommandRegistry.js';
+export type { CommandContext } from '../cli/CommandRegistry.js';
 import { CommandContext } from '../cli/CommandRegistry.js';
 
 /**

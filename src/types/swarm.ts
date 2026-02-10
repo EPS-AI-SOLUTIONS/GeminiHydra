@@ -3,6 +3,8 @@
  * Type definitions for the Witcher Swarm system
  */
 
+import type { TaskStatus, TaskPriority, TaskDifficulty } from './task.js';
+
 /**
  * Model tiers for 3-level hierarchy
  */
@@ -54,15 +56,8 @@ export interface AgentResult {
   taskId?: number;
 }
 
-/**
- * Task priority
- */
-export type TaskPriority = 'critical' | 'high' | 'medium' | 'low' | 'normal' | 'background';
-
-/**
- * Task status
- */
-export type TaskStatus = 'pending' | 'running' | 'completed' | 'failed';
+// TaskPriority and TaskStatus are now in task.ts (single source of truth)
+export type { TaskPriority, TaskStatus } from './task.js';
 
 /**
  * Swarm task
@@ -75,7 +70,7 @@ export interface SwarmTask {
   status: TaskStatus;
   priority?: TaskPriority;
   context?: string;
-  difficulty?: import('./provider.js').TaskDifficulty;
+  difficulty?: TaskDifficulty;
   retryCount?: number;
 }
 

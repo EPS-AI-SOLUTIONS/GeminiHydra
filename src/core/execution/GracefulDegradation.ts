@@ -43,19 +43,19 @@ export const DEGRADATION_LEVELS: Record<DegradationLevelName, DegradationLevel> 
   reduced: {
     level: 'reduced',
     features: ['basic', 'mcp', 'ollama'],
-    fallbackModel: 'gemini-3-flash-preview',
+    fallbackModel: 'gemini-3-pro-preview',
     maxConcurrency: 6
   },
   minimal: {
     level: 'minimal',
     features: ['basic', 'ollama'],
-    fallbackModel: 'gemini-3-flash-preview',
+    fallbackModel: 'gemini-3-pro-preview',
     maxConcurrency: 3
   },
   offline: {
     level: 'offline',
     features: ['ollama'],
-    fallbackModel: 'llama3.2:3b',
+    fallbackModel: 'qwen3:4b',
     maxConcurrency: 2
   }
 };

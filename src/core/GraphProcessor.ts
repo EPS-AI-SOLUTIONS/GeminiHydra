@@ -10,13 +10,13 @@
  * - MCP tool integration
  */
 
-import { Agent, AGENT_PERSONAS } from './Agent.js';
+import { Agent, AGENT_PERSONAS } from './agent/Agent.js';
 import { SwarmTask, ExecutionResult, AgentRole } from '../types/index.js';
 import { ollamaSemaphore, withRetry } from './TrafficControl.js';
 import { getPlatformPromptPrefix, loadGrimoires, getFewShotExamples, mapTaskTypeToExampleCategory, getEnhancedFewShotExamples, getAgentSpecificExamples } from './PromptSystem.js';
 import { mcpManager } from '../mcp/index.js';
 import { sanitizer } from './SecuritySystem.js';
-import { NativeFileSystem } from '../native/NativeFileSystem.js';
+import { NativeFileSystem } from '../native/nativefilesystem/NativeFileSystem.js';
 import { logger } from './LiveLogger.js';
 import pLimit from 'p-limit';
 
@@ -60,7 +60,7 @@ const DEFAULT_CONFIG: GraphProcessorConfig = {
   preferredModel: undefined,
   rootDir: process.cwd(),  // Default to current working directory
   forceOllama: false,      // Default: respect agent personas
-  ollamaModel: 'llama3.2:3b'  // Default model when forceOllama is true
+  ollamaModel: 'qwen3:4b'  // Default model when forceOllama is true (Qwen3)
 };
 
 /**
@@ -158,7 +158,7 @@ export class GraphProcessor {
     logger.system(`GraphProcessor initialized: Concurrency ${concurrency} ${this.config.yolo ? '(YOLO)' : ''}`, 'info');
     logger.system(`Root directory: ${this.rootDir}`, 'debug');
     if (this.config.forceOllama) {
-      logger.system(`🦙 Force Ollama mode: ${this.config.ollamaModel || 'llama3.2:3b'}`, 'info');
+      logger.system(`🦙 Force Ollama mode: ${this.config.ollamaModel || 'qwen3:4b'}`, 'info');
     }
   }
 
@@ -605,9 +605,9 @@ export class GraphProcessor {
     let modelOverride: string;
     if (this.config.forceOllama) {
       // Phase B optimization: Force all agents to use Ollama for parallel execution
-      modelOverride = this.config.ollamaModel || 'llama3.2:3b';
+      modelOverride = this.config.ollamaModel || 'qwen3:4b';
     } else {
-      modelOverride = this.config.preferredModel || 'gemini-3-flash-preview';
+      modelOverride = this.config.preferredModel || 'gemini-3-pro-preview';
     }
 
     const agentRole = task.agent as AgentRole;
@@ -932,10 +932,9 @@ ZASADY:
     }
 
     // Detect if using small Ollama model (needs compact prompt)
-    const isSmallModel = modelOverride.includes('llama3.2:3b') ||
-                         modelOverride.includes('llama3.2:1b') ||
-                         modelOverride.includes('phi') ||
-                         modelOverride.includes('tinyllama');
+    const isSmallModel = modelOverride.includes('qwen3:4b') ||
+                         modelOverride.includes('qwen3:1.7b') ||
+                         modelOverride.includes('qwen3:0.6b');
 
     // Detect task type for specialized prompting (legacy, for backward compat)
     const taskType = this.detectTaskType(task.task);

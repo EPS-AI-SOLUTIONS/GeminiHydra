@@ -11,7 +11,7 @@
 import chalk from 'chalk';
 import { mcpManager } from './MCPManager.js';
 import { MCPTool, MCPToolResult } from './MCPTypes.js';
-import { Agent } from '../core/Agent.js';
+import { Agent } from '../core/agent/Agent.js';
 import { NATIVE_SERVER_NAME, NATIVE_TOOL_ALIASES } from './NativeToolsServer.js';
 
 // ============================================================

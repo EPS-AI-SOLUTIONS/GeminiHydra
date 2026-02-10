@@ -29,3 +29,8 @@ export { useCommandExecution } from './useCommandExecution';
 export type { UseCommandExecutionOptions, UseCommandExecutionReturn } from './useCommandExecution';
 export { useContextMenuActions } from './useContextMenuActions';
 export type { ContextAction, ContextActionDetail, UseContextMenuActionsOptions } from './useContextMenuActions';
+
+// Tissaia design system hooks
+export { useViewTheme } from './useViewTheme';
+export type { ViewTheme } from './useViewTheme';
+export { useGlassPanel, useIsLightTheme, useThemeClass } from './useThemeClass';

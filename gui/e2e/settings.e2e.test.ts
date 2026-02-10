@@ -94,12 +94,12 @@ test.describe('Settings', () => {
     // Find model select (third select in form)
     const modelSelect = page.locator('select').nth(2);
 
-    // Should default to gemini-2.5-flash
-    await expect(modelSelect).toHaveValue('gemini-2.5-flash');
+    // Should default to gemini-3-pro-preview
+    await expect(modelSelect).toHaveValue('gemini-3-pro-preview');
 
-    // Change to pro
-    await modelSelect.selectOption('gemini-2.5-pro');
-    await expect(modelSelect).toHaveValue('gemini-2.5-pro');
+    // Change to flash
+    await modelSelect.selectOption('gemini-3-flash-preview');
+    await expect(modelSelect).toHaveValue('gemini-3-flash-preview');
   });
 
   test('can adjust temperature', async ({ page }) => {

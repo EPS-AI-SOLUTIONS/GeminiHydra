@@ -18,6 +18,40 @@
 
 import type { AppState, Session, Message } from '../types';
 
+// Extended AppState with pagination (mirrors definition in useAppStore)
+interface PaginationState {
+  messagesPerPage: number;
+  currentPage: number;
+  setCurrentPage: (page: number) => void;
+  setMessagesPerPage: (count: number) => void;
+}
+
+type AppStateWithPagination = AppState & PaginationState;
+
+// ============================================================================
+// MEMOIZATION HELPER
+// ============================================================================
+
+/**
+ * Creates a selector that returns a stable reference when shallow-equal.
+ * Prevents unnecessary re-renders for composite selectors returning objects.
+ */
+function createStableSelector<T extends Record<string, unknown>>(
+  selector: (state: AppStateWithPagination) => T
+): (state: AppStateWithPagination) => T {
+  let prev: T | undefined;
+  return (state: AppStateWithPagination): T => {
+    const next = selector(state);
+    if (prev !== undefined) {
+      const keys = Object.keys(next) as Array<keyof T>;
+      const isEqual = keys.every((k) => prev![k] === next[k]);
+      if (isEqual) return prev;
+    }
+    prev = next;
+    return next;
+  };
+}
+
 // ============================================================================
 // BASIC STATE SELECTORS (Primitive Values)
 // ============================================================================
@@ -49,6 +83,13 @@ export const selectCurrentSessionId = (state: AppState) => state.currentSessionI
  * @returns Counter number
  */
 export const selectCount = (state: AppState) => state.count;
+
+/**
+ * Select current view
+ * @param state - Current app state
+ * @returns Current view identifier
+ */
+export const selectCurrentView = (state: AppState) => state.currentView;
 
 // ============================================================================
 // SETTINGS SELECTORS
@@ -278,13 +319,13 @@ export const selectIsAppReady = (state: AppState): boolean => {
  * @param state - Current app state
  * @returns Object with session metadata
  */
-export const selectSessionMetadata = (state: AppState) => ({
+export const selectSessionMetadata = createStableSelector((state) => ({
   totalSessions: state.sessions.length,
   currentSessionId: state.currentSessionId,
   hasCurrentSession: state.currentSessionId !== null,
   hasMessages: selectHasMessages(state),
   messageCount: selectMessageCount(state),
-});
+}));
 
 /**
  * Get API configuration status
@@ -292,11 +333,11 @@ export const selectSessionMetadata = (state: AppState) => ({
  * @param state - Current app state
  * @returns Object with API configuration status
  */
-export const selectApiConfigStatus = (state: AppState) => ({
+export const selectApiConfigStatus = createStableSelector((state) => ({
   hasGeminiKey: selectIsApiKeySet(state),
   ollamaEndpoint: state.settings.ollamaEndpoint,
   isConfigured: selectIsApiKeySet(state) || (state.settings.ollamaEndpoint ?? '').length > 0,
-});
+}));
 
 /**
  * Get runtime settings summary
@@ -304,9 +345,59 @@ export const selectApiConfigStatus = (state: AppState) => ({
  * @param state - Current app state
  * @returns Object with current settings summary
  */
-export const selectRuntimeSettings = (state: AppState) => ({
+export const selectRuntimeSettings = createStableSelector((state) => ({
   provider: state.provider,
   defaultProvider: state.settings.defaultProvider,
   useSwarm: state.settings.useSwarm,
   theme: state.theme,
-});
+}));
+
+// ============================================================================
+// PAGINATION SELECTORS
+// ============================================================================
+
+const EMPTY_MESSAGES: Message[] = [];
+
+/**
+ * Get paginated messages for current session
+ * Paginates from the end (newest messages), displaying oldest-to-newest
+ * @param state - Current app state with pagination
+ * @returns Paginated array of messages
+ */
+export const selectPaginatedMessages = (state: AppStateWithPagination): Message[] => {
+  if (!state.currentSessionId) return EMPTY_MESSAGES;
+  const allMessages = state.chatHistory[state.currentSessionId] || EMPTY_MESSAGES;
+
+  const totalMessages = allMessages.length;
+  const { messagesPerPage, currentPage } = state;
+
+  const endOffset = totalMessages - (currentPage * messagesPerPage);
+  const startOffset = Math.max(0, endOffset - messagesPerPage);
+
+  return allMessages.slice(startOffset, endOffset);
+};
+
+/**
+ * Get total number of pages for current session
+ * @param state - Current app state with pagination
+ * @returns Total page count
+ */
+export const selectTotalPages = (state: AppStateWithPagination): number => {
+  if (!state.currentSessionId) return 0;
+  const allMessages = state.chatHistory[state.currentSessionId] || EMPTY_MESSAGES;
+  return Math.ceil(allMessages.length / state.messagesPerPage);
+};
+
+/**
+ * Get pagination info summary for current session
+ * @param state - Current app state with pagination
+ * @returns Object with pagination metadata
+ */
+export const selectPaginationInfo = createStableSelector((state) => ({
+  currentPage: state.currentPage,
+  totalPages: selectTotalPages(state),
+  messagesPerPage: state.messagesPerPage,
+  totalMessages: selectMessageCount(state),
+  hasNextPage: state.currentPage < selectTotalPages(state) - 1,
+  hasPreviousPage: state.currentPage > 0,
+}));

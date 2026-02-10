@@ -1,6 +1,6 @@
 /**
  * GeminiHydra - Refinement Service (Phase B-A)
- * Translation & Refinement using gemini-3-flash-preview
+ * Translation & Refinement using gemini-3-pro-preview
  * - Translates non-English objectives to English
  * - Classifies task difficulty
  * - Selects optimal local model for execution
@@ -126,10 +126,10 @@ export class RefinementService {
         messages,
         max_tokens: 10,
       });
-      const result = response.choices[0]?.message?.content?.trim().toLowerCase() || 'moderate';
+      const result = response.choices[0]?.message?.content?.trim().toLowerCase() || 'medium';
       return this.normalizeDifficulty(result as TaskDifficulty);
     } catch {
-      return 'moderate';
+      return 'medium';
     }
   }
 
@@ -138,7 +138,7 @@ export class RefinementService {
     if (normalized === 'simple' || normalized === 'easy') return 'simple';
     if (normalized === 'complex' || normalized === 'hard' || normalized === 'difficult')
       return 'complex';
-    return 'moderate';
+    return 'medium';
   }
 
   private createFallback(objective: string): RefinementResult {
@@ -146,8 +146,8 @@ export class RefinementService {
       originalObjective: objective,
       translatedObjective: objective,
       language: 'en',
-      difficulty: 'moderate',
-      recommendedModel: LlamaCppProvider.getRecommendedModel('moderate'),
+      difficulty: 'medium',
+      recommendedModel: LlamaCppProvider.getRecommendedModel('medium'),
       context: 'Fallback - unable to analyze objective',
     };
   }

@@ -59,7 +59,7 @@ describe('Timeout Constants', () => {
 
 describe('Model Constants', () => {
   it('should define DEFAULT_MODEL', () => {
-    expect(DEFAULT_MODEL).toBe('gemini-2.0-flash');
+    expect(DEFAULT_MODEL).toBe('gemini-3-pro-preview');
   });
 
   describe('PIPELINE_MODELS', () => {
@@ -68,19 +68,19 @@ describe('Model Constants', () => {
     });
 
     it('should define PHASE_BA model', () => {
-      expect(PIPELINE_MODELS.PHASE_BA).toBe('gemini-3-flash-preview');
+      expect(PIPELINE_MODELS.PHASE_BA).toBe('gemini-3-pro-preview');
     });
 
     it('should define PHASE_B model', () => {
-      expect(PIPELINE_MODELS.PHASE_B).toBe('llama-3.2-3b');
+      expect(PIPELINE_MODELS.PHASE_B).toBe('qwen3-4b');
     });
 
     it('should define PHASE_C model', () => {
-      expect(PIPELINE_MODELS.PHASE_C).toBe('gemini-3-flash-preview');
+      expect(PIPELINE_MODELS.PHASE_C).toBe('gemini-3-pro-preview');
     });
 
     it('should define PHASE_D model', () => {
-      expect(PIPELINE_MODELS.PHASE_D).toBe('gemini-3-flash-preview');
+      expect(PIPELINE_MODELS.PHASE_D).toBe('gemini-3-pro-preview');
     });
   });
 });

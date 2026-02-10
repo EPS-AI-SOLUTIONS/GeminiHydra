@@ -500,8 +500,8 @@ export type {
 // Core Exports
 // ============================================================
 
-export { Swarm } from './core/Swarm.js';
-export { Agent } from './core/Agent.js';
+export { Swarm } from './core/swarm/Swarm.js';
+export { Agent } from './core/agent/Agent.js';
 export { GraphProcessor } from './core/GraphProcessor.js';
 
 // Feature #64: Tree of Thoughts (ToT) - exported from intelligence layer
@@ -747,7 +747,7 @@ export {
   getAgentSpec
 } from './swarm/agents/definitions.js';
 
-export { createSwarm } from './Swarm.js';
+export { createSwarm } from './core/swarm/Swarm.js';
 
 // ============================================================
 // Version Info

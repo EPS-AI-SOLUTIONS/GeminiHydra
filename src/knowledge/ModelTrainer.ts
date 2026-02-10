@@ -101,26 +101,16 @@ export const DEFAULT_TRAINING_CONFIG: TrainingConfig = {
 };
 
 // Available base models optimized for fine-tuning
-export const AVAILABLE_BASE_MODELS = {
-  // Llama 3.2 (recommended for most use cases)
-  'llama-3.2-1b': 'unsloth/Llama-3.2-1B-Instruct-bnb-4bit',
-  'llama-3.2-3b': 'unsloth/Llama-3.2-3B-Instruct-bnb-4bit',
+export const AVAILABLE_BASE_MODELS: Record<string, string> = {
+  // Qwen3 (recommended - latest generation, thinking mode)
+  'qwen3-0.6b': 'Qwen/Qwen3-0.6B',
+  'qwen3-1.7b': 'Qwen/Qwen3-1.7B',
+  'qwen3-4b': 'Qwen/Qwen3-4B',
+  'qwen3-8b': 'Qwen/Qwen3-8B',
+  'qwen3-14b': 'Qwen/Qwen3-14B',
 
-  // Llama 3.1
-  'llama-3.1-8b': 'unsloth/Meta-Llama-3.1-8B-Instruct-bnb-4bit',
-
-  // Qwen 2.5 (good for coding)
-  'qwen-2.5-1.5b': 'unsloth/Qwen2.5-1.5B-Instruct-bnb-4bit',
-  'qwen-2.5-3b': 'unsloth/Qwen2.5-3B-Instruct-bnb-4bit',
-  'qwen-2.5-7b': 'unsloth/Qwen2.5-7B-Instruct-bnb-4bit',
-  'qwen-2.5-coder-1.5b': 'unsloth/Qwen2.5-Coder-1.5B-Instruct-bnb-4bit',
+  // Qwen 2.5 (legacy, for coding fine-tuning)
   'qwen-2.5-coder-7b': 'unsloth/Qwen2.5-Coder-7B-Instruct-bnb-4bit',
-
-  // Mistral
-  'mistral-7b': 'unsloth/mistral-7b-instruct-v0.3-bnb-4bit',
-
-  // Phi (Microsoft - very efficient)
-  'phi-3.5-mini': 'unsloth/Phi-3.5-mini-instruct-bnb-4bit',
 
   // Gemma 2 (Google)
   'gemma-2-2b': 'unsloth/gemma-2-2b-it-bnb-4bit',

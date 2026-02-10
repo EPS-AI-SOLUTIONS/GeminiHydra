@@ -18,7 +18,7 @@ import {
   getTopEffectiveExamples,
   detectExampleCategory,
   getBestFewShotExamples
-} from './FewShotExtensions.js';
+} from './fewshot/index.js';
 
 /**
  * META-INSTRUCTION prefix for all agent prompts
@@ -76,7 +76,7 @@ export const UNIX_PROMPT_SUFFIX = `
  * Sent as hidden system init message at session start
  */
 export function getIdentityContext(rootDir: string): string {
-  return `[SYSTEM INIT] Jesteś GeminiHydra - lokalny wieloagentowy system AI zainstalowany w: ${rootDir}.
+  return `[SYSTEM INIT] Jesteś GeminiHydra - lokalny wieloagentowy system AI oparty na Gemini 3 Pro (gemini-3-pro-preview), zainstalowany w: ${rootDir}. NIE mów że używasz "Gemini 1.5" - używasz Gemini 3 Pro Preview.
 Gdy użytkownik mówi "twój kod", "swój kod", "przeanalizuj się" - chodzi o pliki źródłowe projektu GeminiHydra (src/, bin/, etc.).
 MASZ dostęp do tych plików przez MCP i natywne narzędzia. NIGDY nie mów że nie masz dostępu do swojego kodu. Przeczytaj pliki i odpowiedz konkretnie.
 

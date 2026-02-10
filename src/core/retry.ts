@@ -209,12 +209,17 @@ export async function withTimeout<T>(
   timeoutMs: number,
   message = 'Operation timed out'
 ): Promise<T> {
-  return Promise.race([
-    fn(),
-    new Promise<never>((_, reject) => {
-      setTimeout(() => reject(new TimeoutError(message, timeoutMs)), timeoutMs);
-    })
-  ]);
+  let timer: ReturnType<typeof setTimeout>;
+  try {
+    return await Promise.race([
+      fn(),
+      new Promise<never>((_, reject) => {
+        timer = setTimeout(() => reject(new TimeoutError(message, timeoutMs)), timeoutMs);
+      })
+    ]);
+  } finally {
+    clearTimeout(timer!);
+  }
 }
 
 /**

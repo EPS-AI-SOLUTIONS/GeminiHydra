@@ -2,7 +2,7 @@
  * PromptClarityScorer - Solution 44
  *
  * Scores how clear and unambiguous a prompt is before execution.
- * Used in Phase PRE-A validation to ensure prompts are actionable.
+ * Ensures prompts are actionable.
  *
  * Features:
  * - Detects vague language and missing specifics
@@ -913,33 +913,6 @@ export function formatClarityScore(score: ClarityScore): string {
   return lines.join('\n');
 }
 
-/**
- * Validate prompt for Phase PRE-A
- * Returns true if prompt is clear enough to proceed
- */
-export function validateForPhasePreA(
-  prompt: string,
-  minScore: number = 60
-): { valid: boolean; score: ClarityScore; reason?: string } {
-  const score = promptClarityScorer.scoreClarity(prompt);
-
-  if (score.score >= minScore) {
-    return { valid: true, score };
-  }
-
-  // Generate reason from top issues
-  const topIssues = score.issues
-    .filter(i => i.severity === 'high')
-    .slice(0, 2)
-    .map(i => i.description);
-
-  const reason = topIssues.length > 0
-    ? `Prompt needs improvement: ${topIssues.join('; ')}`
-    : `Prompt clarity score (${score.score}) is below threshold (${minScore})`;
-
-  return { valid: false, score, reason };
-}
-
 // ============================================================================
 // EXPORTS
 // ============================================================================
@@ -952,7 +925,6 @@ export default {
   getPromptSuggestions,
   analyzePromptClarity,
   formatClarityScore,
-  validateForPhasePreA,
   VAGUE_WORDS,
   ACTION_VERBS,
   SPECIFIC_NOUNS

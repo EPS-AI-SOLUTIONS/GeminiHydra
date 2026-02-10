@@ -22,18 +22,18 @@ export const WitcherRunes = memo(({ isDark }: { isDark: boolean }) => {
         const ctx = canvas.getContext('2d');
         if (!ctx) return;
 
-        // Configuration
-        const fontSize = 16;
+        // Configuration - subtle background effect
+        const fontSize = 14;
         let columns = 0;
         let drops: number[] = [];
 
         // Runes Alphabet (Elder Futhark + Math symbols for "magical" look)
         const alphabet = "ᚠᚢᚦᚨᚱᚲᚷᚹᚺᚾᛁᛃᛇᛈᛉᛊᛏᛒᛖᛗᛚᛜᛞᛟ∑∏∆∇∈∞∫∬∭∮";
 
-        // Theme-aware colors
-        const trailColor = isDark ? 'rgba(0, 10, 0, 0.08)' : 'rgba(240, 253, 244, 0.12)';
-        const textColor = isDark ? '#4ade80' : '#059669';
-        const glowColor = isDark ? '#00ff41' : '#10b981';
+        // Theme-aware colors - subtle for both themes
+        const trailColor = isDark ? 'rgba(0, 10, 0, 0.06)' : 'rgba(255, 255, 255, 0.08)';
+        const textColor = isDark ? '#4ade80' : '#047857';
+        const glowColor = isDark ? '#00ff41' : '#059669';
 
         const resize = () => {
             if (canvas && containerRef.current) {
@@ -58,7 +58,7 @@ export const WitcherRunes = memo(({ isDark }: { isDark: boolean }) => {
 
             ctx.fillStyle = textColor;
             ctx.font = `bold ${fontSize}px 'JetBrains Mono', monospace`;
-            ctx.shadowBlur = isDark ? 4 : 2;
+            ctx.shadowBlur = isDark ? 2 : 3;
             ctx.shadowColor = glowColor;
 
             for (let i = 0; i < drops.length; i++) {
@@ -76,8 +76,8 @@ export const WitcherRunes = memo(({ isDark }: { isDark: boolean }) => {
             }
         };
 
-        // Fix #39: Throttle to ~22fps (45ms interval) for background effect — saves CPU
-        const intervalId = setInterval(draw, 45);
+        // Throttle to ~14fps (70ms interval) for subtle background — saves CPU
+        const intervalId = setInterval(draw, 70);
 
         // Fix #39: Apply will-change for GPU compositing
         canvas.style.willChange = 'transform';
@@ -92,8 +92,8 @@ export const WitcherRunes = memo(({ isDark }: { isDark: boolean }) => {
     return (
         <div
             ref={containerRef}
-            className={`absolute inset-0 pointer-events-none overflow-hidden z-0 ${
-                isDark ? 'opacity-25 mix-blend-screen' : 'opacity-[0.12] mix-blend-multiply'
+            className={`absolute inset-0 pointer-events-none overflow-hidden z-0 transition-[opacity] duration-500 ease-[cubic-bezier(0.4,0,0.2,1)] ${
+                isDark ? 'opacity-[0.15] mix-blend-screen' : 'opacity-[0.25]'
             }`}
         >
             <canvas ref={canvasRef} className="block w-full h-full" />

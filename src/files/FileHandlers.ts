@@ -17,7 +17,7 @@ import { exec } from 'child_process';
 import { promisify } from 'util';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import 'dotenv/config';
-import { NativeFileSystem, createFileSystem } from '../native/NativeFileSystem.js';
+import { NativeFileSystem, createFileSystem } from '../native/nativefilesystem/NativeFileSystem.js';
 import { FileInfo, FileType } from '../native/types.js';
 import { GEMINI_MODELS } from '../config/models.config.js';
 

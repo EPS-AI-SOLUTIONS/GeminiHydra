@@ -116,6 +116,67 @@ describe('useCommandExecution', () => {
     expect(toast.error).toHaveBeenCalled();
   });
 
+  it('should return CommandResult with success on web simulation', async () => {
+    const { result } = renderHook(() =>
+      useCommandExecution({
+        addMessage: mockAddMessage,
+        updateLastMessage: mockUpdateLastMessage,
+        isTauri: false,
+      })
+    );
+
+    let cmdResult: Awaited<ReturnType<typeof result.current.executeCommand>>;
+    await act(async () => {
+      cmdResult = await result.current.executeCommand('echo test');
+    });
+
+    expect(cmdResult!.command).toBe('echo test');
+    expect(cmdResult!.success).toBe(true);
+    expect(cmdResult!.output).toContain('[WEB SIMULATION]');
+  });
+
+  it('should return CommandResult with success in Tauri mode', async () => {
+    vi.mocked(invoke).mockResolvedValueOnce('dir output here');
+
+    const { result } = renderHook(() =>
+      useCommandExecution({
+        addMessage: mockAddMessage,
+        updateLastMessage: mockUpdateLastMessage,
+        isTauri: true,
+      })
+    );
+
+    let cmdResult: Awaited<ReturnType<typeof result.current.executeCommand>>;
+    await act(async () => {
+      cmdResult = await result.current.executeCommand('dir');
+    });
+
+    expect(cmdResult!.command).toBe('dir');
+    expect(cmdResult!.success).toBe(true);
+    expect(cmdResult!.output).toBe('dir output here');
+  });
+
+  it('should return CommandResult with failure on error', async () => {
+    vi.mocked(invoke).mockRejectedValueOnce(new Error('Access denied'));
+
+    const { result } = renderHook(() =>
+      useCommandExecution({
+        addMessage: mockAddMessage,
+        updateLastMessage: mockUpdateLastMessage,
+        isTauri: true,
+      })
+    );
+
+    let cmdResult: Awaited<ReturnType<typeof result.current.executeCommand>>;
+    await act(async () => {
+      cmdResult = await result.current.executeCommand('rm -rf /');
+    });
+
+    expect(cmdResult!.command).toBe('rm -rf /');
+    expect(cmdResult!.success).toBe(false);
+    expect(cmdResult!.output).toContain('Access denied');
+  });
+
   it('should return stable executeCommand function', () => {
     const options = {
       addMessage: mockAddMessage,

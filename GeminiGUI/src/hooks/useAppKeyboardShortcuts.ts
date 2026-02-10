@@ -14,6 +14,8 @@ export interface KeyboardShortcutHandlers {
   onToggleShortcuts?: () => void;
   /** Handler for clearing chat history (Ctrl+L) */
   onClearHistory?: () => void;
+  /** Handler for copying current session to clipboard (Ctrl+E) */
+  onCopySession?: () => void;
   /** Handler for creating new session (Ctrl+N) */
   onNewSession?: () => void;
   /** Handler for toggling theme (Ctrl+Shift+T) */
@@ -40,6 +42,7 @@ export function useAppKeyboardShortcuts(handlers: KeyboardShortcutHandlers) {
     onToggleSettings,
     onToggleShortcuts,
     onClearHistory,
+    onCopySession,
     onNewSession,
     onToggleTheme,
     onFocusInput,
@@ -71,6 +74,13 @@ export function useAppKeyboardShortcuts(handlers: KeyboardShortcutHandlers) {
       return;
     }
 
+    // Ctrl+E -> Copy session to clipboard (skip if in input)
+    if (e.ctrlKey && e.key.toLowerCase() === 'e' && !isInputFocused) {
+      e.preventDefault();
+      onCopySession?.();
+      return;
+    }
+
     // Ctrl+N -> New Session (skip if in input)
     if (e.ctrlKey && e.key.toLowerCase() === 'n' && !isInputFocused) {
       e.preventDefault();
@@ -95,6 +105,7 @@ export function useAppKeyboardShortcuts(handlers: KeyboardShortcutHandlers) {
     onToggleSettings,
     onToggleShortcuts,
     onClearHistory,
+    onCopySession,
     onNewSession,
     onToggleTheme,
     onFocusInput,
