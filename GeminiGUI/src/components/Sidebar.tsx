@@ -126,21 +126,34 @@ export default function Sidebar() {
     setExpandedGroups(prev => ({ ...prev, [groupId]: !prev[groupId] }));
   };
 
-  const glassPanel = resolvedTheme === 'light' ? 'glass-panel-light' : 'glass-panel-dark';
+  const isLight = resolvedTheme === 'light';
+  const glassPanel = isLight ? 'glass-panel-light' : 'glass-panel-dark';
+
+  // Light-mode text classes for better readability
+  const textMuted = isLight ? 'text-slate-600' : 'text-slate-400';
+  const textDim = isLight ? 'text-slate-500' : 'text-slate-500';
+  const textHover = isLight ? 'hover:text-slate-900' : 'hover:text-white';
+  const iconMuted = isLight ? 'text-slate-500' : 'text-slate-500';
+  const iconHover = isLight ? 'group-hover:text-emerald-700' : 'group-hover:text-white';
+  const hoverBg = isLight ? 'hover:bg-black/5' : 'hover:bg-white/5';
+  const collapseBtn = isLight
+    ? 'bg-white/70 border-emerald-600/30 hover:bg-emerald-50 hover:border-emerald-600/50'
+    : 'bg-black/40 border-matrix-accent/30 hover:bg-matrix-accent/20 hover:border-matrix-accent/50';
+  const collapseIcon = isLight ? 'text-emerald-700' : 'text-matrix-accent';
 
   return (
-    <div className={`${isCollapsed ? 'w-20' : 'w-64'} h-full flex flex-col z-20 transition-all duration-300 relative p-2 gap-2 overflow-y-auto scrollbar-thin scrollbar-thumb-matrix-accent/20`}>
+    <div className={`${isCollapsed ? 'w-20' : 'w-64'} shrink-0 h-full flex flex-col z-20 transition-all duration-300 relative p-2 gap-2 overflow-y-auto scrollbar-thin scrollbar-thumb-matrix-accent/20`}>
 
       {/* Collapse Toggle Button */}
       <button
         onClick={() => setIsCollapsed(!isCollapsed)}
-        className="absolute -right-3 top-20 z-30 hidden md:flex items-center justify-center w-6 h-6 bg-black/40 border border-matrix-accent/30 rounded-full hover:bg-matrix-accent/20 hover:border-matrix-accent/50 transition-all"
+        className={`absolute -right-3 top-20 z-30 hidden md:flex items-center justify-center w-6 h-6 border rounded-full transition-all ${collapseBtn}`}
         title={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
       >
         {isCollapsed ? (
-          <ChevronRight size={14} className="text-matrix-accent" />
+          <ChevronRight size={14} className={collapseIcon} />
         ) : (
-          <ChevronLeft size={14} className="text-matrix-accent" />
+          <ChevronLeft size={14} className={collapseIcon} />
         )}
       </button>
 
@@ -168,7 +181,9 @@ export default function Sidebar() {
                 <button
                   onClick={() => toggleGroup(group.id)}
                   className={`w-full flex items-center justify-between px-3 py-2.5 transition-all group ${
-                    hasActiveItem ? 'text-matrix-accent bg-matrix-accent/5' : 'text-slate-400 hover:text-slate-200 hover:bg-white/5'
+                    hasActiveItem
+                      ? (isLight ? 'text-emerald-700 bg-emerald-500/10' : 'text-matrix-accent bg-matrix-accent/5')
+                      : `${textMuted} ${textHover} ${hoverBg}`
                   }`}
                 >
                   <div className="flex items-center gap-2">
@@ -192,15 +207,15 @@ export default function Sidebar() {
                     onClick={() => setCurrentView(item.id)}
                     className={`relative w-full flex items-center ${isCollapsed ? 'justify-center' : 'space-x-3'} px-3 py-2 rounded-lg transition-all duration-200 group ${
                       currentView === item.id
-                        ? 'bg-matrix-accent/15 text-matrix-accent'
-                        : 'text-slate-400 hover:bg-white/5 hover:text-white'
+                        ? (isLight ? 'bg-emerald-500/15 text-emerald-800' : 'bg-matrix-accent/15 text-matrix-accent')
+                        : `${textMuted} ${hoverBg} ${textHover}`
                     }`}
                     title={isCollapsed ? item.label : undefined}
                   >
-                    <item.icon size={16} className={`${currentView === item.id ? 'text-matrix-accent' : 'text-slate-500 group-hover:text-white'} transition-colors flex-shrink-0`} />
+                    <item.icon size={16} className={`${currentView === item.id ? (isLight ? 'text-emerald-700' : 'text-matrix-accent') : `${iconMuted} ${iconHover}`} transition-colors flex-shrink-0`} />
                     {!isCollapsed && <span className="font-medium text-xs tracking-wide truncate">{item.label}</span>}
                     {currentView === item.id && (
-                      <div className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-5 bg-matrix-accent rounded-r-full shadow-[0_0_8px_#00ff41]" />
+                      <div className={`absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-5 rounded-r-full ${isLight ? 'bg-emerald-600 shadow-[0_0_8px_rgba(5,150,105,0.5)]' : 'bg-matrix-accent shadow-[0_0_8px_#00ff41]'}`} />
                     )}
                   </button>
                 ))}
@@ -218,18 +233,18 @@ export default function Sidebar() {
         {/* Theme Toggle */}
         <button
           onClick={toggleTheme}
-          className={`flex items-center ${isCollapsed ? 'justify-center' : 'justify-start'} gap-3 w-full p-2 rounded-lg hover:bg-white/5 transition-all group`}
+          className={`flex items-center ${isCollapsed ? 'justify-center' : 'justify-start'} gap-3 w-full p-2 rounded-lg ${hoverBg} transition-all group`}
           title={isCollapsed ? `Theme: ${resolvedTheme === 'dark' ? 'Dark' : 'Light'}` : undefined}
         >
           <div className="relative">
             {resolvedTheme === 'dark' ? (
               <Moon size={18} className="text-slate-500 group-hover:text-matrix-accent transition-colors" />
             ) : (
-              <Sun size={18} className="text-amber-500 group-hover:text-amber-400 transition-colors" />
+              <Sun size={18} className="text-amber-600 group-hover:text-amber-500 transition-colors" />
             )}
           </div>
           {!isCollapsed && (
-            <span className="text-xs font-mono text-slate-400 group-hover:text-white truncate">
+            <span className={`text-xs font-mono ${textMuted} ${textHover} truncate`}>
               {resolvedTheme === 'dark'
                 ? (i18n.language === 'pl' ? 'TRYB CIEMNY' : 'DARK MODE')
                 : (i18n.language === 'pl' ? 'TRYB JASNY' : 'LIGHT MODE')}
@@ -241,42 +256,46 @@ export default function Sidebar() {
         <div className="relative">
           <button
             onClick={() => setShowLangDropdown(!showLangDropdown)}
-            className={`flex items-center ${isCollapsed ? 'justify-center' : 'justify-between'} gap-3 w-full p-2 rounded-lg hover:bg-white/5 transition-all group`}
+            className={`flex items-center ${isCollapsed ? 'justify-center' : 'justify-between'} gap-3 w-full p-2 rounded-lg ${hoverBg} transition-all group`}
             title={isCollapsed ? `Language: ${currentLang.name}` : undefined}
           >
             <div className="flex items-center gap-3">
               <div className="relative">
-                <Globe size={18} className="text-slate-500 group-hover:text-matrix-accent transition-colors" />
+                <Globe size={18} className={`${iconMuted} ${iconHover} transition-colors`} />
               </div>
               {!isCollapsed && (
-                <span className="text-xs font-mono text-slate-400 group-hover:text-white truncate">
+                <span className={`text-xs font-mono ${textMuted} ${textHover} truncate`}>
                   <span className="mr-1.5">{currentLang.flag}</span>
-                  <span className="font-bold text-matrix-accent">{currentLang.code.toUpperCase()}</span>
+                  <span className={`font-bold ${isLight ? 'text-emerald-700' : 'text-matrix-accent'}`}>{currentLang.code.toUpperCase()}</span>
                 </span>
               )}
             </div>
             {!isCollapsed && (
-              <ChevronDown size={14} className={`text-slate-500 transition-transform duration-200 ${showLangDropdown ? 'rotate-180' : ''}`} />
+              <ChevronDown size={14} className={`${textDim} transition-transform duration-200 ${showLangDropdown ? 'rotate-180' : ''}`} />
             )}
           </button>
 
           {/* Language Dropdown */}
           {showLangDropdown && (
-            <div className="absolute bottom-full left-0 right-0 mb-1 rounded-xl bg-black/90 backdrop-blur-xl border border-matrix-accent/20 shadow-[0_8px_32px_rgba(0,0,0,0.6)] overflow-hidden z-50">
+            <div className={`absolute bottom-full left-0 right-0 mb-1 rounded-xl backdrop-blur-xl border overflow-hidden z-50 ${
+              isLight
+                ? 'bg-white/95 border-emerald-600/20 shadow-[0_8px_32px_rgba(0,0,0,0.15)]'
+                : 'bg-black/90 border-matrix-accent/20 shadow-[0_8px_32px_rgba(0,0,0,0.6)]'
+            }`}>
               {languages.map((lang) => (
                 <button
                   key={lang.code}
                   onClick={() => selectLanguage(lang.code)}
                   className={`w-full flex items-center gap-3 px-3 py-2.5 text-xs transition-all ${
                     i18n.language === lang.code
-                      ? 'bg-matrix-accent/20 text-matrix-accent'
-                      : 'text-slate-400 hover:bg-white/5 hover:text-white'
+                      ? (isLight ? 'bg-emerald-500/15 text-emerald-800' : 'bg-matrix-accent/20 text-matrix-accent')
+                      : `${textMuted} ${hoverBg} ${textHover}`
                   }`}
                 >
                   <span className="text-base">{lang.flag}</span>
                   <span className="font-mono">{lang.name}</span>
                   {i18n.language === lang.code && (
-                    <div className="ml-auto w-1.5 h-1.5 bg-matrix-accent rounded-full shadow-[0_0_6px_#00ff41]" />
+                    <div className={`ml-auto w-1.5 h-1.5 rounded-full ${isLight ? 'bg-emerald-600 shadow-[0_0_6px_rgba(5,150,105,0.5)]' : 'bg-matrix-accent shadow-[0_0_6px_#00ff41]'}`} />
                   )}
                 </button>
               ))}
@@ -287,8 +306,8 @@ export default function Sidebar() {
 
       {/* Version */}
       {!isCollapsed && (
-        <div className="text-center text-[10px] text-slate-500 py-2">
-          <span className="text-matrix-accent">GeminiHydra</span> v2.0.0 | Wolf Swarm
+        <div className={`text-center text-[10px] py-2 ${isLight ? 'text-slate-500' : 'text-slate-500'}`}>
+          <span className={isLight ? 'text-emerald-700' : 'text-matrix-accent'}>GeminiHydra</span> v2.0.0 | Wolf Swarm
         </div>
       )}
     </div>

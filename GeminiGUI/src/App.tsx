@@ -531,12 +531,12 @@ function App() {
       <Toaster position="top-right" theme={isDark ? 'dark' : 'light'} />
 
       {/* Main Content */}
-      <div className="relative z-10 flex h-full w-full backdrop-blur-[1px] gap-4 p-4">
+      <div className="relative z-10 flex h-full w-full backdrop-blur-[1px] gap-4 p-4 overflow-hidden">
         {/* Sidebar */}
         <Sidebar />
 
         {/* Main Content Area */}
-        <main className={`flex-1 flex flex-col overflow-hidden relative rounded-2xl ${glassPanel}`}>
+        <main className={`flex-1 min-w-0 flex flex-col overflow-hidden relative rounded-2xl ${glassPanel}`}>
           {/* Header with breadcrumbs */}
           <Header
             isDark={isDark}
