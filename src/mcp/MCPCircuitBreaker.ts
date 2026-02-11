@@ -73,7 +73,7 @@ export class MCPCircuitBreakerManager {
     if (!this.breakers.has(serverName)) {
       this.breakers.set(serverName, this.createBreaker(serverName));
     }
-    return this.breakers.get(serverName)!;
+    return this.breakers.get(serverName) ?? this.createBreaker(serverName);
   }
 
   /**
@@ -133,12 +133,11 @@ export class MCPCircuitBreakerManager {
       for (let attempt = 1; attempt <= maxRetries; attempt++) {
         try {
           return await operation();
-        } catch (error: any) {
-          lastError = error;
+        } catch (error: unknown) {
+          lastError = error instanceof Error ? error : new Error(String(error));
+          const msg = error instanceof Error ? error.message : String(error);
           console.log(
-            chalk.yellow(
-              `[MCP:${serverName}] Attempt ${attempt}/${maxRetries} failed: ${error.message}`,
-            ),
+            chalk.yellow(`[MCP:${serverName}] Attempt ${attempt}/${maxRetries} failed: ${msg}`),
           );
 
           if (attempt < maxRetries) {

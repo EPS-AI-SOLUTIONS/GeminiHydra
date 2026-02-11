@@ -11,7 +11,7 @@
     "start": "node dist/bin/gemini.js",
     "build": "tsc",
     "dev": "tsc --watch",
-    "lint": "biome check .",
+    "lint": "npx @biomejs/biome check .",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
@@ -19,8 +19,8 @@
     "test:all": "vitest run && cd GeminiGUI && npm test",
     "prestart": "npm run build",
     "prepare": "husky",
-    "lint:fix": "biome check --write .",
-    "format": "biome format --write .",
+    "lint:fix": "npx @biomejs/biome check --write .",
+    "format": "npx @biomejs/biome format --write .",
     "audit": "npm audit --production",
     "deps:check": "npx npm-check-updates",
     "docs": "npx typedoc"
@@ -68,6 +68,6 @@
     "vitest": "^4.0.18"
   },
   "lint-staged": {
-    "*.{js,ts,tsx,json}": "biome format --write"
+    "*.{js,ts,tsx,json}": "npx @biomejs/biome format --write"
   }
 }

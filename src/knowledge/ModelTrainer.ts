@@ -267,8 +267,9 @@ export class ModelTrainer {
       });
 
       return true;
-    } catch (error: any) {
-      console.error(chalk.red(`[ModelTrainer] Dependency installation failed: ${error.message}`));
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : String(error);
+      console.error(chalk.red(`[ModelTrainer] Dependency installation failed: ${msg}`));
       return false;
     }
   }
@@ -291,7 +292,7 @@ export class ModelTrainer {
     await knowledgeBank.init();
 
     const entries = knowledgeBank.list({ limit: options.maxSamples || 1000 });
-    const trainingData: any[] = [];
+    const trainingData: Record<string, unknown>[] = [];
 
     for (const entry of entries) {
       if (options.format === 'alpaca') {
@@ -453,17 +454,18 @@ export class ModelTrainer {
         ollamaName,
         trainingTime: Date.now() - startTime,
       };
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : String(error);
       onProgress?.({
         stage: 'error',
         progress: 0,
-        message: error.message,
+        message: msg,
       });
 
       return {
         success: false,
         trainingTime: Date.now() - startTime,
-        error: error.message,
+        error: msg,
       };
     }
   }
@@ -780,8 +782,9 @@ print("[GGUF] Conversion complete!")
     try {
       await execAsync(`${this.pythonPath} ${convertScriptPath}`);
       return ggufPath;
-    } catch (error: any) {
-      console.warn(chalk.yellow(`[ModelTrainer] GGUF conversion warning: ${error.message}`));
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : String(error);
+      console.warn(chalk.yellow(`[ModelTrainer] GGUF conversion warning: ${msg}`));
       // Return the merged model path as fallback
       return mergedPath;
     }
@@ -826,8 +829,9 @@ Always provide accurate, helpful responses based on your training."""
       await execAsync(`ollama create ${ollamaName} -f ${modelfilePath}`);
       console.log(chalk.green(`[ModelTrainer] Model registered with Ollama: ${ollamaName}`));
       return ollamaName;
-    } catch (error: any) {
-      console.warn(chalk.yellow(`[ModelTrainer] Ollama registration failed: ${error.message}`));
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : String(error);
+      console.warn(chalk.yellow(`[ModelTrainer] Ollama registration failed: ${msg}`));
       console.log(
         chalk.gray(`To manually register: ollama create ${ollamaName} -f ${modelfilePath}`),
       );

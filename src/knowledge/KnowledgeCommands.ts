@@ -394,8 +394,9 @@ async function importKnowledge(
       await knowledgeBank.importFromFile(fullPath, type);
       return chalk.green(`\n Imported: ${source}`);
     }
-  } catch (error: any) {
-    return chalk.red(`\n Import failed: ${error.message}`);
+  } catch (error: unknown) {
+    const msg = error instanceof Error ? error.message : String(error);
+    return chalk.red(`\n Import failed: ${msg}`);
   }
 }
 
@@ -509,8 +510,9 @@ async function trainModel(flags: Record<string, string | boolean>): Promise<stri
           'Note: This is not fine-tuned. For real training, use /knowledge train without --quick',
         ),
       );
-    } catch (error: any) {
-      lines.push(chalk.red(`\n✗ Failed: ${error.message}`));
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : String(error);
+      lines.push(chalk.red(`\n✗ Failed: ${msg}`));
     }
     return lines.join('\n');
   }

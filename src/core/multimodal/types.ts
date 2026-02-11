@@ -22,7 +22,7 @@ export interface ImageInput {
   mimeType?: string;
   altText?: string;
   dimensions?: { width: number; height: number };
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 }
 
 /** Audio input (preparation for Gemini Audio API) */
@@ -34,7 +34,7 @@ export interface AudioInput {
   sampleRate?: number;
   channels?: number;
   language?: string;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 }
 
 /** Video input with frame extraction support */
@@ -48,7 +48,7 @@ export interface VideoInput {
   extractFramesAt?: number[];
   extractFramesEvery?: number;
   maxFrames?: number;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 }
 
 /** Document input (PDF, DOCX, etc.) */
@@ -58,7 +58,7 @@ export interface DocumentInput {
   mimeType?: string;
   title?: string;
   pageRange?: { start: number; end: number };
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 }
 
 // ============================================================================
@@ -77,7 +77,7 @@ export interface MultiModalContent {
     convert?: boolean;
     keyframesOnly?: boolean;
   };
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 }
 
 /** Mixed content prompt structure */
@@ -101,7 +101,7 @@ export interface MixedContentPrompt {
 /** Analysis result structure */
 export interface AnalysisResult {
   text: string;
-  structured?: Record<string, any>;
+  structured?: Record<string, unknown>;
   confidence?: number;
   metadata: {
     model: string;

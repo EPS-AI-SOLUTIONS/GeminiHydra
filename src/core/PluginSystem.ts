@@ -33,15 +33,16 @@ export type PluginHook =
 
 export interface PluginContext {
   mission?: string;
-  plan?: any;
-  task?: any;
-  result?: any;
+  plan?: unknown;
+  task?: unknown;
+  result?: unknown;
   error?: Error;
   agent?: string;
   input?: string;
   output?: string;
   mcpTool?: string;
-  mcpParams?: any;
+  mcpParams?: Record<string, unknown>;
+  _metricsStartTime?: number;
 }
 
 export type PluginHandler = (context: PluginContext) => Promise<PluginContext | undefined>;
@@ -59,7 +60,7 @@ export interface PluginManifest {
     {
       type: 'string' | 'number' | 'boolean' | 'array';
       description: string;
-      default?: any;
+      default?: string | number | boolean | unknown[];
       required?: boolean;
     }
   >;
@@ -68,7 +69,7 @@ export interface PluginManifest {
 export interface Plugin {
   manifest: PluginManifest;
   handlers: Partial<Record<PluginHook, PluginHandler>>;
-  init?: (config: Record<string, any>) => Promise<void>;
+  init?: (config: Record<string, unknown>) => Promise<void>;
   destroy?: () => Promise<void>;
 }
 
@@ -76,7 +77,7 @@ export interface PluginRegistryEntry {
   name: string;
   version: string;
   enabled: boolean;
-  config: Record<string, any>;
+  config: Record<string, unknown>;
   installedAt: string;
   path: string;
 }
@@ -110,8 +111,9 @@ export class PluginManager extends EventEmitter {
         try {
           await this.loadPlugin(entry.path);
           console.log(chalk.green(`[PluginManager] Loaded plugin: ${name}`));
-        } catch (error: any) {
-          console.error(chalk.red(`[PluginManager] Failed to load ${name}: ${error.message}`));
+        } catch (error: unknown) {
+          const msg = error instanceof Error ? error.message : String(error);
+          console.error(chalk.red(`[PluginManager] Failed to load ${name}: ${msg}`));
         }
       }
     }
@@ -348,7 +350,7 @@ export class PluginManager extends EventEmitter {
   /**
    * Update plugin config
    */
-  async setConfig(name: string, config: Record<string, any>): Promise<void> {
+  async setConfig(name: string, config: Record<string, unknown>): Promise<void> {
     const entry = this.registry.get(name);
     if (!entry) throw new Error(`Plugin not found: ${name}`);
 
@@ -396,10 +398,9 @@ export class PluginManager extends EventEmitter {
         if (result) {
           currentContext = result;
         }
-      } catch (error: any) {
-        console.error(
-          chalk.red(`[PluginManager] Hook error in ${plugin}.${hook}: ${error.message}`),
-        );
+      } catch (error: unknown) {
+        const msg = error instanceof Error ? error.message : String(error);
+        console.error(chalk.red(`[PluginManager] Hook error in ${plugin}.${hook}: ${msg}`));
         this.emit('hookError', { plugin, hook, error });
       }
     }
@@ -463,8 +464,10 @@ export class PluginManager extends EventEmitter {
       console.log(chalk.gray(`    Loaded: ${loaded}`));
 
       if (loaded) {
-        const plugin = this.plugins.get(entry.name)!;
-        console.log(chalk.gray(`    Hooks: ${plugin.manifest.hooks.join(', ')}`));
+        const plugin = this.plugins.get(entry.name);
+        if (plugin) {
+          console.log(chalk.gray(`    Hooks: ${plugin.manifest.hooks.join(', ')}`));
+        }
       }
     }
 
@@ -493,7 +496,7 @@ export function createPlugin(
   manifest: PluginManifest,
   handlers: Partial<Record<PluginHook, PluginHandler>>,
   options?: {
-    init?: (config: Record<string, any>) => Promise<void>;
+    init?: (config: Record<string, unknown>) => Promise<void>;
     destroy?: () => Promise<void>;
   },
 ): Plugin {
@@ -517,11 +520,13 @@ export const LoggingPlugin = createPlugin(
   },
   {
     beforeTask: async (ctx) => {
-      console.log(chalk.gray(`[LoggingPlugin] Starting task: ${ctx.task?.id}`));
+      const taskId = (ctx.task as Record<string, unknown> | undefined)?.id ?? 'unknown';
+      console.log(chalk.gray(`[LoggingPlugin] Starting task: ${taskId}`));
       return ctx;
     },
     afterTask: async (ctx) => {
-      console.log(chalk.gray(`[LoggingPlugin] Completed task: ${ctx.task?.id}`));
+      const taskId = (ctx.task as Record<string, unknown> | undefined)?.id ?? 'unknown';
+      console.log(chalk.gray(`[LoggingPlugin] Completed task: ${taskId}`));
       return ctx;
     },
     onError: async (ctx) => {
@@ -550,14 +555,15 @@ export const MetricsPlugin = createPlugin(
   },
   {
     beforeTask: async (ctx) => {
-      (ctx as any)._metricsStartTime = Date.now();
+      ctx._metricsStartTime = Date.now();
       return ctx;
     },
     afterTask: async (ctx) => {
-      const startTime = (ctx as any)._metricsStartTime;
+      const startTime = ctx._metricsStartTime;
       if (startTime) {
         const duration = Date.now() - startTime;
-        console.log(chalk.gray(`[MetricsPlugin] Task ${ctx.task?.id} took ${duration}ms`));
+        const taskId = (ctx.task as Record<string, unknown> | undefined)?.id ?? 'unknown';
+        console.log(chalk.gray(`[MetricsPlugin] Task ${taskId} took ${duration}ms`));
       }
       return ctx;
     },

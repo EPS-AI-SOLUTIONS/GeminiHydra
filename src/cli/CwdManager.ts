@@ -248,7 +248,14 @@ export class CwdManager {
       };
     }
 
-    const entry = this._cwdStack.pop()!;
+    const entry = this._cwdStack.pop();
+    if (!entry) {
+      return {
+        success: false,
+        error: 'Directory stack is empty',
+        stackSize: 0,
+      };
+    }
 
     // Validate the popped path still exists
     if (this._options.validateOnChange) {
@@ -294,7 +301,10 @@ export class CwdManager {
       return { success: false, error: 'Directory stack is empty' };
     }
 
-    const top = this._cwdStack.pop()!;
+    const top = this._cwdStack.pop();
+    if (!top) {
+      return { success: false, error: 'Directory stack is empty' };
+    }
     this._cwdStack.push({ path: this._cwd, timestamp: new Date() });
 
     return this.setCwd(top.path);

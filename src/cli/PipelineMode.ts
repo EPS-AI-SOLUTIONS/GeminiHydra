@@ -11,6 +11,7 @@
 
 import chalk from 'chalk';
 import ora from 'ora';
+import type { AgentRole } from '../config/agents.config.js';
 import { Agent } from '../core/agent/Agent.js';
 import type { Swarm } from '../core/swarm/Swarm.js';
 
@@ -103,7 +104,7 @@ export class PipelineMode {
 
         if (stage.agent) {
           // Direct agent execution
-          const agent = new Agent(stage.agent as any);
+          const agent = new Agent(stage.agent as AgentRole);
           // Context is CLEARLY SEPARATED from task
           const taskWithContext = context
             ? `=== CONTEXT FROM PREVIOUS STAGE (FOR REFERENCE ONLY) ===\n${context}\n\n=== YOUR TASK (EXECUTE THIS) ===\n${ORIGINAL_STAGE_TASK}`
@@ -130,18 +131,19 @@ export class PipelineMode {
 
         context = output; // Pass to next stage
         spinner.succeed(chalk.green(`[${stageNum}/${stages.length}] Complete (${duration}ms)`));
-      } catch (error: any) {
+      } catch (error: unknown) {
+        const msg = error instanceof Error ? error.message : String(error);
         const duration = Date.now() - startTime;
 
         this.results.push({
           stage: stageNum,
           task: stage.task,
-          output: error.message,
+          output: msg,
           success: false,
           duration,
         });
 
-        spinner.fail(chalk.red(`[${stageNum}/${stages.length}] Failed: ${error.message}`));
+        spinner.fail(chalk.red(`[${stageNum}/${stages.length}] Failed: ${msg}`));
 
         // Check for fallback
         if (stage.fallback) {
@@ -150,7 +152,7 @@ export class PipelineMode {
           const agent = new Agent('ciri');
           context = await agent.think(stage.fallback);
         } else {
-          throw new Error(`Pipeline failed at stage ${stageNum}: ${error.message}`);
+          throw new Error(`Pipeline failed at stage ${stageNum}: ${msg}`);
         }
       }
     }

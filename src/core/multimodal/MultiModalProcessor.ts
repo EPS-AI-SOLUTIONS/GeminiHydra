@@ -257,7 +257,7 @@ export class MultiModalProcessor {
           processingTimeMs: Date.now() - startTime,
         },
       };
-    } catch (_error: any) {
+    } catch (_error: unknown) {
       return {
         text: `[Audio transcription not available for model ${this.modelName}. Audio content received: ${content.mimeType}, size: ${content.data.length} bytes]`,
         metadata: {
@@ -381,8 +381,9 @@ export class MultiModalProcessor {
           }
         }
       }
-    } catch (error: any) {
-      console.warn(`Frame extraction failed (ffmpeg may not be installed): ${error.message}`);
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : String(error);
+      console.warn(`Frame extraction failed (ffmpeg may not be installed): ${msg}`);
     }
 
     return framePaths;
@@ -420,7 +421,7 @@ export class MultiModalProcessor {
           processingTimeMs: Date.now() - startTime,
         },
       };
-    } catch (error: any) {
+    } catch (error: unknown) {
       if (input.source === 'file') {
         const frames = await this.extractVideoFrames(input.data, {
           maxFrames: 5,

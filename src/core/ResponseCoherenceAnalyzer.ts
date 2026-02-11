@@ -355,12 +355,11 @@ export class ResponseCoherenceAnalyzer {
     const nums1 = new Map<string, number>();
     const nums2 = new Map<string, number>();
 
-    let match;
-    while ((match = numPattern.exec(text1)) !== null) {
+    for (let match = numPattern.exec(text1); match !== null; match = numPattern.exec(text1)) {
       nums1.set(match[1].toLowerCase(), parseFloat(match[2]));
     }
     numPattern.lastIndex = 0;
-    while ((match = numPattern.exec(text2)) !== null) {
+    for (let match = numPattern.exec(text2); match !== null; match = numPattern.exec(text2)) {
       nums2.set(match[1].toLowerCase(), parseFloat(match[2]));
     }
 
@@ -680,9 +679,11 @@ export class ResponseCoherenceAnalyzer {
     // Extract function calls
     const functionPattern = /\b([a-zA-Z_][a-zA-Z0-9_]*)\s*\(/g;
 
-    let match;
-
-    while ((match = identifierPattern.exec(response)) !== null) {
+    for (
+      let match = identifierPattern.exec(response);
+      match !== null;
+      match = identifierPattern.exec(response)
+    ) {
       identifiers.push({
         name: match[1],
         context: response.substring(
@@ -693,7 +694,11 @@ export class ResponseCoherenceAnalyzer {
       });
     }
 
-    while ((match = filePattern.exec(response)) !== null) {
+    for (
+      let match = filePattern.exec(response);
+      match !== null;
+      match = filePattern.exec(response)
+    ) {
       identifiers.push({
         name: match[0],
         context: response.substring(
@@ -704,7 +709,11 @@ export class ResponseCoherenceAnalyzer {
       });
     }
 
-    while ((match = functionPattern.exec(response)) !== null) {
+    for (
+      let match = functionPattern.exec(response);
+      match !== null;
+      match = functionPattern.exec(response)
+    ) {
       identifiers.push({
         name: match[1],
         context: response.substring(
@@ -922,10 +931,13 @@ export class ResponseCoherenceAnalyzer {
     const sentencePattern = /[^.!?]+[.!?]+/g;
     const sentences: SentenceInfo[] = [];
 
-    let match;
     let index = 0;
 
-    while ((match = sentencePattern.exec(text)) !== null) {
+    for (
+      let match = sentencePattern.exec(text);
+      match !== null;
+      match = sentencePattern.exec(text)
+    ) {
       sentences.push({
         text: match[0].trim(),
         index: index++,

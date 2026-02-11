@@ -89,25 +89,25 @@ export class SettingsStore {
     // Validate and apply each update
     if (updates.theme !== undefined) {
       const result = validateTheme(updates.theme);
-      if (!result.valid) return { error: result.error! };
+      if (!result.valid) return { error: result.error ?? 'Validation failed' };
       newSettings.theme = updates.theme;
     }
 
     if (updates.language !== undefined) {
       const result = validateLanguage(updates.language);
-      if (!result.valid) return { error: result.error! };
+      if (!result.valid) return { error: result.error ?? 'Validation failed' };
       newSettings.language = updates.language;
     }
 
     if (updates.temperature !== undefined) {
       const result = validateTemperature(updates.temperature);
-      if (!result.valid) return { error: result.error! };
+      if (!result.valid) return { error: result.error ?? 'Validation failed' };
       newSettings.temperature = Number(updates.temperature);
     }
 
     if (updates.maxTokens !== undefined) {
       const result = validateMaxTokens(updates.maxTokens);
-      if (!result.valid) return { error: result.error! };
+      if (!result.valid) return { error: result.error ?? 'Validation failed' };
       newSettings.maxTokens = Number(updates.maxTokens);
     }
 

@@ -71,7 +71,7 @@ Odpowiadaj PO POLSKU. Zwróć TYLKO JSON.`;
     const result = await geminiSemaphore.withPermit(async () => {
       const model = genAI.getGenerativeModel({
         model: INTELLIGENCE_MODEL,
-        generationConfig: { temperature: 0.3, maxOutputTokens: 1024 },
+        generationConfig: { temperature: 1.0, maxOutputTokens: 1024 }, // Temperature locked at 1.0 for Gemini - do not change
       });
       const res = await model.generateContent(prompt);
       return res.response.text();
@@ -87,8 +87,9 @@ Odpowiadaj PO POLSKU. Zwróć TYLKO JSON.`;
     console.log(chalk.green(`[Analogy] Found ${analogies.length} relevant analogies`));
 
     return analogies.filter((a) => a.similarity > 50);
-  } catch (error: any) {
-    console.log(chalk.yellow(`[Analogy] Failed: ${error.message}`));
+  } catch (error: unknown) {
+    const msg = error instanceof Error ? error.message : String(error);
+    console.log(chalk.yellow(`[Analogy] Failed: ${msg}`));
     return [];
   }
 }

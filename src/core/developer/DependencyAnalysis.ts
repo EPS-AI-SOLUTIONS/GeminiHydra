@@ -120,8 +120,9 @@ export async function analyzeDependencies(packageJsonPath: string): Promise<Depe
       dependencies,
       recommendations,
     };
-  } catch (error: any) {
-    console.log(chalk.yellow(`[Dependencies] Analysis failed: ${error.message}`));
+  } catch (error: unknown) {
+    const msg = error instanceof Error ? error.message : String(error);
+    console.log(chalk.yellow(`[Dependencies] Analysis failed: ${msg}`));
     return {
       projectPath: packageJsonPath,
       totalDependencies: 0,
@@ -226,7 +227,7 @@ export function formatDependencyAnalysis(analysis: DependencyAnalysis): string {
   // Recommendations
   if (analysis.recommendations.length > 0) {
     lines.push(chalk.cyan('💡 RECOMMENDATIONS:'));
-    analysis.recommendations.forEach((r) => lines.push(`   • ${r}`));
+    for (const r of analysis.recommendations) lines.push(`   • ${r}`);
   }
 
   return lines.join('\n');
@@ -262,12 +263,12 @@ export function generateDependencyReport(analysis: DependencyAnalysis): string {
     lines.push(`## Production Dependencies\n`);
     lines.push(`| Package | Version | Status |`);
     lines.push(`|---------|---------|--------|`);
-    grouped.production.forEach((d) => {
+    for (const d of grouped.production) {
       let status = '✅';
       if (d.hasVulnerabilities) status = '⚠️ Vulnerable';
       else if (d.isOutdated) status = '⬆️ Outdated';
       lines.push(`| ${d.name} | ${d.version} | ${status} |`);
-    });
+    }
     lines.push('');
   }
 
@@ -276,19 +277,19 @@ export function generateDependencyReport(analysis: DependencyAnalysis): string {
     lines.push(`## Development Dependencies\n`);
     lines.push(`| Package | Version | Status |`);
     lines.push(`|---------|---------|--------|`);
-    grouped.development.forEach((d) => {
+    for (const d of grouped.development) {
       let status = '✅';
       if (d.hasVulnerabilities) status = '⚠️ Vulnerable';
       else if (d.isOutdated) status = '⬆️ Outdated';
       lines.push(`| ${d.name} | ${d.version} | ${status} |`);
-    });
+    }
     lines.push('');
   }
 
   // Recommendations
   if (analysis.recommendations.length > 0) {
     lines.push(`## Recommendations\n`);
-    analysis.recommendations.forEach((r) => lines.push(`- ${r}`));
+    for (const r of analysis.recommendations) lines.push(`- ${r}`);
   }
 
   return lines.join('\n');

@@ -10,9 +10,7 @@ import type { FormatError, FormatSpec } from './types.js';
 export function extractCodeBlocks(text: string): Array<{ language?: string; code: string }> {
   const blocks: Array<{ language?: string; code: string }> = [];
   const regex = /```(\w*)\n?([\s\S]*?)```/g;
-  let match;
-
-  while ((match = regex.exec(text)) !== null) {
+  for (let match = regex.exec(text); match !== null; match = regex.exec(text)) {
     blocks.push({
       language: match[1] || undefined,
       code: match[2],
@@ -193,7 +191,8 @@ function checkBracketMatching(code: string): FormatError[] {
           actual: char,
         });
       } else {
-        const last = stack.pop()!;
+        const last = stack.pop();
+        if (!last) continue;
         if (pairs[last.char] !== char) {
           errors.push({
             type: 'structure',
@@ -208,7 +207,8 @@ function checkBracketMatching(code: string): FormatError[] {
   }
 
   while (stack.length > 0) {
-    const unclosed = stack.pop()!;
+    const unclosed = stack.pop();
+    if (!unclosed) break;
     errors.push({
       type: 'structure',
       message: `Unclosed bracket '${unclosed.char}'`,

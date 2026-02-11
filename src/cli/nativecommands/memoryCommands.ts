@@ -22,11 +22,11 @@ export const memoryCommands = {
     }
 
     const [key, ...valueParts] = args;
-    let value: any = valueParts.join(' ');
+    let value: unknown = valueParts.join(' ');
 
     // Try to parse as JSON
     try {
-      value = JSON.parse(value);
+      value = JSON.parse(value as string);
     } catch {
       // Keep as string
     }

@@ -185,10 +185,10 @@ export class EnhancedGeminiProvider extends EnhancedProvider {
       const result = await this.executeWithProtections(async () => {
         const model = this.getModel(modelName);
 
-        const generationConfig: Record<string, unknown> = {};
-        if (options.temperature !== undefined) {
-          generationConfig.temperature = options.temperature;
-        }
+        const generationConfig: Record<string, unknown> = {
+          // Temperature locked at 1.0 for Gemini - do not change
+          temperature: 1.0,
+        };
         if (options.maxTokens !== undefined) {
           generationConfig.maxOutputTokens = options.maxTokens;
         }
@@ -269,10 +269,10 @@ export class EnhancedGeminiProvider extends EnhancedProvider {
     try {
       const model = this.getModel(modelName);
 
-      const generationConfig: Record<string, unknown> = {};
-      if (options.temperature !== undefined) {
-        generationConfig.temperature = options.temperature;
-      }
+      const generationConfig: Record<string, unknown> = {
+        // Temperature locked at 1.0 for Gemini - do not change
+        temperature: 1.0,
+      };
       if (options.maxTokens !== undefined) {
         generationConfig.maxOutputTokens = options.maxTokens;
       }

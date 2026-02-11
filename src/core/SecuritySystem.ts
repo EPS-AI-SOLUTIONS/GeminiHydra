@@ -244,7 +244,7 @@ export class InputSanitizer {
   /**
    * Sanitize JSON input
    */
-  sanitizeJSON(input: string): { data: any; warnings: string[] } | { error: string } {
+  sanitizeJSON(input: string): { data: unknown; warnings: string[] } | { error: string } {
     const warnings: string[] = [];
 
     try {
@@ -261,12 +261,13 @@ export class InputSanitizer {
       const sanitizedData = this.deepSanitizeObject(data, warnings);
 
       return { data: sanitizedData, warnings };
-    } catch (e: any) {
-      return { error: `Invalid JSON: ${e.message}` };
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : String(e);
+      return { error: `Invalid JSON: ${msg}` };
     }
   }
 
-  private deepSanitizeObject(obj: any, warnings: string[], depth = 0): any {
+  private deepSanitizeObject(obj: unknown, warnings: string[], depth = 0): unknown {
     if (depth > 10) {
       warnings.push('Object nesting too deep, truncated');
       return null;
@@ -286,7 +287,7 @@ export class InputSanitizer {
     }
 
     if (obj && typeof obj === 'object') {
-      const sanitized: Record<string, any> = {};
+      const sanitized: Record<string, unknown> = {};
       for (const [key, value] of Object.entries(obj)) {
         const sanitizedKey = this.sanitize(key);
         if (!sanitizedKey.blocked) {
@@ -304,8 +305,8 @@ export class InputSanitizer {
    */
   sanitizeMCPToolCall(
     toolName: string,
-    params: Record<string, any>,
-  ): SanitizationResult & { params?: Record<string, any> } {
+    params: Record<string, unknown>,
+  ): SanitizationResult & { params?: Record<string, unknown> } {
     const warnings: string[] = [];
 
     // Sanitize tool name
@@ -315,7 +316,7 @@ export class InputSanitizer {
     }
 
     // Sanitize parameters
-    const sanitizedParams: Record<string, any> = {};
+    const sanitizedParams: Record<string, unknown> = {};
 
     for (const [key, value] of Object.entries(params)) {
       if (typeof value === 'string') {
@@ -451,12 +452,14 @@ export class ApiKeyRotator {
   }
 
   private selectKey(provider: string, candidates: ApiKeyEntry[]): string {
+    // candidates is always non-empty when this private method is called
+    const fallback = candidates[0] as ApiKeyEntry;
     let selected: ApiKeyEntry;
 
     switch (this.strategy) {
       case 'round-robin': {
         const idx = (this.indices.get(provider) ?? 0) % candidates.length;
-        selected = candidates[idx]!;
+        selected = candidates[idx] ?? fallback;
         this.indices.set(provider, idx + 1);
         break;
       }
@@ -465,11 +468,11 @@ export class ApiKeyRotator {
         break;
       }
       case 'random': {
-        selected = candidates[Math.floor(Math.random() * candidates.length)]!;
+        selected = candidates[Math.floor(Math.random() * candidates.length)] ?? fallback;
         break;
       }
       default:
-        selected = candidates[0]!;
+        selected = fallback;
     }
 
     selected.usageCount++;
@@ -581,7 +584,7 @@ export interface SecureConfigData {
   apiKeys: Record<string, string>;
   credentials: Record<string, { username: string; password: string }>;
   tokens: Record<string, string>;
-  custom: Record<string, any>;
+  custom: Record<string, unknown>;
 }
 
 export class SecureConfig {
@@ -726,7 +729,7 @@ export class SecureConfig {
   /**
    * Set custom value
    */
-  async setCustom(key: string, value: any): Promise<void> {
+  async setCustom(key: string, value: unknown): Promise<void> {
     this.data.custom[key] = value;
     await this.save();
   }
@@ -734,7 +737,7 @@ export class SecureConfig {
   /**
    * Get custom value
    */
-  getCustom<T = any>(key: string): T | undefined {
+  getCustom<T = unknown>(key: string): T | undefined {
     return this.data.custom[key] as T;
   }
 
@@ -743,7 +746,7 @@ export class SecureConfig {
    */
   async delete(category: keyof SecureConfigData, key: string): Promise<boolean> {
     if (this.data[category] && key in this.data[category]) {
-      delete (this.data[category] as any)[key];
+      delete (this.data[category] as Record<string, unknown>)[key];
       await this.save();
       return true;
     }

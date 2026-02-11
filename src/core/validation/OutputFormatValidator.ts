@@ -107,7 +107,7 @@ export class OutputFormatValidator {
         ),
       );
       if (errors.length > 0) {
-        errors.forEach((e) => console.log(chalk.yellow(`  - ${e.type}: ${e.message}`)));
+        for (const e of errors) console.log(chalk.yellow(`  - ${e.type}: ${e.message}`));
       }
     }
 

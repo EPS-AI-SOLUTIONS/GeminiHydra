@@ -957,9 +957,7 @@ export class PromptClarityScorer {
     let pos = -1;
     let count = 0;
     const regex = new RegExp(`\\b${word}\\b`, 'gi');
-    let match;
-
-    while ((match = regex.exec(text)) !== null) {
+    for (let match = regex.exec(text); match !== null; match = regex.exec(text)) {
       if (count === occurrence) {
         pos = match.index;
         break;

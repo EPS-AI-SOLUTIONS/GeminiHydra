@@ -657,7 +657,7 @@ export class TaskDecompositionValidator {
 
     const getDepth = (taskId: number): number => {
       if (depthCache.has(taskId)) {
-        return depthCache.get(taskId)!;
+        return depthCache.get(taskId) ?? 0;
       }
 
       const task = taskMap.get(taskId);
@@ -696,7 +696,7 @@ export class TaskDecompositionValidator {
 
     const getLevel = (taskId: number): number => {
       if (taskLevels.has(taskId)) {
-        return taskLevels.get(taskId)!;
+        return taskLevels.get(taskId) ?? 0;
       }
 
       const task = taskMap.get(taskId);

@@ -36,7 +36,7 @@ export interface JsonSchema {
   minLength?: number;
   maxLength?: number;
   pattern?: string;
-  enum?: any[];
+  enum?: unknown[];
   minimum?: number;
   maximum?: number;
   additionalProperties?: boolean | JsonSchema;

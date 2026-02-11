@@ -254,8 +254,8 @@ export class GraphMemory extends BaseMemory<GraphData> {
     const ids = this.entityByName.get(name.toLowerCase());
     if (!ids) return [];
     return Array.from(ids)
-      .map((id) => this.entities.get(id)!)
-      .filter(Boolean);
+      .map((id) => this.entities.get(id))
+      .filter((entity): entity is Entity => entity !== undefined);
   }
 
   /**
@@ -479,8 +479,8 @@ export class GraphMemory extends BaseMemory<GraphData> {
     this.observationsByEntity.get(entityId)?.add(id);
 
     // Update entity's observations array
-    const entity = this.entities.get(entityId)!;
-    if (!entity.observations.includes(content)) {
+    const entity = this.entities.get(entityId);
+    if (entity && !entity.observations.includes(content)) {
       entity.observations.push(content);
       entity.updated = new Date();
     }
@@ -509,8 +509,8 @@ export class GraphMemory extends BaseMemory<GraphData> {
     const obsIds = this.observationsByEntity.get(entityId);
     if (!obsIds) return [];
     return Array.from(obsIds)
-      .map((id) => this.observations.get(id)!)
-      .filter(Boolean);
+      .map((id) => this.observations.get(id))
+      .filter((obs): obs is Observation => obs !== undefined);
   }
 
   /**

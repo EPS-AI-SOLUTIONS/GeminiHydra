@@ -173,9 +173,9 @@ export class ProjectMemory {
 
       for (const { regex, type } of patterns) {
         regex.lastIndex = 0;
-        let match;
+        let _match: RegExpExecArray | null;
 
-        while ((match = regex.exec(line)) !== null) {
+        for (let match = regex.exec(line); match !== null; match = regex.exec(line)) {
           // Extract docstring (previous line comments)
           let docstring: string | undefined;
           if (i > 0) {
@@ -251,11 +251,14 @@ export class ProjectMemory {
     const importRegex = /import\s+.*?\s+from\s+['"]([^'"]+)['"]/g;
     const requireRegex = /require\s*\(\s*['"]([^'"]+)['"]\s*\)/g;
 
-    let match;
-    while ((match = importRegex.exec(content)) !== null) {
+    for (let match = importRegex.exec(content); match !== null; match = importRegex.exec(content)) {
       imports.push(match[1]);
     }
-    while ((match = requireRegex.exec(content)) !== null) {
+    for (
+      let match = requireRegex.exec(content);
+      match !== null;
+      match = requireRegex.exec(content)
+    ) {
       imports.push(match[1]);
     }
 
@@ -267,8 +270,7 @@ export class ProjectMemory {
     const exportRegex =
       /export\s+(?:default\s+)?(?:class|function|const|let|var|interface|type|enum)\s+(\w+)/g;
 
-    let match;
-    while ((match = exportRegex.exec(content)) !== null) {
+    for (let match = exportRegex.exec(content); match !== null; match = exportRegex.exec(content)) {
       exports.push(match[1]);
     }
 
@@ -335,9 +337,10 @@ export class ProjectMemory {
    */
   private async detectPatterns(): Promise<void> {
     // Singleton pattern
-    const singletons = this.store?.symbols.filter(
-      (s) => s.type === 'class' && s.signature?.includes('getInstance'),
-    );
+    const singletons =
+      this.store?.symbols.filter(
+        (s) => s.type === 'class' && s.signature?.includes('getInstance'),
+      ) ?? [];
     if (singletons.length > 0) {
       this.store?.patterns.push({
         name: 'Singleton',
@@ -349,9 +352,10 @@ export class ProjectMemory {
     }
 
     // Factory pattern
-    const factories = this.store?.symbols.filter(
-      (s) => s.name.toLowerCase().includes('factory') || s.name.toLowerCase().includes('create'),
-    );
+    const factories =
+      this.store?.symbols.filter(
+        (s) => s.name.toLowerCase().includes('factory') || s.name.toLowerCase().includes('create'),
+      ) ?? [];
     if (factories.length > 0) {
       this.store?.patterns.push({
         name: 'Factory',
@@ -363,12 +367,13 @@ export class ProjectMemory {
     }
 
     // Observer/Event pattern
-    const observers = this.store?.symbols.filter(
-      (s) =>
-        s.name.toLowerCase().includes('listener') ||
-        s.name.toLowerCase().includes('handler') ||
-        s.name.toLowerCase().includes('subscriber'),
-    );
+    const observers =
+      this.store?.symbols.filter(
+        (s) =>
+          s.name.toLowerCase().includes('listener') ||
+          s.name.toLowerCase().includes('handler') ||
+          s.name.toLowerCase().includes('subscriber'),
+      ) ?? [];
     if (observers.length > 0) {
       this.store?.patterns.push({
         name: 'Observer',
@@ -402,7 +407,7 @@ export class ProjectMemory {
               id: `${relativePath}:${i + 1}`,
               file: relativePath,
               line: i + 1,
-              type: todoMatch[1].toLowerCase() as any,
+              type: todoMatch[1].toLowerCase() as TechDebt['type'],
               description: todoMatch[2].trim(),
               severity: todoMatch[1].toLowerCase() === 'fixme' ? 'high' : 'medium',
               created: new Date(),

@@ -23,7 +23,6 @@ export let inquirerInput: any = null;
 
 export async function loadInquirer() {
   try {
-    // @ts-expect-error - Optional dependency, may not be installed
     const inquirer = await import('@inquirer/prompts');
     inquirerInput = inquirer.input;
     return true;
@@ -64,6 +63,9 @@ export let swarm: Swarm;
 export let projectContext: ProjectContext;
 
 export async function initializeSwarm() {
+  // ESM Fix: Dynamic import ensures dotenv loads .env BEFORE validateEnvVars checks process.env
+  // Static imports are hoisted in ESM and don't guarantee execution order
+  await import('dotenv/config');
   validateEnvVars();
   swarm = new Swarm(path.join(ROOT_DIR, '.serena'), YOLO_CONFIG);
   await swarm.initialize();

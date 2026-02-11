@@ -3,7 +3,7 @@
  * Feature #1: Streaming Output
  */
 
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import { type GenerativeModel, GoogleGenerativeAI } from '@google/generative-ai';
 import chalk from 'chalk';
 import 'dotenv/config';
 
@@ -27,7 +27,7 @@ export async function streamGeminiResponse(
 ): Promise<string> {
   const {
     model = 'gemini-3-pro-preview',
-    temperature = 0.3,
+    temperature: _temperature = 0.3,
     maxTokens = 4096,
     onToken = (t) => process.stdout.write(t),
     onComplete = () => {},
@@ -38,7 +38,7 @@ export async function streamGeminiResponse(
     const geminiModel = genAI.getGenerativeModel({
       model,
       generationConfig: {
-        temperature,
+        temperature: 1.0, // Temperature locked at 1.0 for Gemini - do not change
         maxOutputTokens: maxTokens,
       },
     });
@@ -55,8 +55,8 @@ export async function streamGeminiResponse(
 
     onComplete(fullText);
     return fullText;
-  } catch (error: any) {
-    onError(error);
+  } catch (error: unknown) {
+    onError(error instanceof Error ? error : new Error(String(error)));
     throw error;
   }
 }
@@ -85,7 +85,7 @@ export async function streamWithFallback(
  * Streaming chat session
  */
 export class StreamingChat {
-  private model: any;
+  private model: GenerativeModel;
   private history: Array<{ role: string; parts: Array<{ text: string }> }> = [];
 
   constructor(modelName: string = 'gemini-3-pro-preview') {

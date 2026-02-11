@@ -191,7 +191,7 @@ export class GeminiProvider implements LLMProvider {
   }
 
   withModel(model: string): GeminiProvider {
-    const apiKey = (this.client as any).apiKey;
+    const apiKey = (this.client as unknown as { apiKey: string }).apiKey;
     return new GeminiProvider(apiKey, model);
   }
 }

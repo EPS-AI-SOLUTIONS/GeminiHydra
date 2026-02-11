@@ -38,7 +38,7 @@ export interface QualityContext {
   /** Total execution time in milliseconds */
   executionTime: number;
   /** Results from each execution phase */
-  phaseResults: Map<string, any>;
+  phaseResults: Map<string, unknown>;
   /** Optional task classification */
   taskType?: string;
   /** Optional minimum threshold override */
@@ -162,6 +162,8 @@ export class FinalQualityGate {
   private lastResult: QualityResult | null = null;
   private citationEnforcer: CitationEnforcer;
   private coherenceAnalyzer: ResponseCoherenceAnalyzer;
+  // biome-ignore lint/correctness/noUnusedPrivateClassMembers: assigned in constructor for future use
+  private reportValidator: FinalReportValidator;
 
   constructor(config: Partial<FinalQualityGateConfig> = {}) {
     this.config = { ...DEFAULT_CONFIG, ...config };
@@ -522,8 +524,11 @@ export class FinalQualityGate {
     // Check for task citations in report
     const taskCitationPattern = /\[(?:Zadanie|Task)\s*#?(\d+)\]/gi;
     const citedTasks = new Set<number>();
-    let match;
-    while ((match = taskCitationPattern.exec(report)) !== null) {
+    for (
+      let match = taskCitationPattern.exec(report);
+      match !== null;
+      match = taskCitationPattern.exec(report)
+    ) {
       citedTasks.add(parseInt(match[1], 10));
     }
 
@@ -924,7 +929,7 @@ export function createQualityContext(
   originalObjective: string,
   agentResults: ExecutionResult[],
   executionTime: number,
-  phaseResults?: Map<string, any>,
+  phaseResults?: Map<string, unknown>,
 ): QualityContext {
   return {
     originalObjective,

@@ -458,7 +458,7 @@ Tags: ${entry.tags.join(', ')}`;
     // Check cache first
     const cacheKey = this.hashText(text);
     if (this.embeddingsCache.has(cacheKey)) {
-      return this.embeddingsCache.get(cacheKey)!;
+      return this.embeddingsCache.get(cacheKey) ?? [];
     }
 
     try {
@@ -582,7 +582,7 @@ Tags: ${entry.tags.join(', ')}`;
     for (const pattern of techPatterns) {
       const matches = content.match(pattern);
       if (matches) {
-        matches.forEach((m) => tags.add(m.toLowerCase()));
+        for (const m of matches) tags.add(m.toLowerCase());
       }
     }
 

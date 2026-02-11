@@ -150,17 +150,6 @@ export interface ChunkingOptions {
 }
 
 /**
- * Code block information
- */
-interface CodeBlock {
-  content: string;
-  language: ProgrammingLanguage;
-  startPosition: number;
-  endPosition: number;
-  symbols: CodeSymbol[];
-}
-
-/**
  * Code symbol (function, class, etc.)
  */
 interface CodeSymbol {
@@ -191,8 +180,7 @@ export function detectSemanticBoundaries(text: string): ChunkBoundary[] {
   ];
 
   for (const { regex, strength } of sectionPatterns) {
-    let match;
-    while ((match = regex.exec(text)) !== null) {
+    for (let match = regex.exec(text); match !== null; match = regex.exec(text)) {
       boundaries.push({
         position: match.index,
         type: 'section',
@@ -204,8 +192,7 @@ export function detectSemanticBoundaries(text: string): ChunkBoundary[] {
 
   // Paragraph boundaries (double newline)
   const paragraphRegex = /\n\s*\n/g;
-  let match;
-  while ((match = paragraphRegex.exec(text)) !== null) {
+  for (let match = paragraphRegex.exec(text); match !== null; match = paragraphRegex.exec(text)) {
     boundaries.push({
       position: match.index,
       type: 'paragraph',
@@ -216,7 +203,7 @@ export function detectSemanticBoundaries(text: string): ChunkBoundary[] {
 
   // Sentence boundaries
   const sentenceRegex = /[.!?]+(?:\s+|$)(?=[A-Z\u0080-\u024F]|\s*$)/g;
-  while ((match = sentenceRegex.exec(text)) !== null) {
+  for (let match = sentenceRegex.exec(text); match !== null; match = sentenceRegex.exec(text)) {
     boundaries.push({
       position: match.index + match[0].length,
       type: 'sentence',
@@ -227,7 +214,7 @@ export function detectSemanticBoundaries(text: string): ChunkBoundary[] {
 
   // Code block boundaries
   const codeBlockRegex = /```[\s\S]*?```/g;
-  while ((match = codeBlockRegex.exec(text)) !== null) {
+  for (let match = codeBlockRegex.exec(text); match !== null; match = codeBlockRegex.exec(text)) {
     boundaries.push({
       position: match.index,
       type: 'code_block',
@@ -247,7 +234,7 @@ export function detectSemanticBoundaries(text: string): ChunkBoundary[] {
 
   // List item boundaries
   const listItemRegex = /\n\s*(?:[-*+]|\d+\.)\s+/g;
-  while ((match = listItemRegex.exec(text)) !== null) {
+  for (let match = listItemRegex.exec(text); match !== null; match = listItemRegex.exec(text)) {
     boundaries.push({
       position: match.index,
       type: 'list_item',
@@ -881,9 +868,8 @@ function createMixedContentChunks(
   // Find code blocks
   const codeBlockRegex = /```(\w*)\n?([\s\S]*?)```/g;
   let lastEnd = 0;
-  let match: RegExpExecArray | null;
 
-  while ((match = codeBlockRegex.exec(text)) !== null) {
+  for (let match = codeBlockRegex.exec(text); match !== null; match = codeBlockRegex.exec(text)) {
     const currentMatch = match; // Capture for closure
     // Process text before code block
     if (currentMatch.index > lastEnd) {
@@ -1422,15 +1408,16 @@ Odpowiadaj PO POLSKU. Podaj tylko podsumowanie.`;
     const response = await geminiSemaphore.withPermit(async () => {
       const model = genAI.getGenerativeModel({
         model: INTELLIGENCE_MODEL,
-        generationConfig: { temperature: 0.2, maxOutputTokens: 500 },
+        generationConfig: { temperature: 1.0, maxOutputTokens: 500 }, // Temperature locked at 1.0 for Gemini - do not change
       });
       const result = await model.generateContent(prompt);
       return result.response.text();
     });
 
     return response.trim();
-  } catch (error: any) {
-    console.log(chalk.yellow(`[SemanticChunk] AI summarization failed: ${error.message}`));
+  } catch (error: unknown) {
+    const msg = error instanceof Error ? error.message : String(error);
+    console.log(chalk.yellow(`[SemanticChunk] AI summarization failed: ${msg}`));
     return chunks.map((c) => c.summary).join(' ');
   }
 }

@@ -140,7 +140,7 @@ export async function reviewCode(
   try {
     const model = genAI.getGenerativeModel({
       model: QUALITY_MODEL,
-      generationConfig: { temperature: 0.2, maxOutputTokens: 4096 },
+      generationConfig: { temperature: 1.0, maxOutputTokens: 4096 }, // Temperature locked at 1.0 for Gemini - do not change
     });
 
     const result = await model.generateContent(prompt);
@@ -167,14 +167,15 @@ export async function reviewCode(
       positives: parsed.positives || [],
       recommendations: parsed.recommendations || [],
     };
-  } catch (error: any) {
-    console.log(chalk.yellow(`[CodeReview] Failed: ${error.message}`));
+  } catch (error: unknown) {
+    const msg = error instanceof Error ? error.message : String(error);
+    console.log(chalk.yellow(`[CodeReview] Failed: ${msg}`));
     return {
       file: filename,
       language: detectedLanguage,
       score: 0,
       issues: [],
-      summary: `Review failed: ${error.message}`,
+      summary: `Review failed: ${msg}`,
       positives: [],
       recommendations: [],
     };
@@ -234,14 +235,14 @@ export function formatCodeReview(review: CodeReviewResult): string {
   // Positives
   if (review.positives.length > 0) {
     lines.push(chalk.green('[+] POSITIVES:'));
-    review.positives.forEach((p) => lines.push(`   - ${p}`));
+    for (const p of review.positives) lines.push(`   - ${p}`);
     lines.push('');
   }
 
   // Recommendations
   if (review.recommendations.length > 0) {
     lines.push(chalk.cyan('[>] RECOMMENDATIONS:'));
-    review.recommendations.forEach((r) => lines.push(`   - ${r}`));
+    for (const r of review.recommendations) lines.push(`   - ${r}`);
   }
 
   return lines.join('\n');

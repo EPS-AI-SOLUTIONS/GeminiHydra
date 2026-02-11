@@ -12,6 +12,7 @@ import { execSync, spawn } from 'node:child_process';
 import os from 'node:os';
 import path from 'node:path';
 import chalk from 'chalk';
+import { getErrorMessage } from '../core/errors.js';
 import type { NativeShell, ShellType } from './nativeshell/index.js';
 
 // ============================================================
@@ -634,12 +635,12 @@ export class ShellDiagnostics {
         healthy: true,
         responseTimeMs: Date.now() - startTime,
       };
-    } catch (err: any) {
+    } catch (err: unknown) {
       return {
         shell: shellInfo.type,
         healthy: false,
         responseTimeMs: Date.now() - startTime,
-        error: err.message,
+        error: getErrorMessage(err),
       };
     }
   }
@@ -827,11 +828,13 @@ export class ShellDiagnostics {
       }
 
       if (filter.startTime) {
-        history = history.filter((e) => e.startTime >= filter.startTime!);
+        const startTime = filter.startTime;
+        history = history.filter((e) => e.startTime >= startTime);
       }
 
       if (filter.endTime) {
-        history = history.filter((e) => e.startTime <= filter.endTime!);
+        const endTime = filter.endTime;
+        history = history.filter((e) => e.startTime <= endTime);
       }
     }
 
@@ -887,8 +890,8 @@ export class ShellDiagnostics {
 
     // Calculate execution time statistics
     const durations = periodHistory
-      .filter((e) => e.durationMs !== undefined)
-      .map((e) => e.durationMs!);
+      .filter((e): e is typeof e & { durationMs: number } => e.durationMs !== undefined)
+      .map((e) => e.durationMs);
 
     const executionTime = this.calculateTimeStats(durations);
 
@@ -969,8 +972,12 @@ export class ShellDiagnostics {
     const stats = Array.from(commandGroups.entries()).map(([command, executions]) => {
       const completed = executions.filter((e) => e.success !== undefined);
       const successes = completed.filter((e) => e.success);
-      const durations = executions.filter((e) => e.durationMs).map((e) => e.durationMs!);
-      const errors = executions.filter((e) => e.error).map((e) => e.error!);
+      const durations = executions
+        .filter((e): e is typeof e & { durationMs: number } => !!e.durationMs)
+        .map((e) => e.durationMs);
+      const errors = executions
+        .filter((e): e is typeof e & { error: string } => !!e.error)
+        .map((e) => e.error);
 
       return {
         command,
@@ -1034,7 +1041,9 @@ export class ShellDiagnostics {
     // Calculate averages
     for (const shell of Object.keys(usage)) {
       const shellHistory = history.filter((e) => (e.shell || 'unknown') === shell);
-      const durations = shellHistory.filter((e) => e.durationMs).map((e) => e.durationMs!);
+      const durations = shellHistory
+        .filter((e): e is typeof e & { durationMs: number } => !!e.durationMs)
+        .map((e) => e.durationMs);
       const completed = shellHistory.filter((e) => e.success !== undefined);
       const successes = completed.filter((e) => e.success);
 

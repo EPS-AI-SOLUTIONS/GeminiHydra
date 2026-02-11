@@ -208,9 +208,10 @@ export class AutoCompact {
         }
         await this.compact(session.turns, this.config.defaultLevel);
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : String(error);
       if (this.config.verbose) {
-        console.log(chalk.yellow(`[AutoCompact] autoCheck error: ${error.message}`));
+        console.log(chalk.yellow(`[AutoCompact] autoCheck error: ${msg}`));
       }
     }
   }
@@ -391,11 +392,10 @@ Summary:`;
 
       // Fallback if AI returns empty
       return this.extractiveSummary(turns, level);
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : String(error);
       if (this.config.verbose) {
-        console.log(
-          chalk.yellow(`[AutoCompact] AI summary failed, using extractive: ${error.message}`),
-        );
+        console.log(chalk.yellow(`[AutoCompact] AI summary failed, using extractive: ${msg}`));
       }
       return this.extractiveSummary(turns, level);
     }
@@ -490,9 +490,10 @@ Summary:`;
 
       // Also persist
       await conversationMemory.persist();
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : String(error);
       if (this.config.verbose) {
-        console.log(chalk.yellow(`[AutoCompact] Apply failed: ${error.message}`));
+        console.log(chalk.yellow(`[AutoCompact] Apply failed: ${msg}`));
       }
     }
   }

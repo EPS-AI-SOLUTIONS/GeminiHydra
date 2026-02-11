@@ -9,7 +9,6 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import 'dotenv/config';
 import { GEMINI_MODELS } from '../../config/models.config.js';
-import { TEMPERATURE_PRESETS } from '../../config/temperatures.config.js';
 import type { TaskComplexity } from '../agent/types.js';
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
@@ -30,7 +29,7 @@ export async function classifyComplexity(taskText: string): Promise<TaskComplexi
   try {
     const classifier = genAI.getGenerativeModel({
       model: GEMINI_MODELS.FLASH,
-      generationConfig: { temperature: TEMPERATURE_PRESETS.PRECISE, maxOutputTokens: 20 },
+      generationConfig: { temperature: 1.0, maxOutputTokens: 20 }, // Temperature locked at 1.0 for Gemini - do not change
     });
 
     const prompt = `Classify this task complexity. Reply with ONE word only: trivial, simple, medium, complex, or critical.

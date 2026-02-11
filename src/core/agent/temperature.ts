@@ -273,6 +273,8 @@ const DEFAULT_TEMPERATURE_CONFIG: AdaptiveTemperatureConfig = {
 export class TemperatureController {
   private config: AdaptiveTemperatureConfig;
   private globalHistory: TemperaturePerformanceRecord[] = [];
+  // biome-ignore lint/correctness/noUnusedPrivateClassMembers: assigned in constructor for future use
+  private sessionStartTime: number;
 
   constructor(config: Partial<AdaptiveTemperatureConfig> = {}) {
     this.config = { ...DEFAULT_TEMPERATURE_CONFIG, ...config };

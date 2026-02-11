@@ -211,7 +211,7 @@ export async function withTimeout<T>(
   timeoutMs: number,
   message = 'Operation timed out',
 ): Promise<T> {
-  let timer: ReturnType<typeof setTimeout>;
+  let timer: ReturnType<typeof setTimeout> | undefined;
   try {
     return await Promise.race([
       fn(),
@@ -220,7 +220,7 @@ export async function withTimeout<T>(
       }),
     ]);
   } finally {
-    clearTimeout(timer!);
+    if (timer) clearTimeout(timer);
   }
 }
 
@@ -288,15 +288,16 @@ export class CircuitBreaker {
       this.halfOpenCalls = 0;
     }
 
-    // Check half-open call limit
+    // Check half-open call limit (increment before await to prevent over-admission)
     if (this.state === 'half-open') {
-      if (this.halfOpenCalls >= this.config.halfOpenMaxCalls) {
+      this.halfOpenCalls++;
+      if (this.halfOpenCalls > this.config.halfOpenMaxCalls) {
+        this.halfOpenCalls--; // Roll back
         throw new CircuitOpenError(
           'Circuit breaker half-open call limit reached',
           this.nextAttemptAt ?? undefined,
         );
       }
-      this.halfOpenCalls++;
     }
 
     try {

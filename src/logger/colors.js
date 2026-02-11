@@ -199,6 +199,7 @@ export function createColorFormatter(colorCode) {
 }
 
 export function stripAnsi(text) {
+  // biome-ignore lint/suspicious/noControlCharactersInRegex: intentional ANSI escape sequence stripping
   return text.replace(/\x1b\[[0-9;]*m/g, '');
 }
 

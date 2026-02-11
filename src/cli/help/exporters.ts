@@ -133,20 +133,23 @@ export function exportToMarkdown(): string {
  * Export help to JSON format
  */
 export function exportToJSON(): string {
-  const data: any = {
+  const data: Record<string, unknown> = {
     generated: new Date().toISOString(),
-    categories: {},
-    commands: {},
+    categories: {} as Record<string, unknown>,
+    commands: {} as Record<string, unknown>,
   };
 
+  const categories = data.categories as Record<string, unknown>;
+  const commands = data.commands as Record<string, unknown>;
+
   for (const cat of categoryConfig.values()) {
-    const commands = commandRegistry.getByCategory(cat.name);
-    if (commands.length > 0) {
-      data.categories[cat.name] = {
+    const cmds = commandRegistry.getByCategory(cat.name);
+    if (cmds.length > 0) {
+      categories[cat.name] = {
         displayName: cat.displayName,
         description: cat.description,
         icon: cat.icon,
-        commandCount: commands.length,
+        commandCount: cmds.length,
       };
     }
   }
@@ -154,7 +157,7 @@ export function exportToJSON(): string {
   for (const cmd of commandRegistry.getAll()) {
     const meta = helpMetaRegistry.get(cmd.name);
 
-    data.commands[cmd.name] = {
+    commands[cmd.name] = {
       name: cmd.name,
       description: cmd.description,
       usage: cmd.usage,

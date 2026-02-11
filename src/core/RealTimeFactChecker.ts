@@ -921,7 +921,7 @@ export class RealTimeFactChecker {
 
     if (result.contradicts && result.contradicts.length > 0) {
       console.log(chalk.red(`  Contradictions:`));
-      result.contradicts.forEach((c) => console.log(chalk.red(`    - ${c}`)));
+      for (const c of result.contradicts) console.log(chalk.red(`    - ${c}`));
     }
   }
 }

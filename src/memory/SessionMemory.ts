@@ -189,7 +189,7 @@ export class SessionMemory extends BaseMemory<SessionSnapshot> {
    */
   async loadSession(sessionId: string): Promise<SessionSnapshot | null> {
     const filePath = path.join(SESSIONS_DIR, `${sessionId}.json`);
-    const data = await loadFromFile<any>(filePath);
+    const data = await loadFromFile<Record<string, unknown>>(filePath);
 
     if (data) {
       this.deserialize(JSON.stringify(data));
@@ -246,7 +246,9 @@ export class SessionMemory extends BaseMemory<SessionSnapshot> {
       agent,
     });
 
-    this.currentSession!.updated = new Date();
+    if (this.currentSession) {
+      this.currentSession.updated = new Date();
+    }
     this.scheduleSave();
   }
 
@@ -325,13 +327,13 @@ export class SessionMemory extends BaseMemory<SessionSnapshot> {
       for (const file of files) {
         if (file.endsWith('.json')) {
           const filePath = path.join(SESSIONS_DIR, file);
-          const data = await loadFromFile<any>(filePath);
+          const data = await loadFromFile<Record<string, unknown>>(filePath);
           if (data) {
             sessions.push({
-              id: data.id,
-              name: data.name,
-              updated: new Date(data.updated),
-              messageCount: data.messages?.length || 0,
+              id: data.id as string,
+              name: data.name as string,
+              updated: new Date(data.updated as string | number),
+              messageCount: (data.messages as unknown[] | undefined)?.length || 0,
             });
           }
         }

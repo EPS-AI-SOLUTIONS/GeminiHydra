@@ -149,8 +149,8 @@ describe('AGENT_PERSONAS', () => {
     }
   });
 
-  it('should have exactly 13 agents', () => {
-    expect(Object.keys(AGENT_PERSONAS).length).toBe(13);
+  it('should have exactly 14 agents', () => {
+    expect(Object.keys(AGENT_PERSONAS).length).toBe(14);
   });
 
   it('should have required fields on each persona', () => {

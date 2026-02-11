@@ -625,7 +625,7 @@ Odpowiadaj PO POLSKU. Zwroc TYLKO JSON.`;
     const response = await geminiSemaphore.withPermit(async () => {
       const model = genAI.getGenerativeModel({
         model: INTELLIGENCE_MODEL,
-        generationConfig: { temperature: 0.2, maxOutputTokens: 4096 },
+        generationConfig: { temperature: 1.0, maxOutputTokens: 4096 }, // Temperature locked at 1.0 for Gemini - do not change
       });
       const result = await model.generateContent(prompt);
       return result.response.text();
@@ -639,8 +639,9 @@ Odpowiadaj PO POLSKU. Zwroc TYLKO JSON.`;
 
     console.log(chalk.green(`[CoT] Completed with ${parsed.steps.length} reasoning steps`));
     return parsed;
-  } catch (error: any) {
-    console.log(chalk.yellow(`[CoT] Failed: ${error.message}`));
+  } catch (error: unknown) {
+    const msg = error instanceof Error ? error.message : String(error);
+    console.log(chalk.yellow(`[CoT] Failed: ${msg}`));
     return {
       steps: ['Bezposrednia analiza'],
       reasoning: 'Chain-of-Thought nie powiodlo sie, uzyto bezposredniej odpowiedzi',
@@ -661,7 +662,7 @@ async function executeCoTPass(
 ): Promise<ChainOfThoughtResult> {
   const temperature = options.temperature ?? 0.25;
   // Slightly vary temperature for different passes to get diverse results
-  const adjustedTemp = Math.min(0.4, temperature + passIndex * 0.05);
+  const _adjustedTemp = Math.min(0.4, temperature + passIndex * 0.05);
 
   const prompt = buildStepByStepPrompt(task, complexity, options);
   const fullPrompt = context ? `${prompt}\n\nKONTEKST:\n${context}` : prompt;
@@ -682,7 +683,7 @@ Zwroc TYLKO JSON, bez dodatkowego tekstu.`;
       const model = genAI.getGenerativeModel({
         model: INTELLIGENCE_MODEL,
         generationConfig: {
-          temperature: adjustedTemp,
+          temperature: 1.0, // Temperature locked at 1.0 for Gemini - do not change
           maxOutputTokens: options.maxOutputTokens ?? 8192,
         },
       });
@@ -695,8 +696,9 @@ Zwroc TYLKO JSON, bez dodatkowego tekstu.`;
       .replace(/```/g, '')
       .trim();
     return JSON.parse(jsonStr) as ChainOfThoughtResult;
-  } catch (error: any) {
-    console.log(chalk.yellow(`[CoT] Pass ${passIndex + 1} failed: ${error.message}`));
+  } catch (error: unknown) {
+    const msg = error instanceof Error ? error.message : String(error);
+    console.log(chalk.yellow(`[CoT] Pass ${passIndex + 1} failed: ${msg}`));
     return {
       steps: [`Bezposrednia analiza (pass ${passIndex + 1})`],
       reasoning: `Proba ${passIndex + 1} nie powiodla sie`,
@@ -725,7 +727,7 @@ async function executeMetaCognition(
     const response = await geminiSemaphore.withPermit(async () => {
       const model = genAI.getGenerativeModel({
         model: INTELLIGENCE_MODEL,
-        generationConfig: { temperature: 0.1, maxOutputTokens: 2048 },
+        generationConfig: { temperature: 1.0, maxOutputTokens: 2048 }, // Temperature locked at 1.0 for Gemini - do not change
       });
       const result = await model.generateContent(prompt);
       return result.response.text();
@@ -743,8 +745,9 @@ async function executeMetaCognition(
       confidence: parsed.confidence ?? 'medium',
       improvements: parsed.improvements ?? [],
     };
-  } catch (error: any) {
-    console.log(chalk.yellow(`[CoT Meta] Evaluation failed: ${error.message}`));
+  } catch (error: unknown) {
+    const msg = error instanceof Error ? error.message : String(error);
+    console.log(chalk.yellow(`[CoT Meta] Evaluation failed: ${msg}`));
     return {
       qualityScore: 50,
       assessment: 'Nie udalo sie przeprowadzic oceny meta-kognitywnej',
@@ -890,7 +893,7 @@ export async function selfConsistentCoT(
     const votingResponse = await geminiSemaphore.withPermit(async () => {
       const model = genAI.getGenerativeModel({
         model: INTELLIGENCE_MODEL,
-        generationConfig: { temperature: 0.1, maxOutputTokens: 2048 },
+        generationConfig: { temperature: 1.0, maxOutputTokens: 2048 }, // Temperature locked at 1.0 for Gemini - do not change
       });
       const result = await model.generateContent(votingPrompt);
       return result.response.text();
@@ -910,7 +913,7 @@ export async function selfConsistentCoT(
         `[CoT Self-Consistent] Selected path ${selectedPathIndex + 1}, consistency: ${(consistencyScore * 100).toFixed(0)}%`,
       ),
     );
-  } catch (_error: any) {
+  } catch (_error: unknown) {
     console.log(chalk.yellow(`[CoT Self-Consistent] Voting failed, using most common answer`));
 
     // Fallback: select path with most common answer

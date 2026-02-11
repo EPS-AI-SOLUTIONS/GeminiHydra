@@ -97,7 +97,7 @@ export async function generateMetaPrompt(
       expectedOutputFormat: 'text',
       confidence: Math.round(result.expectedGain * 100),
     };
-  } catch (_error: any) {
+  } catch (_error: unknown) {
     return {
       originalTask: task,
       taskType,
@@ -158,7 +158,7 @@ export async function executeWithMetaPrompt(
     const response = await geminiSemaphore.withPermit(async () => {
       const model = genAI.getGenerativeModel({
         model: INTELLIGENCE_MODEL,
-        generationConfig: { temperature: 0.4, maxOutputTokens: 4096 },
+        generationConfig: { temperature: 1.0, maxOutputTokens: 4096 }, // Temperature locked at 1.0 for Gemini - do not change
       });
       const result = await model.generateContent(metaInfo.optimizedPrompt);
       return result.response.text();
@@ -168,9 +168,10 @@ export async function executeWithMetaPrompt(
       result: response.trim(),
       metaInfo,
     };
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const msg = error instanceof Error ? error.message : String(error);
     return {
-      result: `Blad wykonania: ${error.message}`,
+      result: `Blad wykonania: ${msg}`,
       metaInfo,
     };
   }

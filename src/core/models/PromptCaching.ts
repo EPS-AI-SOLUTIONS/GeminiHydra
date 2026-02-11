@@ -21,7 +21,7 @@ class PromptCache {
     return crypto.createHash('sha256').update(input).digest('hex').substring(0, 16);
   }
 
-  get(template: string, variables: Record<string, any>): string | undefined {
+  get(template: string, variables: Record<string, unknown>): string | undefined {
     const key = this.hash(template + JSON.stringify(variables));
     const cached = this.cache.get(key);
 
@@ -36,7 +36,7 @@ class PromptCache {
     return cached.compiled;
   }
 
-  set(template: string, variables: Record<string, any>, compiled: string): void {
+  set(template: string, variables: Record<string, unknown>, compiled: string): void {
     const key = this.hash(template + JSON.stringify(variables));
 
     if (this.cache.size >= this.maxSize) {
@@ -55,7 +55,7 @@ class PromptCache {
     });
   }
 
-  compile(template: string, variables: Record<string, any>): string {
+  compile(template: string, variables: Record<string, unknown>): string {
     const cached = this.get(template, variables);
     if (cached) return cached;
 
@@ -70,7 +70,7 @@ class PromptCache {
 
   getStats(): { size: number; totalHits: number } {
     let totalHits = 0;
-    this.cache.forEach((c) => (totalHits += c.hits));
+    for (const c of this.cache.values()) totalHits += c.hits;
     return { size: this.cache.size, totalHits };
   }
 

@@ -794,7 +794,7 @@ export class FinalReportValidator {
         .get('missing_section')
         ?.map((i) => i.matchedText || i.description)
         .slice(0, 3);
-      recommendations.push(`Dodaj brakujące sekcje: ${missingSections.join(', ')}`);
+      recommendations.push(`Dodaj brakujące sekcje: ${missingSections?.join(', ')}`);
     }
 
     if (issuesByType.has('inconsistent_status')) {

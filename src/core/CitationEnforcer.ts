@@ -372,8 +372,7 @@ export class CitationEnforcer {
       // Reset pattern lastIndex for global patterns
       pattern.lastIndex = 0;
 
-      let match;
-      while ((match = pattern.exec(line)) !== null) {
+      for (let match = pattern.exec(line); match !== null; match = pattern.exec(line)) {
         const text = match[0];
 
         // Skip duplicates
@@ -455,9 +454,12 @@ export class CitationEnforcer {
 
       for (const indicator of HALLUCINATION_INDICATORS) {
         indicator.pattern.lastIndex = 0;
-        let match;
 
-        while ((match = indicator.pattern.exec(line)) !== null) {
+        for (
+          let match = indicator.pattern.exec(line);
+          match !== null;
+          match = indicator.pattern.exec(line)
+        ) {
           hallucinations.push({
             claim: match[0],
             location: `Line ${i + 1}`,
@@ -473,9 +475,8 @@ export class CitationEnforcer {
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i];
       filePattern.lastIndex = 0;
-      let match;
 
-      while ((match = filePattern.exec(line)) !== null) {
+      for (let match = filePattern.exec(line); match !== null; match = filePattern.exec(line)) {
         const filePath = match[0].toLowerCase();
 
         // Check if this file appears in any source

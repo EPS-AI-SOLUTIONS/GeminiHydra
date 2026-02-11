@@ -99,7 +99,7 @@ export async function scanSecurity(code: string, filename: string): Promise<Secu
   try {
     const model = genAI.getGenerativeModel({
       model: QUALITY_MODEL,
-      generationConfig: { temperature: 0.1, maxOutputTokens: 4096 },
+      generationConfig: { temperature: 1.0, maxOutputTokens: 4096 }, // Temperature locked at 1.0 for Gemini - do not change
     });
 
     const result = await model.generateContent(prompt);
@@ -113,13 +113,17 @@ export async function scanSecurity(code: string, filename: string): Promise<Secu
     const parsed = JSON.parse(jsonStr);
 
     // Add IDs
-    const vulnerabilities = (parsed.vulnerabilities || []).map((v: any, i: number) => ({
-      ...v,
+    const vulnerabilities = (parsed.vulnerabilities || []).map((v: unknown, i: number) => ({
+      ...(v as Record<string, unknown>),
       id: `vuln-${i + 1}`,
     }));
 
-    const criticalCount = vulnerabilities.filter((v: any) => v.severity === 'critical').length;
-    const highCount = vulnerabilities.filter((v: any) => v.severity === 'high').length;
+    const criticalCount = vulnerabilities.filter(
+      (v: Record<string, unknown>) => v.severity === 'critical',
+    ).length;
+    const highCount = vulnerabilities.filter(
+      (v: Record<string, unknown>) => v.severity === 'high',
+    ).length;
 
     if (criticalCount > 0) {
       console.log(
@@ -138,8 +142,9 @@ export async function scanSecurity(code: string, filename: string): Promise<Secu
       securePatterns: parsed.securePatterns || [],
       recommendations: parsed.recommendations || [],
     };
-  } catch (error: any) {
-    console.log(chalk.yellow(`[Security] Scan failed: ${error.message}`));
+  } catch (error: unknown) {
+    const msg = error instanceof Error ? error.message : String(error);
+    console.log(chalk.yellow(`[Security] Scan failed: ${msg}`));
     return {
       file: filename,
       riskLevel: 'low',
@@ -222,14 +227,14 @@ export function formatSecurityScan(result: SecurityScanResult): string {
   // Secure patterns found
   if (result.securePatterns.length > 0) {
     lines.push(chalk.green('✅ SECURE PATTERNS FOUND:'));
-    result.securePatterns.forEach((p) => lines.push(`   • ${p}`));
+    for (const p of result.securePatterns) lines.push(`   • ${p}`);
     lines.push('');
   }
 
   // Recommendations
   if (result.recommendations.length > 0) {
     lines.push(chalk.cyan('💡 RECOMMENDATIONS:'));
-    result.recommendations.forEach((r) => lines.push(`   • ${r}`));
+    for (const r of result.recommendations) lines.push(`   • ${r}`);
   }
 
   return lines.join('\n');

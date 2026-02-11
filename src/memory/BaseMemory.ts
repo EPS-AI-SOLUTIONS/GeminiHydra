@@ -296,7 +296,7 @@ export abstract class BaseMemory<_TData = unknown> {
    * Load data from persistent storage
    */
   async load(): Promise<void> {
-    const data = await loadFromFile<any>(this.persistPath);
+    const data = await loadFromFile<Record<string, unknown>>(this.persistPath);
     if (data) {
       this.deserialize(JSON.stringify(data));
     } else {

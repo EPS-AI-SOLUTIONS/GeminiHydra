@@ -174,7 +174,8 @@ function extractJSON(text: string): string {
     // Fix single quotes to double quotes (but not within strings)
     .replace(/'([^']+)'(\s*[,}\]])/g, '"$1"$2')
     // Remove control characters
-    .replace(/[\x00-\x1F\x7F]/g, ' ')
+    // biome-ignore lint/suspicious/noControlCharactersInRegex: intentional control char sanitization
+    .replace(/[\u0000-\u001F\u007F]/g, ' ')
     // Fix newlines in strings
     .replace(/\n/g, '\\n')
     // Remove BOM
@@ -389,7 +390,7 @@ export async function robustScoreConfidence(
     includeExplanation?: boolean;
   } = {},
 ): Promise<ConfidenceScore> {
-  const { retries = 2, timeout = 30000, includeExplanation = true } = options;
+  const { retries = 2, timeout: _timeout = 30000, includeExplanation = true } = options;
 
   console.log(chalk.magenta('[Confidence] Scoring response confidence (enhanced)...'));
 
@@ -460,7 +461,7 @@ FORMAT ODPOWIEDZI (TYLKO JSON, bez markdown):
           const model = genAI.getGenerativeModel({
             model: INTELLIGENCE_MODEL,
             generationConfig: {
-              temperature: 0.1,
+              temperature: 1.0, // Temperature locked at 1.0 for Gemini - do not change
               maxOutputTokens: 1024,
               topP: 0.9,
             },
@@ -589,13 +590,14 @@ FORMAT ODPOWIEDZI (TYLKO JSON, bez markdown):
     }
 
     return score;
-  } catch (error: any) {
-    console.log(chalk.yellow(`[Confidence] Scoring failed after retries: ${error.message}`));
+  } catch (error: unknown) {
+    const msg = error instanceof Error ? error.message : String(error);
+    console.log(chalk.yellow(`[Confidence] Scoring failed after retries: ${msg}`));
     return {
       ...DEFAULT_SCORE,
       explanation: {
         ...DEFAULT_SCORE.explanation,
-        overall: `Blad oceny: ${error.message}`,
+        overall: `Blad oceny: ${msg}`,
       },
     };
   }

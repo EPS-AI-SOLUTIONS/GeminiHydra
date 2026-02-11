@@ -192,7 +192,7 @@ export class ResultHashVerifier {
           phase: 'registered',
           agentId: 'swarm',
         },
-        chainIndex: this.hashStore.get(taskId)?.length,
+        chainIndex: this.hashStore.get(taskId)?.length ?? 0,
       });
       this.globalChain.push(entry.hash);
     }
@@ -530,7 +530,7 @@ export class ResultHashVerifier {
     for (const [taskId, entries] of this.hashStore) {
       hashesPerTask.set(taskId, entries.length);
       totalHashes += entries.length;
-      entries.forEach((e) => phases.add(e.metadata.phase));
+      for (const e of entries) phases.add(e.metadata.phase);
     }
 
     return {

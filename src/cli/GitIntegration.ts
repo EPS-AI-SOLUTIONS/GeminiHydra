@@ -54,8 +54,9 @@ export class GitIntegration {
     try {
       const { stdout } = await execAsync(`git ${args}`, { cwd: this.cwd });
       return stdout.trim();
-    } catch (error: any) {
-      throw new Error(`Git error: ${error.message}`);
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : String(error);
+      throw new Error(`Git error: ${msg}`);
     }
   }
 
@@ -132,7 +133,7 @@ export class GitIntegration {
 
     const model = genAI.getGenerativeModel({
       model: 'gemini-3-pro-preview',
-      generationConfig: { temperature: 0.9, maxOutputTokens: 512 },
+      generationConfig: { temperature: 1.0, maxOutputTokens: 512 }, // Temperature locked at 1.0 for Gemini - do not change
     });
 
     const prompt = `Generate a concise git commit message for these changes.
@@ -335,17 +336,17 @@ BODY:
 
     if (status.staged.length > 0) {
       console.log(chalk.green('Staged:'));
-      status.staged.forEach((f) => console.log(chalk.green(`  + ${f}`)));
+      for (const f of status.staged) console.log(chalk.green(`  + ${f}`));
     }
 
     if (status.modified.length > 0) {
       console.log(chalk.yellow('Modified:'));
-      status.modified.forEach((f) => console.log(chalk.yellow(`  M ${f}`)));
+      for (const f of status.modified) console.log(chalk.yellow(`  M ${f}`));
     }
 
     if (status.untracked.length > 0) {
       console.log(chalk.gray('Untracked:'));
-      status.untracked.forEach((f) => console.log(chalk.gray(`  ? ${f}`)));
+      for (const f of status.untracked) console.log(chalk.gray(`  ? ${f}`));
     }
 
     if (status.ahead > 0 || status.behind > 0) {

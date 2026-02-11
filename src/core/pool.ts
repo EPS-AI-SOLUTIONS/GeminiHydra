@@ -212,8 +212,10 @@ export class ConnectionPool {
         enqueuedAt: Date.now(),
       };
 
-      // Set timeout
+      // Set timeout with jitter to prevent thundering herd on mass timeout
       if (this.config.acquireTimeout > 0) {
+        const jitter = Math.floor(Math.random() * Math.min(this.config.acquireTimeout * 0.1, 3000));
+        const timeoutWithJitter = this.config.acquireTimeout + jitter;
         request.timeout = setTimeout(() => {
           const index = this.queue.indexOf(request as QueuedRequest<unknown>);
           if (index !== -1) {
@@ -226,7 +228,7 @@ export class ConnectionPool {
               ),
             );
           }
-        }, this.config.acquireTimeout);
+        }, timeoutWithJitter);
       }
 
       // Add to queue (FIFO or LIFO)
@@ -245,7 +247,8 @@ export class ConnectionPool {
       return;
     }
 
-    const request = this.queue.shift()!;
+    const request = this.queue.shift();
+    if (!request) return;
 
     if (request.timeout) {
       clearTimeout(request.timeout);

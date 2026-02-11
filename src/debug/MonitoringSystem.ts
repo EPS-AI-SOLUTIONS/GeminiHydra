@@ -23,7 +23,7 @@ export interface LogEntry {
   level: LogLevel;
   category: string;
   message: string;
-  data?: any;
+  data?: unknown;
   duration?: number;
   taskId?: string;
   agentId?: string;
@@ -132,7 +132,7 @@ export class Logger {
     }
   }
 
-  private log(level: LogLevel, message: string, data?: any, meta?: Partial<LogEntry>): void {
+  private log(level: LogLevel, message: string, data?: unknown, meta?: Partial<LogEntry>): void {
     const entry: LogEntry = {
       timestamp: new Date().toISOString(),
       level,
@@ -147,23 +147,23 @@ export class Logger {
     });
   }
 
-  trace(message: string, data?: any, meta?: Partial<LogEntry>): void {
+  trace(message: string, data?: unknown, meta?: Partial<LogEntry>): void {
     this.log('trace', message, data, meta);
   }
 
-  debug(message: string, data?: any, meta?: Partial<LogEntry>): void {
+  debug(message: string, data?: unknown, meta?: Partial<LogEntry>): void {
     this.log('debug', message, data, meta);
   }
 
-  info(message: string, data?: any, meta?: Partial<LogEntry>): void {
+  info(message: string, data?: unknown, meta?: Partial<LogEntry>): void {
     this.log('info', message, data, meta);
   }
 
-  warn(message: string, data?: any, meta?: Partial<LogEntry>): void {
+  warn(message: string, data?: unknown, meta?: Partial<LogEntry>): void {
     this.log('warn', message, data, meta);
   }
 
-  error(message: string, data?: any, meta?: Partial<LogEntry>): void {
+  error(message: string, data?: unknown, meta?: Partial<LogEntry>): void {
     this.log('error', message, data, meta);
   }
 
@@ -348,8 +348,8 @@ export class MetricsDashboard {
   /**
    * Get all metrics summary
    */
-  getSummary(): Record<string, any> {
-    const summary: Record<string, any> = {};
+  getSummary(): Record<string, MetricSummaryEntry> {
+    const summary: Record<string, MetricSummaryEntry> = {};
 
     for (const [key, metric] of this.metrics) {
       const stats = this.getStats(metric.name, metric.labels);
@@ -399,6 +399,18 @@ export class MetricsDashboard {
   }
 }
 
+interface MetricSummaryEntry {
+  type: 'counter' | 'gauge' | 'histogram';
+  count: number;
+  sum: number;
+  avg: number;
+  min: number;
+  max: number;
+  p50: number;
+  p95: number;
+  p99: number;
+}
+
 export const metrics = new MetricsDashboard();
 
 // ============================================================
@@ -408,7 +420,7 @@ export const metrics = new MetricsDashboard();
 export interface ReplayEntry {
   timestamp: string;
   type: 'input' | 'plan' | 'task' | 'result' | 'synthesis';
-  data: any;
+  data: unknown;
 }
 
 export interface ReplaySession {
@@ -442,7 +454,7 @@ export class TaskReplay {
   /**
    * Record an entry
    */
-  record(type: ReplayEntry['type'], data: any): void {
+  record(type: ReplayEntry['type'], data: unknown): void {
     if (!this.currentSession) return;
 
     this.currentSession.entries.push({
@@ -718,8 +730,12 @@ export interface TraceSpan {
   endTime?: number;
   duration?: number;
   status: 'running' | 'success' | 'error';
-  attributes: Record<string, any>;
-  events: Array<{ timestamp: number; name: string; data?: any }>;
+  attributes: Record<string, unknown>;
+  events: Array<{ timestamp: number; name: string; data?: unknown }>;
+}
+
+interface TraceTreeNode extends TraceSpan {
+  children: TraceTreeNode[];
 }
 
 export class AgentTrace {
@@ -729,7 +745,7 @@ export class AgentTrace {
   /**
    * Start a new trace span
    */
-  startSpan(name: string, attributes: Record<string, any> = {}): string {
+  startSpan(name: string, attributes: Record<string, unknown> = {}): string {
     const id = `span-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 
     const span: TraceSpan = {
@@ -751,7 +767,7 @@ export class AgentTrace {
   /**
    * Add event to current span
    */
-  addEvent(name: string, data?: any): void {
+  addEvent(name: string, data?: unknown): void {
     if (!this.activeSpan) return;
 
     this.activeSpan.events.push({
@@ -764,7 +780,7 @@ export class AgentTrace {
   /**
    * Set attribute on current span
    */
-  setAttribute(key: string, value: any): void {
+  setAttribute(key: string, value: unknown): void {
     if (!this.activeSpan) return;
     this.activeSpan.attributes[key] = value;
   }
@@ -804,9 +820,9 @@ export class AgentTrace {
   /**
    * Build trace tree
    */
-  getTraceTree(): any {
-    const roots: any[] = [];
-    const spanMap = new Map<string, any>();
+  getTraceTree(): TraceTreeNode[] {
+    const roots: TraceTreeNode[] = [];
+    const spanMap = new Map<string, TraceTreeNode>();
 
     // First pass: convert to tree nodes
     for (const span of this.spans.values()) {
@@ -837,7 +853,7 @@ export class AgentTrace {
     this.printSpanTree(tree, 0);
   }
 
-  private printSpanTree(nodes: any[], depth: number): void {
+  private printSpanTree(nodes: TraceTreeNode[], depth: number): void {
     for (const node of nodes) {
       const indent = '  '.repeat(depth);
       const statusIcon = node.status === 'success' ? '✓' : node.status === 'error' ? '✗' : '⋯';

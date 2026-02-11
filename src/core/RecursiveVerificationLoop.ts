@@ -661,9 +661,10 @@ export class RecursiveVerificationLoop {
       }
 
       return state.status !== previousStatus;
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : String(error);
       if (this.options.verbose) {
-        console.log(chalk.yellow(`    [${claimId}] Verification error: ${error.message}`));
+        console.log(chalk.yellow(`    [${claimId}] Verification error: ${msg}`));
       }
 
       // On error, slightly decrease confidence

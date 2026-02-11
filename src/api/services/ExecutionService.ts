@@ -42,6 +42,7 @@ export class ExecutionService {
    * Safely cleanup a swarm instance, respecting the processing state.
    * If processing is active, logs a warning and defers cleanup.
    */
+  // biome-ignore lint/suspicious/noExplicitAny: Swarm type varies between execution modes
   private async safeCleanup(swarm: any): Promise<void> {
     if (!('cleanup' in swarm && typeof swarm.cleanup === 'function')) {
       return;
@@ -80,7 +81,7 @@ export class ExecutionService {
     historyService.addUserMessage(prompt);
 
     this.isProcessing = true;
-    let resolveProcessing: () => void;
+    let resolveProcessing: (() => void) | undefined;
     this.processingPromise = new Promise<void>((resolve) => {
       resolveProcessing = resolve;
     });
@@ -137,7 +138,7 @@ export class ExecutionService {
     historyService.addUserMessage(prompt);
 
     this.isProcessing = true;
-    let resolveProcessing: () => void;
+    let resolveProcessing: (() => void) | undefined;
     this.processingPromise = new Promise<void>((resolve) => {
       resolveProcessing = resolve;
     });

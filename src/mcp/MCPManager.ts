@@ -46,6 +46,7 @@ import type {
   MCPServerStatus,
   MCPTool,
   MCPToolDiscoveryOptions,
+  MCPToolInputSchema,
   MCPToolResult,
   MCPTransport,
   MCPValidationResult,
@@ -76,7 +77,7 @@ export class MCPManager {
   private nativeToolsServer: NativeToolsServer;
 
   // Feature #26: Result cache
-  private resultCache: RequestCache<any>;
+  private resultCache: RequestCache<MCPToolResult>;
 
   constructor() {
     // Initialize extracted modules
@@ -98,7 +99,7 @@ export class MCPManager {
       }
     });
 
-    this.resultCache = new RequestCache<any>({
+    this.resultCache = new RequestCache<MCPToolResult>({
       ttl: 5 * 60 * 1000, // 5 minutes
       maxSize: 200,
       onHit: (key) => console.log(chalk.gray(`[MCP Cache] Hit: ${key}`)),
@@ -307,7 +308,12 @@ export class MCPManager {
       // Convert .mcp.json format to MCPServerConfig[]
       const configs: MCPServerConfig[] = [];
       for (const [name, serverConfig] of Object.entries(config.mcpServers)) {
-        const sc = serverConfig as any;
+        const sc = serverConfig as {
+          command?: string;
+          args?: string[];
+          env?: Record<string, string>;
+          url?: string;
+        };
         configs.push({
           name,
           command: sc.command,
@@ -320,8 +326,8 @@ export class MCPManager {
 
       console.log(chalk.green(`[MCP] Loaded ${configs.length} servers from ${mcpJsonPath}`));
       return configs;
-    } catch (error: any) {
-      if (error.code === 'ENOENT') {
+    } catch (error: unknown) {
+      if (error instanceof Error && (error as NodeJS.ErrnoException).code === 'ENOENT') {
         logWarning('MCP', `No .mcp.json found in ${projectRoot}`);
       } else {
         logError('MCP', 'Error reading .mcp.json', error);
@@ -381,7 +387,7 @@ export class MCPManager {
     const serverInfo: ConnectedServer = {
       name: config.name,
       config,
-      client: null as any,
+      client: null,
       transport: null,
       status: 'connecting',
       tools: [],
@@ -392,7 +398,7 @@ export class MCPManager {
     this.servers.set(config.name, serverInfo);
 
     try {
-      let transport: any;
+      let transport: StdioClientTransport | SSEClientTransport;
 
       if (config.command) {
         // Stdio transport
@@ -445,7 +451,7 @@ export class MCPManager {
       console.log(chalk.gray(`  Tools: ${serverInfo.tools.length}`));
       console.log(chalk.gray(`  Prompts: ${serverInfo.prompts.length}`));
       console.log(chalk.gray(`  Resources: ${serverInfo.resources.length}`));
-    } catch (error: any) {
+    } catch (error: unknown) {
       serverInfo.status = 'error';
       throw error;
     }
@@ -496,16 +502,18 @@ export class MCPManager {
     // Discover tools and register with MCPToolRegistry
     try {
       const toolsResult = await client.listTools();
-      server.tools = (toolsResult.tools || []).map((tool: any) => {
-        const mcpTool: MCPTool = {
-          name: tool.name,
-          serverName: server.name,
-          description: tool.description || '',
-          inputSchema: tool.inputSchema,
-        };
-        this.toolRegistry.registerTool(mcpTool);
-        return mcpTool;
-      });
+      server.tools = (toolsResult.tools || []).map(
+        (tool: { name: string; description?: string; inputSchema?: MCPToolInputSchema }) => {
+          const mcpTool: MCPTool = {
+            name: tool.name,
+            serverName: server.name,
+            description: tool.description || '',
+            inputSchema: tool.inputSchema || { type: 'object' as const },
+          };
+          this.toolRegistry.registerTool(mcpTool);
+          return mcpTool;
+        },
+      );
     } catch {
       console.log(chalk.gray(`[MCP] ${server.name}: No tools available`));
       server.tools = [];
@@ -514,16 +522,22 @@ export class MCPManager {
     // Discover prompts and register with MCPToolRegistry
     try {
       const promptsResult = await client.listPrompts();
-      server.prompts = (promptsResult.prompts || []).map((prompt: any) => {
-        const mcpPrompt: MCPPrompt = {
-          name: prompt.name,
-          serverName: server.name,
-          description: prompt.description,
-          arguments: prompt.arguments,
-        };
-        this.toolRegistry.registerPrompt(mcpPrompt);
-        return mcpPrompt;
-      });
+      server.prompts = (promptsResult.prompts || []).map(
+        (prompt: {
+          name: string;
+          description?: string;
+          arguments?: Array<{ name: string; description?: string; required?: boolean }>;
+        }) => {
+          const mcpPrompt: MCPPrompt = {
+            name: prompt.name,
+            serverName: server.name,
+            description: prompt.description,
+            arguments: prompt.arguments,
+          };
+          this.toolRegistry.registerPrompt(mcpPrompt);
+          return mcpPrompt;
+        },
+      );
     } catch {
       // Silently ignore - no prompts is normal for most servers
       server.prompts = [];
@@ -532,17 +546,19 @@ export class MCPManager {
     // Discover resources and register with MCPToolRegistry
     try {
       const resourcesResult = await client.listResources();
-      server.resources = (resourcesResult.resources || []).map((resource: any) => {
-        const mcpResource: MCPResource = {
-          uri: resource.uri,
-          serverName: server.name,
-          name: resource.name,
-          description: resource.description,
-          mimeType: resource.mimeType,
-        };
-        this.toolRegistry.registerResource(mcpResource);
-        return mcpResource;
-      });
+      server.resources = (resourcesResult.resources || []).map(
+        (resource: { uri: string; name: string; description?: string; mimeType?: string }) => {
+          const mcpResource: MCPResource = {
+            uri: resource.uri,
+            serverName: server.name,
+            name: resource.name,
+            description: resource.description,
+            mimeType: resource.mimeType,
+          };
+          this.toolRegistry.registerResource(mcpResource);
+          return mcpResource;
+        },
+      );
     } catch {
       // Silently ignore - no resources is normal for most servers
       server.resources = [];
@@ -592,8 +608,8 @@ export class MCPManager {
    */
   private normalizeMemoryParams(
     toolName: string,
-    params: Record<string, any>,
-  ): Record<string, any> {
+    params: Record<string, unknown>,
+  ): Record<string, unknown> {
     const memoryTools = [
       'create_entities',
       'add_observations',
@@ -647,7 +663,7 @@ export class MCPManager {
     return normalized;
   }
 
-  async callTool(toolName: string, params: Record<string, any>): Promise<MCPToolResult> {
+  async callTool(toolName: string, params: Record<string, unknown>): Promise<MCPToolResult> {
     // Validate path parameters before execution
     const pathParams = [
       'path',
@@ -736,9 +752,9 @@ export class MCPManager {
         arguments: params,
       });
       return {
-        success: !result.isError,
-        content: result.content,
-        isError: result.isError,
+        success: !result?.isError,
+        content: result?.content,
+        isError: result?.isError,
       };
     } catch (error) {
       logError('MCP', 'Tool call failed', error);
@@ -749,7 +765,7 @@ export class MCPManager {
   // Feature #23: Call with retry and circuit breaker (using MCPCircuitBreakerManager)
   async callToolWithRecovery(
     toolName: string,
-    params: Record<string, any>,
+    params: Record<string, unknown>,
     options: { maxRetries?: number; retryDelay?: number } = {},
   ): Promise<MCPToolResult> {
     const resolved = resolveAlias(toolName);
@@ -765,7 +781,7 @@ export class MCPManager {
   // Feature #26: Call with caching
   async callToolCached(
     toolName: string,
-    params: Record<string, any>,
+    params: Record<string, unknown>,
     options: { bypassCache?: boolean } = {},
   ): Promise<MCPToolResult> {
     if (options.bypassCache) {
@@ -782,7 +798,12 @@ export class MCPManager {
   // Prompts & Resources
   // ============================================================
 
-  async getPrompt(promptName: string, params: Record<string, any>): Promise<any> {
+  async getPrompt(
+    promptName: string,
+    params: Record<string, string>,
+  ): Promise<
+    { messages: Array<{ role: string; content: { type: string; text: string } }> } | undefined
+  > {
     // Parse prompt name using helper method
     const parsed = this.parseServerToolName(promptName);
     let serverName: string;
@@ -810,7 +831,12 @@ export class MCPManager {
     });
   }
 
-  async readResource(uri: string): Promise<any> {
+  async readResource(
+    uri: string,
+  ): Promise<
+    | { contents: Array<{ uri: string; mimeType?: string; text?: string; blob?: string }> }
+    | undefined
+  > {
     const resource = this.toolRegistry.getResource(uri);
     if (!resource) {
       throw new Error(`Resource not found: ${uri}`);
@@ -826,7 +852,7 @@ export class MCPManager {
   // Feature #24: Parameter Validation (delegated to MCPToolRegistry)
   // ============================================================
 
-  validateToolParams(toolName: string, params: Record<string, any>): MCPValidationResult {
+  validateToolParams(toolName: string, params: Record<string, unknown>): MCPValidationResult {
     return this.toolRegistry.validateToolParams(toolName, params);
   }
 
@@ -921,8 +947,16 @@ export class MCPManager {
     }));
   }
 
-  getToolDefinitionsForGemini(): any[] {
-    return this.toolRegistry.getToolDefinitionsForGemini();
+  getToolDefinitionsForGemini(): Array<{
+    name: string;
+    description: string;
+    parameters: MCPToolInputSchema;
+  }> {
+    return this.toolRegistry.getToolDefinitionsForGemini() as Array<{
+      name: string;
+      description: string;
+      parameters: MCPToolInputSchema;
+    }>;
   }
 
   // ============================================================

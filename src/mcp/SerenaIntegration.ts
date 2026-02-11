@@ -67,7 +67,7 @@ export class SerenaIntegration {
     return this.getActiveProject();
   }
 
-  async findSymbol(pattern: string, _options?: any): Promise<SerenaSymbol[] | null> {
+  async findSymbol(pattern: string, _options?: unknown): Promise<SerenaSymbol[] | null> {
     const symbols = await this.native.findSymbol(pattern);
     return symbols.map((s) => ({
       name: s.name,
@@ -77,7 +77,7 @@ export class SerenaIntegration {
     }));
   }
 
-  async searchPattern(pattern: string, _options?: any): Promise<SerenaSearchResult[] | null> {
+  async searchPattern(pattern: string, _options?: unknown): Promise<SerenaSearchResult[] | null> {
     const results = await this.native.searchPattern(pattern);
 
     // Group by file

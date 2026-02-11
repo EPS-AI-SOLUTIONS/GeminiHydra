@@ -27,6 +27,9 @@
  * @module bin/gemini
  */
 
+// Load environment variables from .env FIRST (before any other imports)
+import 'dotenv/config';
+
 // UTF-8 Encoding Fix: Ensure Polish characters (ó, ą, ę, ś, etc.) display correctly
 process.stdout.setDefaultEncoding('utf8');
 process.stderr.setDefaultEncoding('utf8');

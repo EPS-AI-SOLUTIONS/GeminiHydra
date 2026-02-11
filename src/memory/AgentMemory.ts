@@ -137,27 +137,31 @@ export class AgentMemory {
    */
   async load(): Promise<void> {
     const filePath = path.join(AGENT_MEMORY_DIR, AGENT_MEMORY_FILE);
-    const parsed = await loadFromFile<any>(filePath);
+    const parsed = await loadFromFile<Record<string, unknown>>(filePath);
 
     if (parsed) {
       // Restore Maps and Dates
       for (const [_name, profile] of Object.entries(parsed.profiles || {})) {
-        const p = profile as any;
-        p.specializations = new Map(Object.entries(p.specializations || {}));
-        p.journal = (p.journal || []).map((j: any) => ({
+        const p = profile as Record<string, unknown>;
+        p.specializations = new Map(
+          Object.entries((p.specializations as Record<string, unknown>) || {}),
+        );
+        p.journal = ((p.journal as Array<Record<string, unknown>>) || []).map((j) => ({
           ...j,
-          timestamp: new Date(j.timestamp),
+          timestamp: new Date(j.timestamp as string),
         }));
       }
 
       this.store = {
-        profiles: parsed.profiles || {},
-        sharedKnowledge: (parsed.sharedKnowledge || []).map((k: any) => ({
-          ...k,
-          created: new Date(k.created),
-        })),
-        syncToken: parsed.syncToken,
-        lastSync: parsed.lastSync ? new Date(parsed.lastSync) : undefined,
+        profiles: (parsed.profiles || {}) as Record<string, AgentProfile>,
+        sharedKnowledge: ((parsed.sharedKnowledge || []) as Array<Record<string, unknown>>).map(
+          (k) => ({
+            ...k,
+            created: new Date(k.created as string),
+          }),
+        ) as SharedKnowledge[],
+        syncToken: parsed.syncToken as string | undefined,
+        lastSync: parsed.lastSync ? new Date(parsed.lastSync as string) : undefined,
       };
     }
     // If parsed is null, keep the fresh store initialized in constructor
@@ -169,7 +173,7 @@ export class AgentMemory {
   async save(): Promise<void> {
     // Convert Maps to objects for JSON
     const serializable = {
-      profiles: {} as any,
+      profiles: {} as Record<string, unknown>,
       sharedKnowledge: this.store.sharedKnowledge,
       syncToken: this.store.syncToken,
       lastSync: this.store.lastSync,
@@ -422,23 +426,28 @@ export class AgentMemory {
       for (const [name, incomingProfile] of Object.entries(incoming.profiles || {})) {
         const existing = this.store.profiles[name];
         if (existing) {
-          const ip = incomingProfile as any;
+          const ip = incomingProfile as Record<string, unknown>;
 
           // Merge journal entries
           const existingIds = new Set(existing.journal.map((j) => j.id));
-          for (const entry of ip.journal || []) {
-            if (!existingIds.has(entry.id)) {
+          for (const entry of (ip.journal as Array<Record<string, unknown>>) || []) {
+            if (!existingIds.has(entry.id as string)) {
               existing.journal.push({
-                ...entry,
-                timestamp: new Date(entry.timestamp),
+                ...(entry as unknown as JournalEntry),
+                timestamp: new Date(entry.timestamp as string),
               });
             }
           }
 
           // Merge specializations
-          for (const [topic, score] of Object.entries(ip.specializations || {})) {
+          for (const [topic, score] of Object.entries(
+            (ip.specializations as Record<string, number>) || {},
+          )) {
             const current = existing.specializations.get(topic) || 0;
-            existing.specializations.set(topic, Math.max(current, score as number));
+            existing.specializations.set(
+              topic,
+              Math.max(current, typeof score === 'number' ? score : 0),
+            );
           }
         }
       }

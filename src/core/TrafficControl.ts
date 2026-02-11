@@ -35,11 +35,13 @@ export class Semaphore {
    */
   release(): void {
     if (this.waiting.length > 0) {
-      // Give permit to next waiting request
-      const next = this.waiting.shift()!;
-      next();
+      const next = this.waiting.shift();
+      if (next) next();
     } else if (this.permits < this.maxPermits) {
       this.permits++;
+    } else {
+      // Defensive: double-release detected, silently ignore
+      console.warn('[Semaphore] Warning: release() called but permits already at max');
     }
   }
 
@@ -135,20 +137,20 @@ export async function withRetry<T>(
 ): Promise<T> {
   const { maxRetries = 3, baseDelay = 1000, maxDelay = 30000, onRetry } = options;
 
-  let lastError: Error;
+  let lastError: Error = new Error('All retries exhausted');
 
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     try {
       return await fn();
-    } catch (error: any) {
-      lastError = error;
+    } catch (error: unknown) {
+      lastError = error instanceof Error ? error : new Error(String(error));
 
       if (attempt < maxRetries) {
         // Exponential backoff: 1s, 2s, 4s, 8s, ...
         const delay = Math.min(baseDelay * 2 ** attempt, maxDelay);
 
         if (onRetry) {
-          onRetry(attempt + 1, error);
+          onRetry(attempt + 1, lastError);
         }
 
         await new Promise((resolve) => setTimeout(resolve, delay));
@@ -156,7 +158,7 @@ export async function withRetry<T>(
     }
   }
 
-  throw lastError!;
+  throw lastError ?? new Error('All retries exhausted');
 }
 
 // Pre-configured semaphores for different services

@@ -30,7 +30,7 @@ export interface Checkpoint {
     results: Record<number, ExecutionResult>;
     context: string;
   };
-  metadata: Record<string, any>;
+  metadata: Record<string, unknown>;
 }
 
 // =============================================================================
@@ -52,7 +52,7 @@ class CheckpointManager {
     missionId: string,
     phase: string,
     state: Checkpoint['state'],
-    metadata: Record<string, any> = {},
+    metadata: Record<string, unknown> = {},
   ): Promise<string> {
     const id = `${missionId}_${phase}_${Date.now()}`;
 
@@ -73,8 +73,9 @@ class CheckpointManager {
       const filePath = path.join(this.storePath, `${id}.json`);
       await fs.writeFile(filePath, JSON.stringify(checkpoint, null, 2));
       console.log(chalk.green(`[Checkpoint] Created: ${id}`));
-    } catch (error: any) {
-      console.log(chalk.yellow(`[Checkpoint] Could not persist: ${error.message}`));
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : String(error);
+      console.log(chalk.yellow(`[Checkpoint] Could not persist: ${msg}`));
     }
 
     return id;
@@ -85,7 +86,7 @@ class CheckpointManager {
    */
   async load(id: string): Promise<Checkpoint | null> {
     if (this.checkpoints.has(id)) {
-      return this.checkpoints.get(id)!;
+      return this.checkpoints.get(id) ?? null;
     }
 
     try {

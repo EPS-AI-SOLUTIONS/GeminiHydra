@@ -655,8 +655,7 @@ export class AgentMemoryIsolation {
     const taskIds: number[] = [];
     const pattern = /(?:task|zadanie)\s*#?(\d+)/gi;
 
-    let match;
-    while ((match = pattern.exec(text)) !== null) {
+    for (let match = pattern.exec(text); match !== null; match = pattern.exec(text)) {
       const taskId = parseInt(match[1], 10);
       if (!Number.isNaN(taskId) && taskId > 0 && taskId < 10000) {
         taskIds.push(taskId);
@@ -673,8 +672,7 @@ export class AgentMemoryIsolation {
     const foreignIds: string[] = [];
     const pattern = /ctx_[a-z]+_\d+_\d+_[a-f0-9]+/gi;
 
-    let match;
-    while ((match = pattern.exec(text)) !== null) {
+    for (let match = pattern.exec(text); match !== null; match = pattern.exec(text)) {
       const ctxId = match[0];
       if (ctxId !== currentContextId) {
         foreignIds.push(ctxId);
@@ -904,7 +902,8 @@ export class AgentMemoryIsolation {
     const now = Date.now();
 
     const contexts = contextIds.map((ctxId) => {
-      const ctx = this.contexts.get(ctxId)!;
+      const ctx = this.contexts.get(ctxId);
+      if (!ctx) throw new Error(`Context ${ctxId} not found`);
       return {
         contextId: ctx.contextId,
         taskId: ctx.taskId,

@@ -1123,12 +1123,12 @@ export class ClaimVerificationSystem {
 
     if (result.evidence.length > 0) {
       console.log(chalk.green('  Evidence:'));
-      result.evidence.forEach((e) => console.log(chalk.gray(`    - ${e}`)));
+      for (const e of result.evidence) console.log(chalk.gray(`    - ${e}`));
     }
 
     if (result.contradictions.length > 0) {
       console.log(chalk.red('  Contradictions:'));
-      result.contradictions.forEach((c) => console.log(chalk.gray(`    - ${c}`)));
+      for (const c of result.contradictions) console.log(chalk.gray(`    - ${c}`));
     }
   }
 }

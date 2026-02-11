@@ -20,7 +20,10 @@ import { type CommandResult, commandRegistry, error, success } from './CommandRe
 // Helper
 // ============================================================
 
-async function callDocTool(toolName: string, params: Record<string, any>): Promise<CommandResult> {
+async function callDocTool(
+  toolName: string,
+  params: Record<string, unknown>,
+): Promise<CommandResult> {
   const server = getNativeToolsServer();
 
   if (!server.isInitialized()) {
@@ -30,8 +33,8 @@ async function callDocTool(toolName: string, params: Record<string, any>): Promi
   const result = await server.callTool(toolName, params);
 
   if (result.success) {
-    const data = result.content as any;
-    return success(data, data?.message || `Tool ${toolName} completed`);
+    const data = result.content as Record<string, unknown>;
+    return success(data, (data?.message as string) || `Tool ${toolName} completed`);
   } else {
     return error(result.error || `Tool ${toolName} failed`);
   }

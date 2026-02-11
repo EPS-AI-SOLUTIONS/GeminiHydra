@@ -53,8 +53,9 @@ class PartialCompletionManager {
       console.log(
         chalk.gray(`[Partial] Saved progress for task #${result.taskId} (${result.progress}%)`),
       );
-    } catch (error: any) {
-      console.log(chalk.yellow(`[Partial] Could not persist: ${error.message}`));
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : String(error);
+      console.log(chalk.yellow(`[Partial] Could not persist: ${msg}`));
     }
   }
 
@@ -64,7 +65,8 @@ class PartialCompletionManager {
   async loadPartial(taskId: number): Promise<PartialResult | null> {
     // Check memory first
     if (this.partials.has(taskId)) {
-      return this.partials.get(taskId)!;
+      const cached = this.partials.get(taskId);
+      if (cached) return cached;
     }
 
     // Try disk

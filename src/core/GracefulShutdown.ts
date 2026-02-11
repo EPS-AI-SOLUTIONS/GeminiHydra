@@ -28,7 +28,7 @@ const DEFAULT_OPTIONS: ShutdownOptions = {
 export class GracefulShutdownManager {
   private handlers: Map<string, ShutdownHandler> = new Map();
   private isShuttingDown = false;
-  private currentTask: Promise<any> | null = null;
+  private currentTask: Promise<unknown> | null = null;
 
   constructor() {
     this.setupSignalHandlers();
@@ -51,7 +51,7 @@ export class GracefulShutdownManager {
   /**
    * Set current task (will wait for completion on shutdown)
    */
-  setCurrentTask(task: Promise<any>): void {
+  setCurrentTask(task: Promise<unknown>): void {
     this.currentTask = task;
   }
 

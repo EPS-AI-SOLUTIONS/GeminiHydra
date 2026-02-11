@@ -373,8 +373,8 @@ describe('getAgentForDomain', () => {
 });
 
 describe('AGENT_SPECS', () => {
-  it('should have 13 agents defined', () => {
-    expect(Object.keys(AGENT_SPECS)).toHaveLength(13);
+  it('should have 14 agents defined', () => {
+    expect(Object.keys(AGENT_SPECS)).toHaveLength(14);
   });
 
   it('should have all required fields for each agent', () => {
@@ -394,7 +394,7 @@ describe('AGENT_SPECS', () => {
     const executors = tiers.filter((t) => t === 'executor');
 
     expect(commanders).toHaveLength(1); // Dijkstra
-    expect(coordinators).toHaveLength(3); // Regis, Yennefer, Jaskier
+    expect(coordinators).toHaveLength(4); // Regis, Yennefer, Jaskier, Keira
     expect(executors).toHaveLength(9); // Geralt, Triss, Vesemir, Ciri, Eskel, Lambert, Zoltan, Philippa, Serena
   });
 });

@@ -12,6 +12,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import chalk from 'chalk';
+import type { AgentRole } from '../config/agents.config.js';
 import { Agent } from '../core/agent/Agent.js';
 import type { Swarm } from '../core/swarm/Swarm.js';
 
@@ -84,8 +85,9 @@ export class WatchMode {
         this.stop();
         process.exit(0);
       });
-    } catch (error: any) {
-      console.error(chalk.red(`Watch error: ${error.message}`));
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : String(error);
+      console.error(chalk.red(`Watch error: ${msg}`));
       throw error;
     }
   }
@@ -167,7 +169,7 @@ Task: ${this.taskOnChange}
 
       if (this.options.agent) {
         // Use specific agent
-        const agent = new Agent(this.options.agent as any);
+        const agent = new Agent(this.options.agent as AgentRole);
         const result = await agent.think(contextualTask);
         console.log(chalk.green('\n✓ Agent response:'));
         console.log(result);
@@ -177,8 +179,9 @@ Task: ${this.taskOnChange}
         console.log(chalk.green('\n✓ Swarm response:'));
         console.log(result);
       }
-    } catch (error: any) {
-      console.error(chalk.red(`\n✗ Error: ${error.message}`));
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : String(error);
+      console.error(chalk.red(`\n✗ Error: ${msg}`));
     }
 
     this.isProcessing = false;

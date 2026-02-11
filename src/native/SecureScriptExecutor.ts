@@ -151,6 +151,10 @@ export class SecureScriptExecutor extends EventEmitter {
   private defaultTimeout: number;
   private defaultCwd: string;
   private defaultEnv: Record<string, string>;
+  // biome-ignore lint/correctness/noUnusedPrivateClassMembers: assigned in constructor for future use
+  private defaultSandbox: boolean;
+  // biome-ignore lint/correctness/noUnusedPrivateClassMembers: assigned in constructor for future use
+  private defaultLogExecution: boolean;
 
   constructor(
     options: {
@@ -531,7 +535,7 @@ ${script}
       );
     }
 
-    const absolutePath = validation.scriptPath!;
+    const absolutePath = validation.scriptPath ?? scriptPath;
 
     const logEntry: ScriptExecutionLog = {
       timestamp: new Date(),
@@ -646,7 +650,7 @@ ${script}
       );
     }
 
-    const absolutePath = validation.scriptPath!;
+    const absolutePath = validation.scriptPath ?? scriptPath;
 
     const logEntry: ScriptExecutionLog = {
       timestamp: new Date(),

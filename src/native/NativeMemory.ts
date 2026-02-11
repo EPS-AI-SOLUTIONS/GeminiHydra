@@ -23,7 +23,7 @@ export interface Entity {
   name: string;
   type: string;
   observations: Observation[];
-  metadata: Record<string, any>;
+  metadata: Record<string, unknown>;
   created: Date;
   updated: Date;
 }
@@ -43,7 +43,7 @@ export interface Relation {
   to: string;
   type: string;
   weight?: number;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
   created: Date;
 }
 
@@ -110,7 +110,7 @@ export class NativeMemory {
   /**
    * Create a new entity
    */
-  createEntity(name: string, type: string, metadata: Record<string, any> = {}): Entity {
+  createEntity(name: string, type: string, metadata: Record<string, unknown> = {}): Entity {
     if (this.entities.size >= this.config.maxEntities) {
       throw new Error(`Max entities limit reached: ${this.config.maxEntities}`);
     }
@@ -159,8 +159,8 @@ export class NativeMemory {
     const ids = this.entityIndex.get(type);
     if (!ids) return [];
     return Array.from(ids)
-      .map((id) => this.entities.get(id)!)
-      .filter(Boolean);
+      .map((id) => this.entities.get(id))
+      .filter((e): e is Entity => e !== undefined);
   }
 
   /**
@@ -256,7 +256,10 @@ export class NativeMemory {
     }
 
     const obs = this.addObservation(entity.id, content);
-    return obs!;
+    if (!obs) {
+      throw new Error(`Failed to add observation to entity: ${entityName}`);
+    }
+    return obs;
   }
 
   /**
@@ -294,7 +297,7 @@ export class NativeMemory {
     fromId: string,
     toId: string,
     type: string,
-    metadata?: Record<string, any>,
+    metadata?: Record<string, unknown>,
   ): Relation | undefined {
     if (!this.entities.has(fromId) || !this.entities.has(toId)) {
       return undefined;
@@ -346,8 +349,8 @@ export class NativeMemory {
     const ids = this.relationIndex.get(`from:${entityId}`);
     if (!ids) return [];
     return Array.from(ids)
-      .map((id) => this.relations.get(id)!)
-      .filter(Boolean);
+      .map((id) => this.relations.get(id))
+      .filter((r): r is Relation => r !== undefined);
   }
 
   /**
@@ -357,8 +360,8 @@ export class NativeMemory {
     const ids = this.relationIndex.get(`to:${entityId}`);
     if (!ids) return [];
     return Array.from(ids)
-      .map((id) => this.relations.get(id)!)
-      .filter(Boolean);
+      .map((id) => this.relations.get(id))
+      .filter((r): r is Relation => r !== undefined);
   }
 
   /**
@@ -474,10 +477,13 @@ export class NativeMemory {
     const queue: { id: string; path: string[] }[] = [{ id: fromId, path: [fromId] }];
 
     while (queue.length > 0) {
-      const current = queue.shift()!;
+      const current = queue.shift();
+      if (!current) break;
 
       if (current.id === toId) {
-        return current.path.map((id) => this.entities.get(id)!);
+        return current.path
+          .map((id) => this.entities.get(id))
+          .filter((e): e is Entity => e !== undefined);
       }
 
       if (current.path.length >= maxDepth) continue;
@@ -502,7 +508,7 @@ export class NativeMemory {
   /**
    * Set a value (key-value style)
    */
-  set(key: string, value: any, type: string = 'data'): void {
+  set(key: string, value: unknown, type: string = 'data'): void {
     const entity = this.findEntityByName(key) || this.createEntity(key, type);
     const content = typeof value === 'string' ? value : JSON.stringify(value);
     this.addObservation(entity.id, content);
@@ -511,7 +517,7 @@ export class NativeMemory {
   /**
    * Get a value (key-value style)
    */
-  get(key: string): any | undefined {
+  get(key: string): unknown {
     const entity = this.findEntityByName(key);
     if (!entity || entity.observations.length === 0) return undefined;
 
@@ -717,8 +723,9 @@ export class NativeMemory {
       if (this.dirty && this.config.persistPath) {
         try {
           await this.save();
-        } catch (error: any) {
-          console.error(chalk.red(`[NativeMemory] Auto-save failed: ${error.message}`));
+        } catch (error: unknown) {
+          const msg = error instanceof Error ? error.message : String(error);
+          console.error(chalk.red(`[NativeMemory] Auto-save failed: ${msg}`));
         }
       }
     }, this.config.autoSaveInterval);

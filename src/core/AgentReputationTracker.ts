@@ -231,8 +231,9 @@ export class AgentReputationTracker {
     const normalizedId = agentId.toLowerCase();
 
     // Check cache first
-    if (this.reputationCache.has(normalizedId)) {
-      return this.reputationCache.get(normalizedId)!;
+    const cached = this.reputationCache.get(normalizedId);
+    if (cached) {
+      return cached;
     }
 
     // Calculate reputation
@@ -399,9 +400,11 @@ export class AgentReputationTracker {
       this.applyDecay();
 
       console.log(chalk.green(`[ReputationTracker] Loaded ${this.records.size} agent profiles`));
-    } catch (error: any) {
-      if (error.code !== 'ENOENT') {
-        console.log(chalk.yellow(`[ReputationTracker] Load warning: ${error.message}`));
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : String(error);
+      const code = (error as NodeJS.ErrnoException)?.code;
+      if (code !== 'ENOENT') {
+        console.log(chalk.yellow(`[ReputationTracker] Load warning: ${msg}`));
       }
       // Start fresh if file doesn't exist
     }
@@ -427,8 +430,9 @@ export class AgentReputationTracker {
 
       this.dirty = false;
       console.log(chalk.gray(`[ReputationTracker] Saved ${this.records.size} agent profiles`));
-    } catch (error: any) {
-      console.log(chalk.red(`[ReputationTracker] Save error: ${error.message}`));
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : String(error);
+      console.log(chalk.red(`[ReputationTracker] Save error: ${msg}`));
     }
   }
 

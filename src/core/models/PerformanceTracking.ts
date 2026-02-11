@@ -27,7 +27,8 @@ class ModelPerformanceTracker {
       });
     }
 
-    const m = this.metrics.get(model)!;
+    const m = this.metrics.get(model);
+    if (!m) return;
 
     if (success) {
       m.successCount++;
@@ -54,7 +55,7 @@ class ModelPerformanceTracker {
 
   getAllMetrics(): Record<string, ModelMetrics> {
     const result: Record<string, ModelMetrics> = {};
-    this.metrics.forEach((v, k) => (result[k] = v));
+    for (const [k, v] of this.metrics) result[k] = v;
     return result;
   }
 

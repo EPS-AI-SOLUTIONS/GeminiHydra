@@ -15,10 +15,30 @@ import os from 'node:os';
 import path from 'node:path';
 import { Document, HeadingLevel, Packer, Paragraph, TextRun } from 'docx';
 import ExcelJS from 'exceljs';
-// @ts-expect-error — mammoth has no TypeScript declarations
 import mammoth from 'mammoth';
 import PDFDocument from 'pdfkit';
+import { getErrorMessage } from '../core/errors.js';
 import type { NativeToolDefinition } from './NativeSerenaTools.js';
+
+// ============================================================
+// Operation Types
+// ============================================================
+
+/** Represents a single document operation (Word or Excel edit) */
+interface DocumentOperation {
+  type: string;
+  text?: string;
+  level?: number;
+  index?: number;
+  name?: string;
+  sheet?: string;
+  cell?: string;
+  value?: ExcelJS.CellValue;
+  start?: string;
+  data?: unknown[][] | string;
+  row?: number;
+  column?: number;
+}
 
 // ============================================================
 // Helpers
@@ -75,6 +95,7 @@ function resolveFilepath(filepath: string): string {
   let sanitized = filepath.replace(/\0/g, '');
 
   // Layer 2: Remove control characters (except common whitespace)
+  // biome-ignore lint/suspicious/noControlCharactersInRegex: intentional control char sanitization
   sanitized = sanitized.replace(/[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]/g, '');
 
   // Layer 3: Defense-in-depth - reject paths with '..' traversal sequences
@@ -153,7 +174,7 @@ function textToParagraphs(content: string): Paragraph[] {
 // Excel Helpers
 // ============================================================
 
-function parseExcelContent(content: string): any[][] {
+function parseExcelContent(content: string): unknown[][] {
   // Try JSON first
   try {
     const parsed = JSON.parse(content);
@@ -264,8 +285,8 @@ export function createDocumentToolDefinitions(): NativeToolDefinition[] {
             filepath,
             message: `Word document created: ${filepath}`,
           };
-        } catch (error: any) {
-          const safeMessage = error.message || 'Unknown error';
+        } catch (error: unknown) {
+          const safeMessage = getErrorMessage(error);
           return { success: false, error: `Failed to create Word document: ${safeMessage}` };
         }
       },
@@ -315,16 +336,16 @@ export function createDocumentToolDefinitions(): NativeToolDefinition[] {
           const paragraphs = existingText.split('\n').filter((line: string) => line.trim() !== '');
 
           // Apply operations - safely parse JSON if needed
-          let ops: any[];
+          let ops: DocumentOperation[];
           if (Array.isArray(params.operations)) {
-            ops = params.operations;
+            ops = params.operations as DocumentOperation[];
           } else if (typeof params.operations === 'string') {
             try {
-              ops = JSON.parse(params.operations);
-            } catch (parseErr: any) {
+              ops = JSON.parse(params.operations as string);
+            } catch (parseErr: unknown) {
               return {
                 success: false,
-                error: `Invalid JSON in "operations" parameter: ${parseErr.message}. Expected a JSON array of operations.`,
+                error: `Invalid JSON in "operations" parameter: ${getErrorMessage(parseErr)}. Expected a JSON array of operations.`,
               };
             }
             if (!Array.isArray(ops)) {
@@ -381,8 +402,8 @@ export function createDocumentToolDefinitions(): NativeToolDefinition[] {
             filepath,
             message: `Word document edited: ${filepath} (${ops.length} operations applied)`,
           };
-        } catch (error: any) {
-          const safeMessage = error.message || 'Unknown error';
+        } catch (error: unknown) {
+          const safeMessage = getErrorMessage(error);
           return { success: false, error: `Failed to edit Word document: ${safeMessage}` };
         }
       },
@@ -447,8 +468,8 @@ export function createDocumentToolDefinitions(): NativeToolDefinition[] {
             filepath: targetPath,
             message: `Converted text file to Word document`,
           };
-        } catch (error: any) {
-          const safeMessage = error.message || 'Unknown error';
+        } catch (error: unknown) {
+          const safeMessage = getErrorMessage(error);
           return { success: false, error: `Failed to convert TXT to Word: ${safeMessage}` };
         }
       },
@@ -518,8 +539,8 @@ export function createDocumentToolDefinitions(): NativeToolDefinition[] {
             filepath,
             message: `Excel file created: ${filepath} (${data.length} rows)`,
           };
-        } catch (error: any) {
-          const safeMessage = error.message || 'Unknown error';
+        } catch (error: unknown) {
+          const safeMessage = getErrorMessage(error);
           return { success: false, error: `Failed to create Excel file: ${safeMessage}` };
         }
       },
@@ -564,16 +585,16 @@ export function createDocumentToolDefinitions(): NativeToolDefinition[] {
           await workbook.xlsx.readFile(filepath);
 
           // Safely parse operations JSON if needed
-          let ops: any[];
+          let ops: DocumentOperation[];
           if (Array.isArray(params.operations)) {
-            ops = params.operations;
+            ops = params.operations as DocumentOperation[];
           } else if (typeof params.operations === 'string') {
             try {
-              ops = JSON.parse(params.operations);
-            } catch (parseErr: any) {
+              ops = JSON.parse(params.operations as string);
+            } catch (parseErr: unknown) {
               return {
                 success: false,
-                error: `Invalid JSON in "operations" parameter: ${parseErr.message}. Expected a JSON array of operations.`,
+                error: `Invalid JSON in "operations" parameter: ${getErrorMessage(parseErr)}. Expected a JSON array of operations.`,
               };
             }
             if (!Array.isArray(ops)) {
@@ -602,7 +623,7 @@ export function createDocumentToolDefinitions(): NativeToolDefinition[] {
                     error: `Sheet not found: "${sheetName}". Available sheets can be listed by reading the file.`,
                   };
                 }
-                ws.getCell(op.cell).value = op.value;
+                ws.getCell(op.cell as string).value = op.value as ExcelJS.CellValue;
                 break;
               }
               case 'update_range': {
@@ -610,16 +631,16 @@ export function createDocumentToolDefinitions(): NativeToolDefinition[] {
                 if (!ws) {
                   return { success: false, error: `Sheet not found: "${sheetName}".` };
                 }
-                let data: any[][];
+                let data: unknown[][];
                 if (Array.isArray(op.data)) {
                   data = op.data;
                 } else if (typeof op.data === 'string') {
                   try {
                     data = JSON.parse(op.data);
-                  } catch (parseErr: any) {
+                  } catch (parseErr: unknown) {
                     return {
                       success: false,
-                      error: `Invalid JSON in "data" field of update_range operation: ${parseErr.message}. Expected a 2D array.`,
+                      error: `Invalid JSON in "data" field of update_range operation: ${getErrorMessage(parseErr)}. Expected a 2D array.`,
                     };
                   }
                   if (!Array.isArray(data)) {
@@ -635,13 +656,13 @@ export function createDocumentToolDefinitions(): NativeToolDefinition[] {
                       'The "data" field in update_range must be an array or a JSON string representing a 2D array.',
                   };
                 }
-                const startCell = ws.getCell(op.start);
+                const startCell = ws.getCell(op.start as string);
                 const startRow = startCell.row;
                 const startCol = startCell.col;
 
                 for (let r = 0; r < data.length; r++) {
                   for (let c = 0; c < data[r].length; c++) {
-                    ws.getCell(startRow + r, startCol + c).value = data[r][c];
+                    ws.getCell(startRow + r, startCol + c).value = data[r][c] as ExcelJS.CellValue;
                   }
                 }
                 break;
@@ -651,7 +672,7 @@ export function createDocumentToolDefinitions(): NativeToolDefinition[] {
                 if (!ws) {
                   return { success: false, error: `Sheet not found: "${sheetName}".` };
                 }
-                ws.spliceRows(op.row, 1);
+                ws.spliceRows(op.row as number, 1);
                 break;
               }
               case 'delete_column': {
@@ -659,15 +680,15 @@ export function createDocumentToolDefinitions(): NativeToolDefinition[] {
                 if (!ws) {
                   return { success: false, error: `Sheet not found: "${sheetName}".` };
                 }
-                ws.spliceColumns(op.column, 1);
+                ws.spliceColumns(op.column as number, 1);
                 break;
               }
               case 'add_sheet': {
-                workbook.addWorksheet(op.name);
+                workbook.addWorksheet(op.name as string);
                 break;
               }
               case 'delete_sheet': {
-                const ws = workbook.getWorksheet(op.name);
+                const ws = workbook.getWorksheet(op.name as string);
                 if (ws) workbook.removeWorksheet(ws.id);
                 break;
               }
@@ -687,8 +708,8 @@ export function createDocumentToolDefinitions(): NativeToolDefinition[] {
             filepath,
             message: `Excel file edited: ${filepath} (${ops.length} operations applied)`,
           };
-        } catch (error: any) {
-          const safeMessage = error.message || 'Unknown error';
+        } catch (error: unknown) {
+          const safeMessage = getErrorMessage(error);
           return { success: false, error: `Failed to edit Excel file: ${safeMessage}` };
         }
       },
@@ -760,8 +781,8 @@ export function createDocumentToolDefinitions(): NativeToolDefinition[] {
             filepath: targetPath,
             message: `Converted CSV to Excel file (${data.length} rows)`,
           };
-        } catch (error: any) {
-          const safeMessage = error.message || 'Unknown error';
+        } catch (error: unknown) {
+          const safeMessage = getErrorMessage(error);
           return { success: false, error: `Failed to convert CSV to Excel: ${safeMessage}` };
         }
       },
@@ -805,6 +826,7 @@ export function createDocumentToolDefinitions(): NativeToolDefinition[] {
           const filepath = resolveFilepath(params.filepath);
           await ensureDir(filepath);
 
+          const contentStr = params.content as string;
           return await new Promise((resolve) => {
             try {
               const doc = new PDFDocument({
@@ -816,7 +838,7 @@ export function createDocumentToolDefinitions(): NativeToolDefinition[] {
               doc.pipe(stream);
 
               // Process content line by line
-              const lines = params.content.split('\n');
+              const lines = contentStr.split('\n');
               for (const line of lines) {
                 if (line.startsWith('### ')) {
                   doc.fontSize(14).font('Helvetica-Bold').text(line.slice(4), { align: 'left' });
@@ -849,15 +871,15 @@ export function createDocumentToolDefinitions(): NativeToolDefinition[] {
                   error: `Failed to write PDF stream: ${err.message}`,
                 });
               });
-            } catch (innerErr: any) {
+            } catch (innerErr: unknown) {
               resolve({
                 success: false,
-                error: `Failed to generate PDF content: ${innerErr.message}`,
+                error: `Failed to generate PDF content: ${getErrorMessage(innerErr)}`,
               });
             }
           });
-        } catch (error: any) {
-          const safeMessage = error.message || 'Unknown error';
+        } catch (error: unknown) {
+          const safeMessage = getErrorMessage(error);
           return { success: false, error: `Failed to create PDF file: ${safeMessage}` };
         }
       },

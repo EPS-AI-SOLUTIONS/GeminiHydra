@@ -340,9 +340,9 @@ export const NUMERIC_LIMITS = {
  * @returns A new object with numeric fields clamped to safe ranges
  */
 export function sanitizeNumericParams(
-  params: Record<string, any>,
+  params: Record<string, unknown>,
   limits: Record<string, { min: number; max: number }> = NUMERIC_LIMITS,
-): Record<string, any> {
+): Record<string, unknown> {
   const result = { ...params };
 
   for (const [key, range] of Object.entries(limits)) {

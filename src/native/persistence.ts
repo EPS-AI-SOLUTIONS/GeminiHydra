@@ -15,6 +15,7 @@
 
 import fs from 'node:fs/promises';
 import path from 'node:path';
+import { getErrorCodeSafe } from '../core/errors.js';
 
 // ============================================================
 // Types
@@ -135,9 +136,9 @@ export async function loadFromFile<T>(
     }
 
     return data;
-  } catch (error: any) {
+  } catch (error: unknown) {
     // File doesn't exist - return null (not an error)
-    if (error.code === 'ENOENT') {
+    if (getErrorCodeSafe(error) === 'ENOENT') {
       return null;
     }
     // Re-throw other errors (parse errors, permission errors, etc.)
@@ -163,10 +164,10 @@ export async function tryLoadFromFile<T>(
       success: data !== null,
       data: data ?? undefined,
     };
-  } catch (error: any) {
+  } catch (error: unknown) {
     return {
       success: false,
-      error,
+      error: error instanceof Error ? error : new Error(String(error)),
     };
   }
 }
@@ -188,10 +189,10 @@ export async function trySaveToFile(
   try {
     await saveToFile(filePath, data, options);
     return { success: true };
-  } catch (error: any) {
+  } catch (error: unknown) {
     return {
       success: false,
-      error,
+      error: error instanceof Error ? error : new Error(String(error)),
     };
   }
 }
@@ -221,8 +222,8 @@ export async function deleteFile(filePath: string): Promise<boolean> {
   try {
     await fs.unlink(path.resolve(filePath));
     return true;
-  } catch (error: any) {
-    if (error.code === 'ENOENT') {
+  } catch (error: unknown) {
+    if (getErrorCodeSafe(error) === 'ENOENT') {
       return false;
     }
     throw error;
@@ -246,8 +247,8 @@ function restoreDateFields<T>(data: T, dateFields: string[], recursive: boolean)
   }
 
   if (typeof data === 'object') {
-    const obj = data as Record<string, any>;
-    const result: Record<string, any> = {};
+    const obj = data as Record<string, unknown>;
+    const result: Record<string, unknown> = {};
 
     for (const [key, value] of Object.entries(obj)) {
       if (dateFields.includes(key) && typeof value === 'string') {
@@ -274,8 +275,8 @@ function restoreDateFields<T>(data: T, dateFields: string[], recursive: boolean)
  * @param dateFields - Field names that should be converted to Date
  * @returns A reviver function for JSON.parse
  */
-export function createDateReviver(dateFields: string[]): (key: string, value: any) => any {
-  return (key: string, value: any) => {
+export function createDateReviver(dateFields: string[]): (key: string, value: unknown) => unknown {
+  return (key: string, value: unknown) => {
     if (dateFields.includes(key) && typeof value === 'string') {
       const date = new Date(value);
       // Only return Date if it's valid
@@ -297,15 +298,15 @@ export function createDateReviver(dateFields: string[]): (key: string, value: an
  */
 export async function loadWithReviver<T>(
   filePath: string,
-  reviver: (key: string, value: any) => any,
+  reviver: (key: string, value: unknown) => unknown,
 ): Promise<T | null> {
   const resolvedPath = path.resolve(filePath);
 
   try {
     const content = await fs.readFile(resolvedPath, 'utf-8');
     return JSON.parse(content, reviver) as T;
-  } catch (error: any) {
-    if (error.code === 'ENOENT') {
+  } catch (error: unknown) {
+    if (getErrorCodeSafe(error) === 'ENOENT') {
       return null;
     }
     throw error;

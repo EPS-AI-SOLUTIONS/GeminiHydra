@@ -297,7 +297,7 @@ class StartupLogger {
     const originalLog = console.log;
     const originalError = console.error;
 
-    console.log = (...args: any[]) => {
+    console.log = (...args: unknown[]) => {
       const msg = args.map((a) => String(a)).join(' ');
 
       // Filter Serena verbose logs
@@ -309,7 +309,7 @@ class StartupLogger {
       originalLog.apply(console, args);
     };
 
-    console.error = (...args: any[]) => {
+    console.error = (...args: unknown[]) => {
       const msg = args.map((a) => String(a)).join(' ');
 
       // Capture warnings

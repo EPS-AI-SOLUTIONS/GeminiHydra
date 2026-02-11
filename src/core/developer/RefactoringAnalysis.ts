@@ -125,7 +125,7 @@ export async function analyzeRefactoring(
   try {
     const model = genAI.getGenerativeModel({
       model: QUALITY_MODEL,
-      generationConfig: { temperature: 0.2, maxOutputTokens: 4096 },
+      generationConfig: { temperature: 1.0, maxOutputTokens: 4096 }, // Temperature locked at 1.0 for Gemini - do not change
     });
 
     const result = await model.generateContent(prompt);
@@ -139,8 +139,8 @@ export async function analyzeRefactoring(
     const parsed = JSON.parse(jsonStr);
 
     // Add IDs to suggestions
-    const suggestions = (parsed.suggestions || []).map((s: any, i: number) => ({
-      ...s,
+    const suggestions = (parsed.suggestions || []).map((s: unknown, i: number) => ({
+      ...(s as Record<string, unknown>),
       id: `refactor-${i + 1}`,
     }));
 
@@ -157,8 +157,9 @@ export async function analyzeRefactoring(
         cyclomaticComplexity: 0,
       },
     };
-  } catch (error: any) {
-    console.log(chalk.yellow(`[Refactoring] Analysis failed: ${error.message}`));
+  } catch (error: unknown) {
+    const msg = error instanceof Error ? error.message : String(error);
+    console.log(chalk.yellow(`[Refactoring] Analysis failed: ${msg}`));
     return {
       file: filename,
       complexity: 0,
@@ -260,7 +261,7 @@ export function getSuggestionDetails(
   lines.push('');
 
   lines.push(chalk.cyan('BENEFITS:'));
-  suggestion.benefits.forEach((b) => lines.push(`   - ${b}`));
+  for (const b of suggestion.benefits) lines.push(`   - ${b}`);
 
   return lines.join('\n');
 }

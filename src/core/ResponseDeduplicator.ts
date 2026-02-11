@@ -91,9 +91,9 @@ export class ResponseDeduplicator {
     const hash = this.simpleHash(normalizedContent);
 
     // Check for exact duplicate (same hash)
-    if (this.hashIndex.has(hash)) {
-      const existingIds = this.hashIndex.get(hash)!;
-      const existingEntry = this.responses.get(existingIds[0]);
+    const existingHashIds = this.hashIndex.get(hash);
+    if (existingHashIds) {
+      const existingEntry = this.responses.get(existingHashIds[0]);
 
       if (existingEntry && existingEntry.agentId !== agentId) {
         const warning = `[Dedup] Agent "${agentId}" produced EXACT duplicate of agent "${existingEntry.agentId}" response`;
@@ -184,9 +184,9 @@ export class ResponseDeduplicator {
     const hash = this.simpleHash(normalizedContent);
 
     // Check exact match
-    if (this.hashIndex.has(hash)) {
-      const existingIds = this.hashIndex.get(hash)!;
-      const existingEntry = this.responses.get(existingIds[0]);
+    const existingCheckIds = this.hashIndex.get(hash);
+    if (existingCheckIds) {
+      const existingEntry = this.responses.get(existingCheckIds[0]);
 
       if (existingEntry) {
         return {
@@ -271,7 +271,8 @@ export class ResponseDeduplicator {
 
       // Check against previously seen content
       for (const [j, prevData] of seen.entries()) {
-        const prevTokens = tokenCache.get(j)!;
+        const prevTokens = tokenCache.get(j);
+        if (!prevTokens) continue;
         const similarity = this.jaccardSimilarity(tokens, prevTokens);
 
         if (similarity >= this.config.similarityThreshold) {
@@ -370,7 +371,7 @@ export class ResponseDeduplicator {
 
     // Word tokens (filter out very short words)
     const words = content.split(/\s+/).filter((w) => w.length >= 3);
-    words.forEach((w) => tokens.add(w));
+    for (const w of words) tokens.add(w);
 
     // Add bigrams for better similarity detection
     for (let i = 0; i < words.length - 1; i++) {

@@ -112,7 +112,7 @@ export async function generateDocumentation(
   try {
     const model = genAI.getGenerativeModel({
       model: QUALITY_MODEL,
-      generationConfig: { temperature: 0.2, maxOutputTokens: 8192 },
+      generationConfig: { temperature: 1.0, maxOutputTokens: 8192 }, // Temperature locked at 1.0 for Gemini - do not change
     });
 
     const result = await model.generateContent(prompt);
@@ -134,8 +134,9 @@ export async function generateDocumentation(
       entries: parsed.entries || [],
       usageExamples: parsed.usageExamples || [],
     };
-  } catch (error: any) {
-    console.log(chalk.yellow(`[DocGen] Failed: ${error.message}`));
+  } catch (error: unknown) {
+    const msg = error instanceof Error ? error.message : String(error);
+    console.log(chalk.yellow(`[DocGen] Failed: ${msg}`));
     return {
       file: filename,
       title: path.basename(filename),

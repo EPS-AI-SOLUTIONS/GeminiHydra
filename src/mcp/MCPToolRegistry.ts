@@ -167,7 +167,7 @@ export class MCPToolRegistry {
   // Parameter Validation
   // ============================================================
 
-  validateToolParams(toolName: string, params: Record<string, any>): MCPValidationResult {
+  validateToolParams(toolName: string, params: Record<string, unknown>): MCPValidationResult {
     const errors: string[] = [];
     const warnings: string[] = [];
 
@@ -227,7 +227,7 @@ export class MCPToolRegistry {
   // Gemini Integration
   // ============================================================
 
-  getToolDefinitionsForGemini(): any[] {
+  getToolDefinitionsForGemini(): unknown[] {
     return this.getAllTools().map((tool) => ({
       name: `mcp__${tool.serverName}__${tool.name}`,
       description: `[MCP:${tool.serverName}] ${tool.description}`,

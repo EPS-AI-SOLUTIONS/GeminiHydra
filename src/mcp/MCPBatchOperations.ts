@@ -27,7 +27,7 @@ export interface BatchStats {
 
 export type ToolExecutor = (
   toolName: string,
-  params: Record<string, any>,
+  params: Record<string, unknown>,
 ) => Promise<MCPToolResult>;
 
 // ============================================================
@@ -102,11 +102,12 @@ export class MCPBatchExecutor {
           success: result.success,
           result,
         });
-      } catch (error: any) {
+      } catch (error: unknown) {
+        const msg = error instanceof Error ? error.message : String(error);
         results.push({
           id: op.id,
           success: false,
-          error: error.message,
+          error: msg,
         });
       }
 
@@ -211,11 +212,12 @@ export class MCPBatchExecutor {
           result,
         });
         previousResult = result;
-      } catch (error: any) {
+      } catch (error: unknown) {
+        const msg = error instanceof Error ? error.message : String(error);
         results.push({
           id: operation.id,
           success: false,
-          error: error.message,
+          error: msg,
         });
         break; // Stop pipeline on error
       }

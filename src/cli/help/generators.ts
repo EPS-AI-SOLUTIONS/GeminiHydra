@@ -391,7 +391,7 @@ export function searchHelp(query: string): string {
   lines.push(chalk.gray('─'.repeat(50)));
   lines.push('');
 
-  for (const { cmd, score, matches } of results.slice(0, 15)) {
+  for (const { cmd, matches } of results.slice(0, 15)) {
     const matchInfo = chalk.gray(`[${matches.join(', ')}]`);
     const highlighted = highlightMatch(cmd.description, query);
 

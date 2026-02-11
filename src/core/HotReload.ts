@@ -10,7 +10,7 @@ import chalk from 'chalk';
 
 export interface HotReloadOptions {
   debounce?: number; // Debounce time in ms
-  onReload?: (config: any) => void;
+  onReload?: (config: unknown) => void;
   onError?: (error: Error) => void;
 }
 
@@ -23,14 +23,14 @@ const DEFAULT_OPTIONS: HotReloadOptions = {
  */
 export class HotReloadManager extends EventEmitter {
   private watchers: Map<string, fs.FSWatcher> = new Map();
-  private configs: Map<string, any> = new Map();
+  private configs: Map<string, unknown> = new Map();
   private debounceTimers: Map<string, NodeJS.Timeout> = new Map();
   private options: Required<HotReloadOptions>;
 
   constructor(options: HotReloadOptions = {}) {
     super();
     this.options = {
-      debounce: options.debounce ?? DEFAULT_OPTIONS.debounce!,
+      debounce: options.debounce ?? DEFAULT_OPTIONS.debounce ?? 1000,
       onReload: options.onReload ?? (() => {}),
       onError: options.onError ?? ((e) => console.error(chalk.red(e.message))),
     };
@@ -68,20 +68,20 @@ export class HotReloadManager extends EventEmitter {
 
       this.watchers.set(absolutePath, watcher);
       console.log(chalk.gray(`[HotReload] Watching: ${path.basename(absolutePath)}`));
-    } catch (error: any) {
-      this.options.onError(error);
+    } catch (error: unknown) {
+      this.options.onError(error instanceof Error ? error : new Error(String(error)));
     }
   }
 
   /**
    * Load config from file
    */
-  private loadConfig(filePath: string): any {
+  private loadConfig(filePath: string): unknown {
     try {
       const content = fs.readFileSync(filePath, 'utf-8');
       const ext = path.extname(filePath).toLowerCase();
 
-      let config: any;
+      let config: unknown;
       if (ext === '.json') {
         config = JSON.parse(content);
       } else if (ext === '.js' || ext === '.mjs') {
@@ -95,8 +95,8 @@ export class HotReloadManager extends EventEmitter {
 
       this.configs.set(filePath, config);
       return config;
-    } catch (error: any) {
-      this.options.onError(error);
+    } catch (error: unknown) {
+      this.options.onError(error instanceof Error ? error : new Error(String(error)));
       return null;
     }
   }
@@ -118,7 +118,7 @@ export class HotReloadManager extends EventEmitter {
   /**
    * Get current config for a file
    */
-  getConfig(filePath: string): any {
+  getConfig(filePath: string): unknown {
     const absolutePath = path.resolve(filePath);
     return this.configs.get(absolutePath);
   }

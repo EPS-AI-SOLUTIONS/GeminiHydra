@@ -136,10 +136,12 @@ export class CircuitBreakerRegistry {
   private breakers: Map<string, CircuitBreaker> = new Map();
 
   getOrCreate(name: string, options?: CircuitBreakerOptions): CircuitBreaker {
-    if (!this.breakers.has(name)) {
-      this.breakers.set(name, new CircuitBreaker(name, options));
+    let breaker = this.breakers.get(name);
+    if (!breaker) {
+      breaker = new CircuitBreaker(name, options);
+      this.breakers.set(name, breaker);
     }
-    return this.breakers.get(name)!;
+    return breaker;
   }
 
   get(name: string): CircuitBreaker | undefined {
@@ -147,14 +149,14 @@ export class CircuitBreakerRegistry {
   }
 
   resetAll(): void {
-    this.breakers.forEach((breaker) => breaker.reset());
+    for (const breaker of this.breakers.values()) breaker.reset();
   }
 
   getAllStats(): Record<string, ReturnType<CircuitBreaker['getStats']>> {
     const stats: Record<string, ReturnType<CircuitBreaker['getStats']>> = {};
-    this.breakers.forEach((breaker, name) => {
+    for (const [name, breaker] of this.breakers.entries()) {
       stats[name] = breaker.getStats();
-    });
+    }
     return stats;
   }
 }

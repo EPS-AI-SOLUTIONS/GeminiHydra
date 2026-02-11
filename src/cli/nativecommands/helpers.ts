@@ -343,8 +343,9 @@ export async function setFileAttributes(
     }
 
     return { success: true };
-  } catch (err: any) {
-    return { success: false, error: err.message };
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err);
+    return { success: false, error: msg };
   }
 }
 

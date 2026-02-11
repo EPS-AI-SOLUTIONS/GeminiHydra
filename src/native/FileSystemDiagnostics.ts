@@ -10,6 +10,7 @@ import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import chalk from 'chalk';
+import { getErrorMessage } from '../core/errors.js';
 import type { FileAttributes } from './types.js';
 
 // ============================================================
@@ -343,8 +344,8 @@ export class FileSystemDiagnostics {
       if (result.isFile && result.readable) {
         result.encoding = await this.detectEncoding(resolvedPath);
       }
-    } catch (e: any) {
-      errors.push(`Error getting file stats: ${e.message}`);
+    } catch (e: unknown) {
+      errors.push(`Error getting file stats: ${getErrorMessage(e)}`);
     }
 
     return result;
@@ -402,8 +403,8 @@ export class FileSystemDiagnostics {
       }
 
       result.success = true;
-    } catch (e: any) {
-      result.error = e.message;
+    } catch (e: unknown) {
+      result.error = getErrorMessage(e);
     }
 
     return result;
@@ -429,6 +430,7 @@ export class FileSystemDiagnostics {
     const isAbsolute = path.isAbsolute(targetPath);
 
     // Check for invalid characters
+    // biome-ignore lint/suspicious/noControlCharactersInRegex: intentional control char detection
     const invalidCharsPattern = isWindows ? /[<>:"|?*\x00-\x1f]/g : /[\x00]/g;
 
     const invalidChars: string[] = [];

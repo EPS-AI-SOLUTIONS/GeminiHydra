@@ -8,6 +8,7 @@
  * @module cli/nativecommands/shellCommands
  */
 
+import type { ShellType } from '../../native/nativeshell/index.js';
 import {
   type CommandResult,
   chalk,
@@ -50,7 +51,7 @@ export const shellCommands = {
       // Use ShellManager for enhanced execution
       const result = await tools.shellManager.exec(command, {
         timeout: flags.timeout ? parseInt(flags.timeout as string, 10) : undefined,
-        shell: flags.shell as any,
+        shell: flags.shell as ShellType | undefined,
       });
 
       spinner.stop();
@@ -93,11 +94,15 @@ export const shellCommands = {
    * List processes
    */
   async ps(args: string[]): Promise<CommandResult> {
-    const status = args[0] as any;
+    const status = args[0] as string | undefined;
 
     try {
       const tools = getTools();
-      const processes = tools.shellManager.listProcesses(status ? { status } : undefined);
+      const processes = tools.shellManager.listProcesses(
+        status
+          ? { status: status as 'error' | 'running' | 'completed' | 'killed' | 'zombie' }
+          : undefined,
+      );
 
       const rows = processes.map((p) => ({
         pid: p.pid,
@@ -180,10 +185,10 @@ export const shellCommands = {
           hostname: info.hostname,
           cpus: info.cpus,
           memory: {
-            total: formatBytes(info.memory.total),
-            free: formatBytes(info.memory.free),
+            total: formatBytes((info.memory as { total: number; free: number }).total),
+            free: formatBytes((info.memory as { total: number; free: number }).free),
           },
-          uptime: formatDuration(info.uptime * 1000),
+          uptime: formatDuration((info.uptime as number) * 1000),
           shell: info.shell,
           shellManager: info.shellManager,
         },
@@ -198,7 +203,7 @@ export const shellCommands = {
    * Show ShellManager configuration and status
    */
   async config(args: string[]): Promise<CommandResult> {
-    const { flags, positional } = parseFlags(args);
+    const { positional } = parseFlags(args);
 
     try {
       const tools = getTools();
@@ -298,7 +303,12 @@ export const shellCommands = {
 
       console.log(chalk.cyan('\n=== Available Shells ===\n'));
 
-      const printShell = (info: any) => {
+      const printShell = (info: {
+        available: boolean;
+        type: string;
+        path?: string;
+        version?: string;
+      }) => {
         const status = info.available ? chalk.green('[OK]') : chalk.red('[NOT FOUND]');
         const version = info.version ? chalk.gray(` - ${info.version}`) : '';
         console.log(`  ${status} ${info.type}: ${info.path || 'N/A'}${version}`);
@@ -332,10 +342,10 @@ export const shellCommands = {
     try {
       const tools = getTools();
       const str = positional.join(' ');
-      const shell = flags.shell as any;
+      const shell = flags.shell as string | undefined;
 
-      const escaped = tools.shellManager.escape(str, { shell });
-      const quoted = tools.shellManager.quote(str, { shell });
+      const escaped = tools.shellManager.escape(str, { shell: shell as ShellType | undefined });
+      const quoted = tools.shellManager.quote(str, { shell: shell as ShellType | undefined });
 
       return success(
         {

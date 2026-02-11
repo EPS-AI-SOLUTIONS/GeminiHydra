@@ -255,7 +255,7 @@ export async function enhanceWithIntelligence(
   if (cfg.useConfidenceScoring) {
     const confidence = await scoreConfidence(task, enhancedResponse);
 
-    if (confidence.overall < cfg.confidenceThreshold! && confidence.needsClarification) {
+    if (confidence.overall < (cfg.confidenceThreshold ?? 70) && confidence.needsClarification) {
       // Add clarification note
       enhancedResponse += `\n\n[CONFIDENCE] ${confidence.overall}%\n`;
       enhancedResponse += `Pytania do wyjasnienia:\n`;

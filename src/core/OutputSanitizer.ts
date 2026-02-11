@@ -469,12 +469,12 @@ export class OutputSanitizer {
 
     if (result.removedPatterns.length > 0) {
       lines.push('Patterns removed:');
-      result.removedPatterns.forEach((p) => lines.push(`  ${p}`));
+      for (const p of result.removedPatterns) lines.push(`  ${p}`);
     }
 
     if (result.warningsAdded.length > 0) {
       lines.push('Warnings added:');
-      result.warningsAdded.forEach((w) => lines.push(`  ${w}`));
+      for (const w of result.warningsAdded) lines.push(`  ${w}`);
     }
 
     return lines.join('\n');

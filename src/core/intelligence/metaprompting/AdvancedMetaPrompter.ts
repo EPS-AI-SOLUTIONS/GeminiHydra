@@ -357,16 +357,16 @@ RETURN JSON:
    */
   private tournamentSelect(population: PromptIndividual[], pressure: number): PromptIndividual {
     const tournamentSize = Math.max(2, Math.floor(pressure));
-    let best: PromptIndividual | null = null;
+    let best: PromptIndividual = population[Math.floor(Math.random() * population.length)];
 
-    for (let i = 0; i < tournamentSize; i++) {
+    for (let i = 1; i < tournamentSize; i++) {
       const candidate = population[Math.floor(Math.random() * population.length)];
-      if (!best || candidate.fitness > best.fitness) {
+      if (candidate.fitness > best.fitness) {
         best = candidate;
       }
     }
 
-    return best!;
+    return best;
   }
 
   /**

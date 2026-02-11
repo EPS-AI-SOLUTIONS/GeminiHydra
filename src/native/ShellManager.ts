@@ -926,7 +926,7 @@ export class ShellManager extends EventEmitter {
   /**
    * Get system info
    */
-  getSystemInfo(): Record<string, any> {
+  getSystemInfo(): Record<string, unknown> {
     return {
       ...this.shell.getSystemInfo(),
       shellManager: {
@@ -1110,7 +1110,7 @@ export class ShellManager extends EventEmitter {
     this.shell.on('close', (data) => this.emit('close', data));
   }
 
-  private log(message: string, data?: any): void {
+  private log(message: string, data?: unknown): void {
     const timestamp = new Date().toISOString();
     const logLine = `[${timestamp}] [ShellManager] ${message}`;
 

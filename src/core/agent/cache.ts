@@ -48,19 +48,25 @@ export function getCachedModel(
   }
 
   // Create new model instance
+  // Force temperature to 1.0 for all Gemini calls - do not change
+  const forcedConfig = generationConfig
+    ? { ...(generationConfig as Record<string, unknown>), temperature: 1.0 }
+    : { temperature: 1.0 };
   const model = genAI.getGenerativeModel({
     model: modelName,
-    ...(generationConfig ? { generationConfig } : {}),
+    generationConfig: forcedConfig,
   });
 
   modelCache.set(cacheKey, { model, createdAt: now });
 
-  // Cleanup old entries periodically
-  if (modelCache.size > 20) {
+  // Hard limit + TTL cleanup to prevent unbounded growth
+  const MAX_CACHED_MODELS = 30;
+  if (modelCache.size > MAX_CACHED_MODELS) {
     for (const [key, entry] of modelCache) {
-      if (now - entry.createdAt > MODEL_CACHE_TTL_MS) {
+      if (now - entry.createdAt > MODEL_CACHE_TTL_MS || modelCache.size > MAX_CACHED_MODELS) {
         modelCache.delete(key);
       }
+      if (modelCache.size <= MAX_CACHED_MODELS) break;
     }
   }
 
@@ -159,6 +165,19 @@ export type AgentLifecycleEvent =
  *   agentEvents.on('agent:fallback', (event) => { ... });
  */
 class AgentEventEmitter extends EventEmitter {
+  /**
+   * Emit event on specific channel only.
+   * Subscribers to 'agent:*' should use a wildcard listener pattern instead
+   * of relying on double-emission which caused duplicate processing.
+   */
+  private emitEvent(
+    type: string,
+    event: AgentStartEvent | AgentSuccessEvent | AgentErrorEvent | AgentFallbackEvent,
+  ): void {
+    this.emit(type, event);
+    this.emit('agent:*', event);
+  }
+
   emitStart(agent: string, model: string, promptLength: number): void {
     const event: AgentStartEvent = {
       type: 'agent:start',
@@ -167,8 +186,7 @@ class AgentEventEmitter extends EventEmitter {
       promptLength,
       timestamp: Date.now(),
     };
-    this.emit('agent:start', event);
-    this.emit('agent:*', event);
+    this.emitEvent('agent:start', event);
   }
 
   emitSuccess(
@@ -187,8 +205,7 @@ class AgentEventEmitter extends EventEmitter {
       temperature,
       timestamp: Date.now(),
     };
-    this.emit('agent:success', event);
-    this.emit('agent:*', event);
+    this.emitEvent('agent:success', event);
   }
 
   emitError(agent: string, error: string, willRetry: boolean): void {
@@ -199,8 +216,7 @@ class AgentEventEmitter extends EventEmitter {
       willRetry,
       timestamp: Date.now(),
     };
-    this.emit('agent:error', event);
-    this.emit('agent:*', event);
+    this.emitEvent('agent:error', event);
   }
 
   emitFallback(agent: string, from: string, to: string): void {
@@ -211,8 +227,7 @@ class AgentEventEmitter extends EventEmitter {
       to,
       timestamp: Date.now(),
     };
-    this.emit('agent:fallback', event);
-    this.emit('agent:*', event);
+    this.emitEvent('agent:fallback', event);
   }
 }
 

@@ -174,8 +174,8 @@ export class NativeSearch {
       caseSensitive = false,
       wholeWord = false,
       maxResults = 100,
-      contextLines = this.config.defaultContextLines,
-      includeHidden = false,
+      contextLines: _contextLines = this.config.defaultContextLines,
+      includeHidden: _includeHidden = false,
     } = options;
 
     // Build regex
@@ -208,9 +208,8 @@ export class NativeSearch {
 
         for (let i = 0; i < lines.length; i++) {
           const line = lines[i];
-          let match;
 
-          while ((match = regex.exec(line)) !== null) {
+          for (let match = regex.exec(line); match !== null; match = regex.exec(line)) {
             const searchMatch: SearchMatch = {
               file,
               line: i + 1,
@@ -219,9 +218,9 @@ export class NativeSearch {
               matchedText: match[0],
             };
 
-            if (contextLines > 0) {
-              const beforeStart = Math.max(0, i - contextLines);
-              const afterEnd = Math.min(lines.length - 1, i + contextLines);
+            if (_contextLines > 0) {
+              const beforeStart = Math.max(0, i - _contextLines);
+              const afterEnd = Math.min(lines.length - 1, i + _contextLines);
 
               searchMatch.context = {
                 before: lines.slice(beforeStart, i),
@@ -301,8 +300,7 @@ export class NativeSearch {
             continue;
           }
 
-          let match;
-          while ((match = regex.exec(content)) !== null) {
+          for (let match = regex.exec(content); match !== null; match = regex.exec(content)) {
             const name = match[1];
 
             if (patternRegex.test(name)) {

@@ -48,7 +48,7 @@ class ResourceScheduler {
     lastApiCall: new Date(),
   };
 
-  private taskQueue: Array<{ task: PrioritizedTask; resolve: (value: undefined) => void }> = [];
+  private taskQueue: Array<{ task: PrioritizedTask; resolve: () => void }> = [];
 
   /**
    * Update resource state

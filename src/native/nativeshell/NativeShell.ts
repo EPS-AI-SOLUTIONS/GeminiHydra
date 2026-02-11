@@ -567,9 +567,12 @@ export class NativeShell extends EventEmitter {
       info.lastHealthCheck = new Date();
       onOutput?.(chunk);
       this.emit(chunk.type, { pid, data: chunk.data });
-      resolveNext
-        ? (resolveNext({ value: chunk, done: false }), (resolveNext = null))
-        : chunkQueue.push(chunk);
+      if (resolveNext) {
+        resolveNext({ value: chunk, done: false });
+        resolveNext = null;
+      } else {
+        chunkQueue.push(chunk);
+      }
     };
     const timeoutId = setTimeout(async () => {
       error = new Error(`Process timeout after ${timeout}ms`);
@@ -579,7 +582,7 @@ export class NativeShell extends EventEmitter {
       info.killSignal = 'SIGKILL';
       info.endTime = new Date();
       done = true;
-      resolveNext?.({ value: undefined as any, done: true });
+      resolveNext?.({ value: undefined as unknown as OutputChunk, done: true });
     }, timeout);
     proc.stdout?.on('data', (data) =>
       pushChunk({ type: 'stdout', data: data.toString(), timestamp: Date.now() }),
@@ -593,7 +596,7 @@ export class NativeShell extends EventEmitter {
       info.status = 'error';
       info.endTime = new Date();
       done = true;
-      resolveNext?.({ value: undefined as any, done: true });
+      resolveNext?.({ value: undefined as unknown as OutputChunk, done: true });
     });
     proc.on('close', (code) => {
       clearTimeout(timeoutId);
@@ -601,11 +604,13 @@ export class NativeShell extends EventEmitter {
       info.exitCode = code || 0;
       info.endTime = new Date();
       done = true;
-      resolveNext?.({ value: undefined as any, done: true });
+      resolveNext?.({ value: undefined as unknown as OutputChunk, done: true });
     });
     while (!done || chunkQueue.length > 0) {
-      if (chunkQueue.length > 0) yield chunkQueue.shift()!;
-      else if (!done) {
+      if (chunkQueue.length > 0) {
+        const chunk = chunkQueue.shift();
+        if (chunk) yield chunk;
+      } else if (!done) {
         const result = await new Promise<IteratorResult<OutputChunk>>((r) => {
           resolveNext = r;
         });
@@ -672,8 +677,9 @@ export class NativeShell extends EventEmitter {
         bufferOutput: false,
       }))
         chunk.type === 'stdout' ? stdout.push(chunk.data) : stderr.push(chunk.data);
-    } catch (err: any) {
-      if (err.message?.includes('timeout')) exitCode = -1;
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      if (msg.includes('timeout')) exitCode = -1;
       else throw err;
     }
     const last = Array.from(this.processes.values())
@@ -727,8 +733,9 @@ export class NativeShell extends EventEmitter {
         bufferOutput: false,
       }))
         chunk.type === 'stdout' ? stdout.push(chunk.data) : stderr.push(chunk.data);
-    } catch (err: any) {
-      if (err.message?.includes('timeout')) exitCode = -1;
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      if (msg.includes('timeout')) exitCode = -1;
       else throw err;
     }
     const last = Array.from(this.processes.values())
@@ -878,8 +885,8 @@ export class NativeShell extends EventEmitter {
     try {
       process.kill(pid, 0);
       return true;
-    } catch (error: any) {
-      return error.code === 'EPERM';
+    } catch (error: unknown) {
+      return (error as NodeJS.ErrnoException).code === 'EPERM';
     }
   }
 
@@ -895,8 +902,8 @@ export class NativeShell extends EventEmitter {
       }
       this.emit('processKilled', { pid, signal });
       return true;
-    } catch (error: any) {
-      if (error.code === 'ESRCH') {
+    } catch (error: unknown) {
+      if ((error as NodeJS.ErrnoException).code === 'ESRCH') {
         if (info) {
           info.status = 'completed';
           info.endTime = new Date();
@@ -904,7 +911,8 @@ export class NativeShell extends EventEmitter {
         }
         return true;
       }
-      this.emit('killError', { pid, signal, error: error.message });
+      const msg = error instanceof Error ? error.message : String(error);
+      this.emit('killError', { pid, signal, error: msg });
       return false;
     }
   }
@@ -970,8 +978,9 @@ export class NativeShell extends EventEmitter {
         this.emit('processTreeKilled', { pid, signal });
         return true;
       }
-    } catch (error: any) {
-      this.emit('killError', { pid, signal, error: error.message });
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : String(error);
+      this.emit('killError', { pid, signal, error: msg });
       return false;
     }
   }
@@ -994,8 +1003,9 @@ export class NativeShell extends EventEmitter {
             stats.orphansKilled++;
           }
         }
-      } catch (error: any) {
-        stats.errors.push(`Failed to kill PID ${info.pid}: ${error.message}`);
+      } catch (error: unknown) {
+        const msg = error instanceof Error ? error.message : String(error);
+        stats.errors.push(`Failed to kill PID ${info.pid}: ${msg}`);
       }
     }
     console.log(chalk.cyan(`[NativeShell] Killed ${stats.processesTerminated} child processes`));
@@ -1065,8 +1075,9 @@ export class NativeShell extends EventEmitter {
           this.zombieProcesses.delete(zombie.pid);
           console.log(chalk.green(`[NativeShell] Cleaned up zombie process ${zombie.pid}`));
         }
-      } catch (error: any) {
-        stats.errors.push(`Failed to kill zombie ${zombie.pid}: ${error.message}`);
+      } catch (error: unknown) {
+        const msg = error instanceof Error ? error.message : String(error);
+        stats.errors.push(`Failed to kill zombie ${zombie.pid}: ${msg}`);
       }
     }
     const orphaned = this.detectOrphanedProcesses();
@@ -1078,8 +1089,9 @@ export class NativeShell extends EventEmitter {
           stats.processesTerminated++;
           console.log(chalk.green(`[NativeShell] Cleaned up orphaned process ${info.pid}`));
         }
-      } catch (error: any) {
-        stats.errors.push(`Failed to kill orphan ${info.pid}: ${error.message}`);
+      } catch (error: unknown) {
+        const msg = error instanceof Error ? error.message : String(error);
+        stats.errors.push(`Failed to kill orphan ${info.pid}: ${msg}`);
       }
     }
     if (stats.processesTerminated > 0) {
@@ -1314,7 +1326,7 @@ export class NativeShell extends EventEmitter {
     }
   }
 
-  getSystemInfo(): Record<string, any> {
+  getSystemInfo(): Record<string, unknown> {
     return {
       platform: os.platform(),
       arch: os.arch(),

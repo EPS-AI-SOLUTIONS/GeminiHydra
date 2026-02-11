@@ -189,6 +189,7 @@ const PATH_TRAVERSAL_PATTERNS: TraversalPattern[] = [
     category: 'null_byte',
   },
   {
+    // biome-ignore lint/suspicious/noControlCharactersInRegex: intentional null byte detection
     pattern: /\x00/g,
     name: 'Null byte character (\\x00)',
     severity: 'CRITICAL',
@@ -335,7 +336,7 @@ class SecurityAuditLogger {
     if (entry.stackTrace && entry.severity === 'CRITICAL') {
       console.error(chalk.gray(`  Stack Trace:`));
       const stackLines = entry.stackTrace.split('\n').slice(2, 6);
-      stackLines.forEach((line) => console.error(chalk.gray(`    ${line.trim()}`)));
+      for (const line of stackLines) console.error(chalk.gray(`    ${line.trim()}`));
     }
 
     console.error(colorFn(separator));
@@ -522,6 +523,7 @@ export function sanitizePath(inputPath: string): string {
 
   // Step 1: Remove null bytes (highest priority - can truncate paths)
   sanitized = sanitized.replace(/%00/gi, '');
+  // biome-ignore lint/suspicious/noControlCharactersInRegex: intentional null byte removal
   sanitized = sanitized.replace(/\x00/g, '');
   sanitized = sanitized.replace(/\0/g, '');
   sanitized = sanitized.replace(/%u0000/gi, '');

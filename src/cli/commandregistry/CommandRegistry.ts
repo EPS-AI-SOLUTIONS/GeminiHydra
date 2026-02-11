@@ -23,6 +23,7 @@ import {
 } from '../CommandErrors.js';
 // Import enhanced argument parser
 import {
+  type CommandWithFlags,
   parseArgs as enhancedParseArgs,
   generateFlagHelp,
   tokenizeInput,
@@ -216,7 +217,8 @@ export class CommandRegistry {
 
     // Check main name conflict
     if (this.commands.has(fullName)) {
-      const existing = this.commands.get(fullName)!;
+      const existing = this.commands.get(fullName);
+      if (!existing) throw new Error(`Unexpected missing command: ${fullName}`);
       const existingPriority = existing.priority ?? 0;
       conflicts.push({
         identifier: fullName,
@@ -235,7 +237,8 @@ export class CommandRegistry {
       const fullAlias = command.namespace ? `${command.namespace}.${alias}` : alias;
 
       if (this.aliasMap.has(fullAlias)) {
-        const existingName = this.aliasMap.get(fullAlias)!;
+        const existingName = this.aliasMap.get(fullAlias);
+        if (!existingName) continue;
         const existing = this.commands.get(existingName);
         if (existing) {
           const existingPriority = existing.priority ?? 0;
@@ -253,7 +256,8 @@ export class CommandRegistry {
       }
 
       if (this.commands.has(fullAlias)) {
-        const existing = this.commands.get(fullAlias)!;
+        const existing = this.commands.get(fullAlias);
+        if (!existing) continue;
         const existingPriority = existing.priority ?? 0;
         conflicts.push({
           identifier: fullAlias,
@@ -270,8 +274,8 @@ export class CommandRegistry {
 
     // Check short name shadowing
     if (command.namespace && this.commands.has(command.name)) {
-      const existing = this.commands.get(command.name)!;
-      if (!existing.namespace) {
+      const existing = this.commands.get(command.name);
+      if (existing && !existing.namespace) {
         const existingPriority = existing.priority ?? 0;
         conflicts.push({
           identifier: command.name,
@@ -479,7 +483,10 @@ export class CommandRegistry {
 
     const perCmdCheck = this.checkPerCommandLimit(command);
     if (!perCmdCheck.allowed) {
-      throw new RateLimitExceededError(perCmdCheck.limitType!, perCmdCheck.retryAfterMs!);
+      throw new RateLimitExceededError(
+        perCmdCheck.limitType ?? 'second',
+        perCmdCheck.retryAfterMs ?? 0,
+      );
     }
     if (this.tokensPerSecond <= 0) {
       const timeToRefill = 1000 - (Date.now() - this.lastSecondRefill);
@@ -670,8 +677,8 @@ export class CommandRegistry {
     for (const alias of this.aliasMap.keys()) {
       const distance = this.levenshteinDistance(lowerInput, alias);
       if (distance <= maxDistance) {
-        const realName = this.aliasMap.get(alias)!;
-        if (!candidates.some((c) => c.name === realName && !c.isAlias)) {
+        const realName = this.aliasMap.get(alias);
+        if (realName && !candidates.some((c) => c.name === realName && !c.isAlias)) {
           candidates.push({ name: alias, distance, isAlias: true });
         }
       }
@@ -717,7 +724,7 @@ export class CommandRegistry {
         args: ctxArgs0,
         flags: {},
         rawArgs: ctxArgs0.join(' '),
-        cwd: (ctx as any).cwd || process.cwd(),
+        cwd: ('cwd' in ctx && typeof ctx.cwd === 'string' ? ctx.cwd : '') || process.cwd(),
       } as CommandContext;
       const toErrorCtx0 = (c: CommandContext): ErrorCommandContext => ({
         cwd: c.cwd,
@@ -756,7 +763,7 @@ export class CommandRegistry {
       args: positional,
       flags,
       rawArgs: ctxArgs.join(' '),
-      cwd: (ctx as any).cwd || process.cwd(),
+      cwd: ('cwd' in ctx && typeof ctx.cwd === 'string' ? ctx.cwd : '') || process.cwd(),
     } as CommandContext;
     const toErrorCtx = (c: CommandContext): ErrorCommandContext => ({
       cwd: c.cwd,
@@ -934,11 +941,11 @@ export class CommandRegistry {
     parsedArgs: ParsedArgs,
     command: Command,
   ): { valid: boolean; warnings: string[]; errors: string[] } {
-    return validateCommandFlags(parsedArgs, command as any);
+    return validateCommandFlags(parsedArgs, command as CommandWithFlags);
   }
 
   generateCommandFlagHelp(command: Command): string {
-    return generateFlagHelp(command as any);
+    return generateFlagHelp(command as CommandWithFlags);
   }
 
   // ============================================================================
@@ -997,7 +1004,9 @@ export class CommandRegistry {
         }
       }
 
-      result.parsedArgs[argDef.name] = typeResult.value!;
+      if (typeResult.value !== undefined) {
+        result.parsedArgs[argDef.name] = typeResult.value;
+      }
     }
 
     return result;
@@ -1080,8 +1089,8 @@ export class CommandRegistry {
     const names = this.categories.get(category);
     if (!names) return [];
     return Array.from(names)
-      .map((name) => this.commands.get(name)!)
-      .filter((cmd) => !cmd.hidden);
+      .map((name) => this.commands.get(name))
+      .filter((cmd): cmd is Command => cmd != null && !cmd.hidden);
   }
 
   getCategories(): string[] {
@@ -1101,8 +1110,8 @@ export class CommandRegistry {
     const names = this.namespaces.get(namespace);
     if (!names) return [];
     return Array.from(names)
-      .map((name) => this.commands.get(name)!)
-      .filter((cmd) => cmd && !cmd.hidden);
+      .map((name) => this.commands.get(name))
+      .filter((cmd): cmd is Command => cmd != null && !cmd.hidden);
   }
 
   getNamespaces(): string[] {
@@ -1372,7 +1381,7 @@ export class CommandRegistry {
       this.debugLog(`Alias '${alias}' not found, nothing to unregister`);
       return false;
     }
-    const commandName = this.aliasMap.get(alias)!;
+    const commandName = this.aliasMap.get(alias) ?? alias;
     this.aliasMap.delete(alias);
     this.debugLog(`Unregistered alias: ${alias} (was mapped to ${commandName})`);
     const command = this.commands.get(commandName);

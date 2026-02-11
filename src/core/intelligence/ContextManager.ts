@@ -123,7 +123,7 @@ export class ContextWindowManager {
       const summary = await geminiSemaphore.withPermit(async () => {
         const model = genAI.getGenerativeModel({
           model: INTELLIGENCE_MODEL,
-          generationConfig: { temperature: 0.1, maxOutputTokens: 500 },
+          generationConfig: { temperature: 1.0, maxOutputTokens: 500 }, // Temperature locked at 1.0 for Gemini - do not change
         });
         const result = await model.generateContent(
           `Podsumuj zwięźle (max 200 słów) następujący kontekst:\n\n${toSummarize.substring(0, 3000)}`,
@@ -142,8 +142,9 @@ export class ContextWindowManager {
 
       this.add(summary, 'system', 0.6);
       console.log(chalk.gray(`[Context] Summarized ${oldChunks.length} chunks`));
-    } catch (error: any) {
-      console.log(chalk.yellow(`[Context] Summarization failed: ${error.message}`));
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : String(error);
+      console.log(chalk.yellow(`[Context] Summarization failed: ${msg}`));
     }
   }
 

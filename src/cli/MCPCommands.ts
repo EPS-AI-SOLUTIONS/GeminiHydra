@@ -74,7 +74,7 @@ async function handleOllamaStatus(): Promise<CommandResult> {
   console.log(chalk.white('\n  Models:'));
   const models = await ollamaManager.listModels();
   if (models.length > 0) {
-    models.forEach((m) => console.log(`    ${chalk.green('•')} ${m}`));
+    for (const m of models) console.log(`    ${chalk.green('•')} ${m}`);
   } else {
     console.log(chalk.gray('    No models loaded'));
   }
@@ -90,9 +90,10 @@ async function handleOllamaRestart(): Promise<CommandResult> {
     await ollamaManager.ensure();
     console.log(chalk.green('[Ollama] Restart complete!'));
     return success(null, 'Ollama restarted');
-  } catch (err: any) {
-    console.log(chalk.red(`[Ollama] Restart failed: ${err.message}`));
-    return error(`Restart failed: ${err.message}`);
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.log(chalk.red(`[Ollama] Restart failed: ${msg}`));
+    return error(`Restart failed: ${msg}`);
   }
 }
 

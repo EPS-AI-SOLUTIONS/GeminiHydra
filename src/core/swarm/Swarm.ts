@@ -16,6 +16,7 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import chalk from 'chalk';
+import { GEMINI_MODELS } from '../../config/models.config.js';
 import { mcpManager } from '../../mcp/index.js';
 import { sessionCache } from '../../memory/SessionCache.js';
 import {
@@ -55,6 +56,8 @@ import { buildPlanningPrompt } from '../PromptSystem.js';
 // Anti-hallucination solutions (Solutions 21-24)
 import { responseDeduplicator } from '../ResponseDeduplicator.js';
 import { resultHashVerifier } from '../ResultHashVerifier.js';
+// Verification Agent (Keira Metz - inter-phase quality gate)
+import { type PhaseVerdict, VerificationAgent } from '../VerificationAgent.js';
 import { BoundedResultStore } from './BoundedResultStore.js';
 import {
   buildMcpContext,
@@ -62,8 +65,6 @@ import {
   generateNextStepSuggestions,
   validateAgentResults,
 } from './helpers.js';
-// Verification Agent (Keira Metz - inter-phase quality gate)
-import { VerificationAgent, type PhaseVerdict } from '../VerificationAgent.js';
 // Local modules
 import type { YoloConfig } from './types.js';
 import { DEFAULT_CONFIG } from './types.js';
@@ -244,7 +245,7 @@ export class Swarm {
 
       const refinedObjective = objective;
       const selectedModel: string =
-        this.config.forceModel === 'pro' ? 'gemini-2.0-pro-exp-02-05' : 'gemini-2.0-flash';
+        this.config.forceModel === 'pro' ? GEMINI_MODELS.PRO : GEMINI_MODELS.FLASH;
 
       await sessionCache.setRefinedObjective(refinedObjective);
 
@@ -416,11 +417,12 @@ export class Swarm {
         await sessionCache.appendChronicle(`Plan created with ${plan.tasks.length} tasks`);
 
         logger.phaseEnd('A', { tasks: plan.tasks.length, success: true });
-      } catch (e: any) {
-        logger.agentError('dijkstra', e.message, false);
-        logger.phaseEnd('A', { success: false, error: e.message });
-        await sessionCache.appendChronicle(`Planning failed: ${e.message}`);
-        return `Critical Error: Planning failed - ${e.message}`;
+      } catch (e: unknown) {
+        const msg = e instanceof Error ? e.message : String(e);
+        logger.agentError('dijkstra', msg, false);
+        logger.phaseEnd('A', { success: false, error: msg });
+        await sessionCache.appendChronicle(`Planning failed: ${msg}`);
+        return `Critical Error: Planning failed - ${msg}`;
       }
 
       // =========================================
@@ -457,10 +459,11 @@ export class Swarm {
           'Phase B: Task Execution',
           this.config.totalTimeoutMs ?? 30 * 60 * 1000,
         );
-      } catch (phaseBError: any) {
-        if (signal.aborted || phaseBError.message.includes('timeout')) {
+      } catch (phaseBError: unknown) {
+        const phaseBMsg = phaseBError instanceof Error ? phaseBError.message : String(phaseBError);
+        if (signal.aborted || phaseBMsg.includes('timeout')) {
           logger.system(
-            `[Swarm] Phase B interrupted: ${phaseBError.message}. Gathering partial results...`,
+            `[Swarm] Phase B interrupted: ${phaseBMsg}. Gathering partial results...`,
             'warn',
           );
           const _partialStatus = taskProcessor.getStatus();
@@ -470,7 +473,7 @@ export class Swarm {
               {
                 id: 0,
                 success: false,
-                error: `Phase B interrupted: ${phaseBError.message}`,
+                error: `Phase B interrupted: ${phaseBMsg}`,
                 logs: [
                   `Execution was interrupted after ${((Date.now() - startTime) / 1000).toFixed(1)}s`,
                 ],
@@ -636,7 +639,7 @@ export class Swarm {
         console.log(
           chalk.yellow('\n[OSTRZEŻENIE] Wykryto potencjalne halucynacje w wynikach agentów:'),
         );
-        hallucinationWarnings.forEach((w) => console.log(chalk.yellow(`  ${w}`)));
+        for (const w of hallucinationWarnings) console.log(chalk.yellow(`  ${w}`));
       }
 
       const synthesisResults = validatedResults.map((r) => ({
@@ -766,13 +769,13 @@ ZASADY:
             `[Anti-Hallucination] Detected ${deduplicationResult.duplicates.length} duplicate responses`,
           ),
         );
-        deduplicationResult.duplicates.forEach((d) => {
+        for (const d of deduplicationResult.duplicates) {
           console.log(
             chalk.gray(
               `  - Tasks ${d.indices.join(', ')}: ${(d.similarity * 100).toFixed(0)}% similarity`,
             ),
           );
-        });
+        }
       }
 
       const hashResults = finalResults.map((r) => ({
@@ -788,9 +791,9 @@ ZASADY:
       const validationResult = validateFinalReport(report, ORIGINAL_OBJECTIVE, finalResults);
       if (!validationResult.isValid) {
         console.log(chalk.yellow(`[Anti-Hallucination] Report validation issues:`));
-        validationResult.issues.forEach((issue) => {
+        for (const issue of validationResult.issues) {
           console.log(chalk.yellow(`  - ${issue}`));
-        });
+        }
 
         if (validationResult.issues.length > 0) {
           report += `\n\n⚠️ **Ostrzeżenia walidacji:**\n${validationResult.issues.map((i) => `- ${i}`).join('\n')}`;
@@ -819,8 +822,9 @@ ZASADY:
               ),
             );
           }
-        } catch (e: any) {
-          console.log(chalk.yellow(`[Self-Reflect] Skipped: ${e.message}`));
+        } catch (e: unknown) {
+          const msg = e instanceof Error ? e.message : String(e);
+          console.log(chalk.yellow(`[Self-Reflect] Skipped: ${msg}`));
         }
       }
 
@@ -921,9 +925,9 @@ ZASADY:
         console.log(chalk.cyan('════════════════════════════════════════════════════════════'));
         console.log(chalk.cyan.bold('  💡 SUGESTIE DALSZYCH KROKÓW'));
         console.log(chalk.cyan('════════════════════════════════════════════════════════════'));
-        suggestions.forEach((suggestion, i) => {
-          console.log(chalk.white(`  ${i + 1}. ${suggestion}`));
-        });
+        for (let i = 0; i < suggestions.length; i++) {
+          console.log(chalk.white(`  ${i + 1}. ${suggestions[i]}`));
+        }
         console.log(chalk.cyan('────────────────────────────────────────────────────────────'));
         console.log(chalk.gray('  Wpisz numer lub opis aby kontynuować'));
         console.log('');
@@ -974,7 +978,12 @@ ZASADY:
     this.resultStore.clear();
   }
 
-  getStatus(): { config: YoloConfig; graphStatus: any; storedResults: number; isRunning: boolean } {
+  getStatus(): {
+    config: YoloConfig;
+    graphStatus: unknown;
+    storedResults: number;
+    isRunning: boolean;
+  } {
     return {
       config: this.config,
       graphStatus: this.graphProcessor.getStatus(),

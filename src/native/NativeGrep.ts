@@ -203,8 +203,8 @@ export class NativeGrep {
       maxResults,
       offset = 0,
       outputMode = 'content',
-      showLineNumbers = true,
-      showFileNames = true,
+      showLineNumbers: _showLineNumbers = true,
+      showFileNames: _showFileNames = true,
     } = options;
 
     // Build regex
@@ -400,8 +400,6 @@ export class NativeGrep {
 
       for (let i = 0; i < lines.length; i++) {
         const line = lines[i];
-        let match;
-
         // Handle invert match
         if (invertMatch) {
           if (!regex.test(line)) {
@@ -419,7 +417,7 @@ export class NativeGrep {
         }
 
         // Normal match
-        while ((match = regex.exec(line)) !== null) {
+        for (let match = regex.exec(line); match !== null; match = regex.exec(line)) {
           matches.push({
             file,
             line: i + 1,

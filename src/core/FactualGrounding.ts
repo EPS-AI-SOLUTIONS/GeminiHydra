@@ -630,15 +630,16 @@ export class FactualGroundingChecker {
       'api',
       'database',
     ];
-    types.forEach((type) => this.contextIndex.set(type, new Set()));
+    for (const type of types) {
+      this.contextIndex.set(type, new Set());
+    }
 
     const fullContext = context.join('\n');
 
     // Extract entities from context using patterns
     for (const pattern of this.patterns) {
       const regex = new RegExp(pattern.pattern.source, pattern.pattern.flags);
-      let match;
-      while ((match = regex.exec(fullContext)) !== null) {
+      for (let match = regex.exec(fullContext); match !== null; match = regex.exec(fullContext)) {
         const entity = match[pattern.entityGroup];
         if (entity) {
           this.contextIndex.get(pattern.type)?.add(entity.toLowerCase());
@@ -661,8 +662,11 @@ export class FactualGroundingChecker {
   private extractSimplePatterns(context: string): void {
     // CamelCase identifiers (likely classes/interfaces/types)
     const camelCasePattern = /\b([A-Z][a-zA-Z0-9]*(?:[A-Z][a-zA-Z0-9]*)+)\b/g;
-    let match;
-    while ((match = camelCasePattern.exec(context)) !== null) {
+    for (
+      let match = camelCasePattern.exec(context);
+      match !== null;
+      match = camelCasePattern.exec(context)
+    ) {
       this.contextIndex.get('class')?.add(match[1].toLowerCase());
       this.contextIndex.get('interface')?.add(match[1].toLowerCase());
       this.contextIndex.get('type')?.add(match[1].toLowerCase());
@@ -670,7 +674,11 @@ export class FactualGroundingChecker {
 
     // File paths
     const filePathPattern = /([a-zA-Z0-9_-]+(?:\/[a-zA-Z0-9_-]+)*\.[a-zA-Z0-9]+)/g;
-    while ((match = filePathPattern.exec(context)) !== null) {
+    for (
+      let match = filePathPattern.exec(context);
+      match !== null;
+      match = filePathPattern.exec(context)
+    ) {
       this.contextIndex.get('file')?.add(match[1].toLowerCase());
     }
 
@@ -683,7 +691,7 @@ export class FactualGroundingChecker {
       /func\s+([a-zA-Z_][a-zA-Z0-9_]*)/g,
     ];
     for (const pattern of funcPatterns) {
-      while ((match = pattern.exec(context)) !== null) {
+      for (let match = pattern.exec(context); match !== null; match = pattern.exec(context)) {
         this.contextIndex.get('function')?.add(match[1].toLowerCase());
       }
     }
@@ -700,8 +708,7 @@ export class FactualGroundingChecker {
 
     for (const pattern of this.patterns) {
       const regex = new RegExp(pattern.pattern.source, pattern.pattern.flags);
-      let match;
-      while ((match = regex.exec(response)) !== null) {
+      for (let match = regex.exec(response); match !== null; match = regex.exec(response)) {
         const entity = match[pattern.entityGroup];
         if (entity) {
           const key = `${pattern.type}:${entity.toLowerCase()}`;
@@ -1015,9 +1022,9 @@ export class FactualGroundingChecker {
         issues.push(...result.warnings);
       }
       if (result.ungroundedClaims) {
-        result.ungroundedClaims.forEach((claim) => {
+        for (const claim of result.ungroundedClaims) {
           issues.push(`Ungrounded: ${claim.substring(0, 60)}...`);
-        });
+        }
       }
     }
 

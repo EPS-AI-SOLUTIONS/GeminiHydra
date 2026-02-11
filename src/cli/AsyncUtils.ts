@@ -255,7 +255,7 @@ export class ProgressReporter {
 /**
  * Check if a function is async (returns a Promise)
  */
-export function isAsyncFunction(fn: Function): boolean {
+export function isAsyncFunction(fn: (...args: never[]) => unknown): boolean {
   // Check for async function constructor
   if (fn.constructor.name === 'AsyncFunction') {
     return true;

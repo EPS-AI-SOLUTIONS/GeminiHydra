@@ -192,11 +192,11 @@ export function checkTaskResultAlignment(
 
   // Extract file/path references from task
   const taskPaths = task.match(/[\w/-]+\.\w+/g) || [];
-  taskPaths.forEach((p) => taskKeywords.add(p.toLowerCase()));
+  for (const p of taskPaths) taskKeywords.add(p.toLowerCase());
 
   // Extract class/function names from task
   const taskNames = task.match(/\b[A-Z][a-zA-Z]+\b/g) || [];
-  taskNames.forEach((n) => taskKeywords.add(n.toLowerCase()));
+  for (const n of taskNames) taskKeywords.add(n.toLowerCase());
 
   // Check which keywords appear in result
   const matchedKeywords: string[] = [];
@@ -291,7 +291,7 @@ export async function selfHealingLoop(
   let repairCycles = 0;
   const lessons: LessonLearned[] = [];
 
-  while (repairCycles < cfg.maxRetries!) {
+  while (repairCycles < (cfg.maxRetries ?? 3)) {
     repairCycles++;
 
     // Minimize results for context (prevent token overflow)

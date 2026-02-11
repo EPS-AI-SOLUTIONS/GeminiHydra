@@ -34,8 +34,8 @@ export class RequestCache<T = string> {
 
   constructor(options: CacheOptions = {}) {
     this.options = {
-      ttl: options.ttl ?? DEFAULT_OPTIONS.ttl!,
-      maxSize: options.maxSize ?? DEFAULT_OPTIONS.maxSize!,
+      ttl: options.ttl ?? DEFAULT_OPTIONS.ttl ?? 300000,
+      maxSize: options.maxSize ?? DEFAULT_OPTIONS.maxSize ?? 100,
       onHit: options.onHit ?? (() => {}),
       onMiss: options.onMiss ?? (() => {}),
     };
@@ -44,7 +44,7 @@ export class RequestCache<T = string> {
   /**
    * Generate cache key from request parameters
    */
-  private generateKey(params: any): string {
+  private generateKey(params: unknown): string {
     const serialized = JSON.stringify(params);
     return crypto.createHash('sha256').update(serialized).digest('hex').substring(0, 16);
   }
@@ -52,7 +52,7 @@ export class RequestCache<T = string> {
   /**
    * Get value from cache
    */
-  get(params: any): T | undefined {
+  get(params: unknown): T | undefined {
     const key = this.generateKey(params);
     const entry = this.cache.get(key);
 
@@ -85,7 +85,7 @@ export class RequestCache<T = string> {
   /**
    * Set value in cache
    */
-  set(params: any, value: T): void {
+  set(params: unknown, value: T): void {
     const key = this.generateKey(params);
 
     // Evict oldest if at capacity
@@ -104,7 +104,7 @@ export class RequestCache<T = string> {
   /**
    * Get or compute value
    */
-  async getOrCompute(params: any, compute: () => Promise<T>): Promise<T> {
+  async getOrCompute(params: unknown, compute: () => Promise<T>): Promise<T> {
     const cached = this.get(params);
     if (cached !== undefined) {
       return cached;
@@ -161,7 +161,7 @@ export class RequestCache<T = string> {
 export class RequestDeduplicator<T = string> {
   private inFlight: Map<string, Promise<T>> = new Map();
 
-  private generateKey(params: any): string {
+  private generateKey(params: unknown): string {
     return crypto
       .createHash('sha256')
       .update(JSON.stringify(params))
@@ -173,7 +173,7 @@ export class RequestDeduplicator<T = string> {
    * Execute request with deduplication
    * If same request is in-flight, return existing promise
    */
-  async execute(params: any, fn: () => Promise<T>): Promise<T> {
+  async execute(params: unknown, fn: () => Promise<T>, timeoutMs: number = 120000): Promise<T> {
     const key = this.generateKey(params);
 
     // Check if request already in flight
@@ -183,8 +183,16 @@ export class RequestDeduplicator<T = string> {
       return existing;
     }
 
-    // Create new request
-    const promise = fn().finally(() => {
+    // Create new request with timeout protection
+    const promise = Promise.race([
+      fn(),
+      new Promise<never>((_, reject) =>
+        setTimeout(
+          () => reject(new Error(`[Dedup] Request timeout after ${timeoutMs}ms`)),
+          timeoutMs,
+        ),
+      ),
+    ]).finally(() => {
       this.inFlight.delete(key);
     });
 

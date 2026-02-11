@@ -27,7 +27,7 @@ export interface ProjectInfo {
   path: string;
   type: ProjectType;
   lastAccessed: number;
-  config?: Record<string, any>;
+  config?: Record<string, unknown>;
   tags?: string[];
   description?: string;
 }
@@ -88,7 +88,7 @@ export class MultiProjectManager {
   async addProject(
     projectPath: string,
     name?: string,
-    options: { tags?: string[]; description?: string; config?: Record<string, any> } = {},
+    options: { tags?: string[]; description?: string; config?: Record<string, unknown> } = {},
   ): Promise<ProjectInfo> {
     const resolvedPath = path.resolve(projectPath);
 
@@ -202,7 +202,8 @@ export class MultiProjectManager {
       return false;
     }
 
-    const project = this.workspace.projects.get(projectId)!;
+    const project = this.workspace.projects.get(projectId);
+    if (!project) return false;
     project.lastAccessed = Date.now();
     this.workspace.activeProject = projectId;
     this.addToRecent(projectId);
@@ -359,7 +360,8 @@ export class MultiProjectManager {
   removeProject(projectId: string): boolean {
     if (!this.workspace.projects.has(projectId)) return false;
 
-    const project = this.workspace.projects.get(projectId)!;
+    const project = this.workspace.projects.get(projectId);
+    if (!project) return false;
     this.workspace.projects.delete(projectId);
     this.workspace.recentProjects = this.workspace.recentProjects.filter((id) => id !== projectId);
 
@@ -379,7 +381,7 @@ export class MultiProjectManager {
     const tags = new Set<string>();
     for (const project of this.workspace.projects.values()) {
       if (project.tags) {
-        project.tags.forEach((t) => tags.add(t));
+        for (const t of project.tags) tags.add(t);
       }
     }
     return Array.from(tags).sort();
@@ -431,8 +433,9 @@ export class MultiProjectManager {
       };
       await fs.writeFile(this.persistPath, JSON.stringify(data, null, 2));
       console.log(chalk.gray('[ProjectManager] Workspace saved'));
-    } catch (error: any) {
-      console.log(chalk.yellow(`[ProjectManager] Persist failed: ${error.message}`));
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : String(error);
+      console.log(chalk.yellow(`[ProjectManager] Persist failed: ${msg}`));
     }
   }
 }

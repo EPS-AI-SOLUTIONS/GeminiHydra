@@ -41,7 +41,10 @@ export function createStubMcpCaller(): McpToolCaller {
 export function isMcpEnvironment(): boolean {
   // Check for MCP-specific environment variables or global objects
   // This is a heuristic - in real MCP environments, tools are injected
-  return typeof (globalThis as any).mcp !== 'undefined' || process.env.MCP_ENABLED === 'true';
+  return (
+    typeof (globalThis as unknown as Record<string, unknown>).mcp !== 'undefined' ||
+    process.env.MCP_ENABLED === 'true'
+  );
 }
 
 /**

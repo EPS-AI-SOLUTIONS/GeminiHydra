@@ -622,8 +622,7 @@ export class EvidenceChainTracker {
     ];
 
     for (const pattern of patterns) {
-      let match;
-      while ((match = pattern.exec(content)) !== null) {
+      for (let match = pattern.exec(content); match !== null; match = pattern.exec(content)) {
         const claim = match[1]?.trim();
         if (claim && claim.length > 10 && claim.length < 200) {
           claims.push(claim);

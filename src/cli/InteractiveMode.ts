@@ -38,7 +38,9 @@ const AGENT_COLORS: Record<string, (text: string) => string> = {
 export class InteractiveMode {
   private rl: readline.Interface;
   private history: string[] = [];
-  private sessionMemory: Map<string, any> = new Map();
+  // biome-ignore lint/correctness/noUnusedPrivateClassMembers: assigned in loadHistory/addToHistory
+  private historyIndex: number = 0;
+  private sessionMemory: Map<string, unknown> = new Map();
   private currentAgent: string = 'dijkstra';
 
   constructor() {
@@ -85,11 +87,11 @@ export class InteractiveMode {
     }
   }
 
-  setSessionValue(key: string, value: any): void {
+  setSessionValue(key: string, value: unknown): void {
     this.sessionMemory.set(key, value);
   }
 
-  getSessionValue(key: string): any {
+  getSessionValue(key: string): unknown {
     return this.sessionMemory.get(key);
   }
 

@@ -134,8 +134,9 @@ export class PromptMemory {
       // Load existing data
       await this.load();
       this.initialized = true;
-    } catch (error: any) {
-      console.warn(chalk.yellow(`[PromptMemory] Init warning: ${error.message}`));
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : String(error);
+      console.warn(chalk.yellow(`[PromptMemory] Init warning: ${msg}`));
       this.initialized = true;
     }
   }
@@ -147,15 +148,15 @@ export class PromptMemory {
 
       // Convert dates
       this.data = {
-        prompts: (parsed.prompts || []).map((p: any) => ({
+        prompts: (parsed.prompts || []).map((p: Record<string, unknown>) => ({
           ...p,
-          createdAt: new Date(p.createdAt),
-          updatedAt: new Date(p.updatedAt),
-          lastUsedAt: p.lastUsedAt ? new Date(p.lastUsedAt) : undefined,
+          createdAt: new Date(p.createdAt as string),
+          updatedAt: new Date(p.updatedAt as string),
+          lastUsedAt: p.lastUsedAt ? new Date(p.lastUsedAt as string) : undefined,
         })),
-        history: (parsed.history || []).map((h: any) => ({
+        history: (parsed.history || []).map((h: Record<string, unknown>) => ({
           ...h,
-          usedAt: new Date(h.usedAt),
+          usedAt: new Date(h.usedAt as string),
         })),
         favorites: parsed.favorites || [],
         lastSyncAt: parsed.lastSyncAt ? new Date(parsed.lastSyncAt) : undefined,
@@ -176,8 +177,9 @@ export class PromptMemory {
       try {
         await fs.mkdir(path.dirname(PROMPTS_FILE), { recursive: true });
         await fs.writeFile(PROMPTS_FILE, JSON.stringify(this.data, null, 2), 'utf-8');
-      } catch (error: any) {
-        console.error(chalk.red(`[PromptMemory] Save error: ${error.message}`));
+      } catch (error: unknown) {
+        const msg = error instanceof Error ? error.message : String(error);
+        console.error(chalk.red(`[PromptMemory] Save error: ${msg}`));
       }
     }, this.SAVE_DEBOUNCE_MS);
   }
@@ -332,7 +334,7 @@ export class PromptMemory {
 
     // Filter by minimum rating
     if (options.minRating) {
-      results = results.filter((p) => (p.rating || 0) >= options.minRating!);
+      results = results.filter((p) => (p.rating || 0) >= (options.minRating ?? 0));
     }
 
     // Search by query (semantic + text)
@@ -547,8 +549,7 @@ export class PromptMemory {
     const variables: PromptVariable[] = [];
     const seen = new Set<string>();
 
-    let match;
-    while ((match = regex.exec(content)) !== null) {
+    for (let match = regex.exec(content); match !== null; match = regex.exec(content)) {
       const name = match[1];
       if (!seen.has(name)) {
         seen.add(name);
@@ -653,14 +654,16 @@ export class PromptMemory {
           }
 
           result.imported++;
-        } catch (e: any) {
-          result.errors.push(`Błąd przy imporcie "${p.title}": ${e.message}`);
+        } catch (e: unknown) {
+          const eMsg = e instanceof Error ? e.message : String(e);
+          result.errors.push(`Błąd przy imporcie "${p.title}": ${eMsg}`);
         }
       }
 
       await this.save();
-    } catch (e: any) {
-      result.errors.push(`Błąd parsowania JSON: ${e.message}`);
+    } catch (e: unknown) {
+      const eMsg = e instanceof Error ? e.message : String(e);
+      result.errors.push(`Błąd parsowania JSON: ${eMsg}`);
     }
 
     return result;

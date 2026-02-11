@@ -3,7 +3,7 @@
  * Wrapper for @google/gemini-cli-core tools and features
  */
 
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import { type ChatSession, type GenerativeModel, GoogleGenerativeAI } from '@google/generative-ai';
 import 'dotenv/config';
 import { GEMINI_MODELS } from '../config/models.config.js';
 
@@ -61,12 +61,12 @@ export async function generate(
     systemPrompt?: string;
   } = {},
 ): Promise<string> {
-  const { model = DEFAULT_MODEL, temperature = 0.7, maxTokens = 8192, systemPrompt } = options;
+  const { model = DEFAULT_MODEL, maxTokens = 8192, systemPrompt } = options;
 
   const geminiModel = genAI.getGenerativeModel({
     model,
     generationConfig: {
-      temperature,
+      temperature: 1.0, // Temperature locked at 1.0 for Gemini - do not change
       maxOutputTokens: maxTokens,
     },
   });
@@ -88,11 +88,11 @@ export async function* generateStream(
     systemPrompt?: string;
   } = {},
 ): AsyncGenerator<string> {
-  const { model = DEFAULT_MODEL, temperature = 0.7, systemPrompt } = options;
+  const { model = DEFAULT_MODEL, systemPrompt } = options;
 
   const geminiModel = genAI.getGenerativeModel({
     model,
-    generationConfig: { temperature },
+    generationConfig: { temperature: 1.0 }, // Temperature locked at 1.0 for Gemini - do not change
   });
 
   const fullPrompt = systemPrompt ? `${systemPrompt}\n\n${prompt}` : prompt;
@@ -125,9 +125,9 @@ export async function listModels(): Promise<Array<{ name: string; displayName: s
   }
 
   const data = await response.json();
-  return data.models.map((m: any) => ({
-    name: m.name.replace('models/', ''),
-    displayName: m.displayName,
+  return data.models.map((m: Record<string, unknown>) => ({
+    name: (m.name as string).replace('models/', ''),
+    displayName: m.displayName as string,
   }));
 }
 
@@ -169,8 +169,8 @@ export async function getBestAvailableModel(): Promise<string> {
  * Chat session with history
  */
 export class GeminiChat {
-  private model: any;
-  private chat: any;
+  private model: GenerativeModel;
+  private chat: ChatSession;
 
   constructor(modelName: string = DEFAULT_MODEL) {
     this.model = genAI.getGenerativeModel({ model: modelName });

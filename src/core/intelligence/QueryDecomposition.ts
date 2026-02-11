@@ -119,7 +119,7 @@ export function robustJsonParse<T>(
   return { result: fallback, strategy: 'fallback', success: false };
 }
 
-function parseWithMarkdownCleanup(text: string): any {
+function parseWithMarkdownCleanup(text: string): unknown {
   // Remove markdown code blocks and clean up
   let cleaned = text
     .replace(/```json\s*/gi, '')
@@ -133,7 +133,7 @@ function parseWithMarkdownCleanup(text: string): any {
   return JSON.parse(cleaned);
 }
 
-function extractJsonByBrackets(text: string): any {
+function extractJsonByBrackets(text: string): unknown {
   // Find the outermost JSON object or array
   const objectMatch = text.match(/\{[\s\S]*\}/);
   const arrayMatch = text.match(/\[[\s\S]*\]/);
@@ -154,7 +154,7 @@ function extractJsonByBrackets(text: string): any {
   throw new Error('No valid JSON structure found');
 }
 
-function parseLineByLine(text: string): any {
+function parseLineByLine(text: string): unknown {
   const lines = text.split('\n');
   let jsonContent = '';
   let inJson = false;
@@ -181,7 +181,7 @@ function parseLineByLine(text: string): any {
   return JSON.parse(jsonContent);
 }
 
-function extractJsonByRegex(text: string): any {
+function extractJsonByRegex(text: string): unknown {
   // Try to extract JSON-like structures with regex
   const patterns = [
     /\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}/g, // Nested objects
@@ -207,7 +207,7 @@ function extractJsonByRegex(text: string): any {
   throw new Error('No valid JSON found via regex');
 }
 
-function recoverPartialJson(text: string): any {
+function recoverPartialJson(text: string): unknown {
   // Try to fix common JSON issues
   let fixed = text;
 
@@ -235,9 +235,13 @@ function recoverPartialJson(text: string): any {
   throw new Error('Could not recover partial JSON');
 }
 
-function extractKeyValues(text: string): any {
+function extractKeyValues(text: string): unknown {
   // Last resort: extract key-value pairs manually
-  const result: any = { subQueries: [], executionOrder: [[0]], dependencies: {} };
+  const result: {
+    subQueries: string[];
+    executionOrder: number[][];
+    dependencies: Record<string, unknown>;
+  } = { subQueries: [], executionOrder: [[0]], dependencies: {} };
 
   // Extract subQueries array
   const subQueriesMatch = text.match(/subQueries['":\s]*\[([\s\S]*?)\]/i);
@@ -485,7 +489,7 @@ class DecompositionCache {
 
     this.cache.set(hash, {
       pattern: hash,
-      result: storable as any,
+      result: storable as unknown as Omit<DecomposedQuery, 'fromCache' | 'decompositionTime'>,
       timestamp: Date.now(),
       hitCount: 0,
     });
@@ -557,13 +561,20 @@ ZASADY:
     const result = await geminiSemaphore.withPermit(async () => {
       const model = genAI.getGenerativeModel({
         model: INTELLIGENCE_MODEL,
-        generationConfig: { temperature: 0.2, maxOutputTokens: 1024 },
+        generationConfig: { temperature: 1.0, maxOutputTokens: 1024 }, // Temperature locked at 1.0 for Gemini - do not change
       });
       const res = await model.generateContent(prompt);
       return res.response.text();
     });
 
-    const { result: parsed, success } = robustJsonParse<{ components: any[] }>(result, {
+    const { result: parsed, success } = robustJsonParse<{
+      components: {
+        query?: string;
+        priority?: number;
+        complexity?: number;
+        needsFurtherDecomposition?: boolean;
+      }[];
+    }>(result, {
       components: [{ query, priority: 5, complexity: 3, needsFurtherDecomposition: false }],
     });
 
@@ -595,9 +606,13 @@ ZASADY:
       subQueries.push(subQuery);
 
       // Recursively decompose if needed
-      if (comp.needsFurtherDecomposition && comp.complexity >= 3 && currentDepth < maxDepth - 1) {
+      if (
+        comp.needsFurtherDecomposition &&
+        (comp.complexity ?? 0) >= 3 &&
+        currentDepth < maxDepth - 1
+      ) {
         const childQueries = await hierarchicalDecompose(
-          comp.query,
+          comp.query ?? query,
           maxDepth,
           currentDepth + 1,
           id,
@@ -611,8 +626,9 @@ ZASADY:
         }
       }
     }
-  } catch (error: any) {
-    console.log(chalk.yellow(`[Hierarchical] Level ${currentDepth} failed: ${error.message}`));
+  } catch (error: unknown) {
+    const msg = error instanceof Error ? error.message : String(error);
+    console.log(chalk.yellow(`[Hierarchical] Level ${currentDepth} failed: ${msg}`));
     subQueries.push({
       id: 0,
       query,
@@ -647,7 +663,8 @@ export function buildHierarchyTree(subQueries: SubQuery[]): HierarchyNode {
   let root: HierarchyNode | null = null;
 
   for (const sq of subQueries) {
-    const node = nodeMap.get(sq.id)!;
+    const node = nodeMap.get(sq.id);
+    if (!node) continue;
 
     if (sq.parentId !== undefined) {
       const parent = nodeMap.get(sq.parentId);
@@ -807,7 +824,12 @@ export async function decomposeQuery(
   } = {},
 ): Promise<DecomposedQuery> {
   const startTime = Date.now();
-  const { useCache = true, maxDepth = 2, enableMerging = true, verbose = false } = options;
+  const {
+    useCache = true,
+    maxDepth: _maxDepth = 2,
+    enableMerging = true,
+    verbose = false,
+  } = options;
 
   console.log(chalk.magenta('[Decompose] Breaking down complex query...'));
 
@@ -900,7 +922,7 @@ Odpowiadaj TYLKO poprawnym JSON bez formatowania markdown.`;
     const result = await geminiSemaphore.withPermit(async () => {
       const model = genAI.getGenerativeModel({
         model: INTELLIGENCE_MODEL,
-        generationConfig: { temperature: 0.1, maxOutputTokens: 2048 },
+        generationConfig: { temperature: 1.0, maxOutputTokens: 2048 }, // Temperature locked at 1.0 for Gemini - do not change
       });
       const res = await model.generateContent(prompt);
       return res.response.text();
@@ -913,7 +935,7 @@ Odpowiadaj TYLKO poprawnym JSON bez formatowania markdown.`;
       dependencies: {},
     };
 
-    const { result: parsed, strategy, success } = robustJsonParse(result, fallback);
+    const { result: parsed, strategy, success: _success } = robustJsonParse(result, fallback);
 
     if (verbose) {
       console.log(chalk.gray(`[Decompose] JSON parsed via strategy: ${strategy}`));
@@ -1005,8 +1027,9 @@ Odpowiadaj TYLKO poprawnym JSON bez formatowania markdown.`;
     }
 
     return decomposedResult;
-  } catch (error: any) {
-    console.log(chalk.yellow(`[Decompose] Failed: ${error.message}`));
+  } catch (error: unknown) {
+    const msg = error instanceof Error ? error.message : String(error);
+    console.log(chalk.yellow(`[Decompose] Failed: ${msg}`));
 
     // Return safe fallback
     return {

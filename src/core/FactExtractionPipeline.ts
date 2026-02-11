@@ -465,8 +465,7 @@ export class FactExtractionPipeline {
         // Reset regex state
         regex.lastIndex = 0;
 
-        let match: RegExpExecArray | null;
-        while ((match = regex.exec(response)) !== null) {
+        for (let match = regex.exec(response); match !== null; match = regex.exec(response)) {
           const fact = this.createFact(match, pattern, response);
 
           // Avoid duplicates
@@ -702,13 +701,14 @@ export class FactExtractionPipeline {
           };
           return false;
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : String(error);
       fact.verification = {
         verified: false,
-        explanation: `Verification error: ${error.message}`,
+        explanation: `Verification error: ${msg}`,
         timestamp: Date.now(),
         method: 'heuristic',
-        error: error.message,
+        error: msg,
       };
       return false;
     }
@@ -926,13 +926,14 @@ export class FactExtractionPipeline {
       };
 
       return installed;
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : String(error);
       fact.verification = {
         verified: false,
-        explanation: `Error reading package.json: ${error.message}`,
+        explanation: `Error reading package.json: ${msg}`,
         timestamp: Date.now(),
         method: 'dependency_check',
-        error: error.message,
+        error: msg,
       };
       return false;
     }

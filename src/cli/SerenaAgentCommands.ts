@@ -74,27 +74,33 @@ async function handleFind(args: string[]): Promise<CommandResult> {
 
     console.log(chalk.green(`Found ${symbols.length} symbol(s):\n`));
 
-    symbols.forEach((symbol: any, index: number) => {
-      console.log(chalk.cyan(`${index + 1}. ${symbol.name || symbol.name_path}`));
-      if (symbol.kind) {
-        console.log(chalk.gray(`   Kind: ${symbol.kind}`));
+    symbols.forEach((symbol: unknown, index: number) => {
+      const sym = symbol as Record<string, unknown>;
+      const name = typeof sym.name === 'string' ? sym.name : '';
+      const namePath = typeof sym.name_path === 'string' ? sym.name_path : '';
+      console.log(chalk.cyan(`${index + 1}. ${name || namePath}`));
+      if (sym.kind) {
+        console.log(chalk.gray(`   Kind: ${String(sym.kind)}`));
       }
-      if (symbol.location) {
-        const loc = symbol.location;
-        console.log(
-          chalk.gray(`   Location: ${loc.uri || loc.file}:${loc.range?.start?.line || loc.line}`),
-        );
+      if (sym.location && typeof sym.location === 'object') {
+        const loc = sym.location as Record<string, unknown>;
+        const uri = typeof loc.uri === 'string' ? loc.uri : '';
+        const file = typeof loc.file === 'string' ? loc.file : '';
+        const range = loc.range as Record<string, Record<string, unknown>> | undefined;
+        const line = typeof loc.line === 'number' ? loc.line : range?.start?.line;
+        console.log(chalk.gray(`   Location: ${uri || file}:${line ?? ''}`));
       }
-      if (symbol.info) {
-        console.log(chalk.gray(`   Info: ${symbol.info.substring(0, 100)}...`));
+      if (typeof sym.info === 'string') {
+        console.log(chalk.gray(`   Info: ${sym.info.substring(0, 100)}...`));
       }
       console.log('');
     });
 
     return success(symbols);
-  } catch (err: any) {
-    console.log(chalk.red(`Error: ${err.message}`));
-    return error(err.message);
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.log(chalk.red(`Error: ${msg}`));
+    return error(msg);
   }
 }
 
@@ -123,9 +129,10 @@ async function handleOverview(args: string[]): Promise<CommandResult> {
     console.log(JSON.stringify(overview, null, 2));
 
     return success(overview);
-  } catch (err: any) {
-    console.log(chalk.red(`Error: ${err.message}`));
-    return error(err.message);
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.log(chalk.red(`Error: ${msg}`));
+    return error(msg);
   }
 }
 
@@ -157,25 +164,35 @@ async function handleSearch(args: string[]): Promise<CommandResult> {
     let totalMatches = 0;
     if (typeof results === 'object' && !Array.isArray(results)) {
       for (const [file, matches] of Object.entries(results)) {
-        const matchList = matches as any[];
+        const matchList = matches as unknown[];
         console.log(chalk.cyan(`\n📁 ${file} (${matchList.length} matches)`));
-        matchList.forEach((match: any) => {
+        matchList.forEach((match: unknown) => {
           totalMatches++;
-          console.log(chalk.gray(`   Line ${match.line}: ${match.text || match.match}`));
+          const m = match as Record<string, unknown>;
+          const line = m.line != null ? String(m.line) : '?';
+          const text =
+            typeof m.text === 'string' ? m.text : typeof m.match === 'string' ? m.match : '';
+          console.log(chalk.gray(`   Line ${line}: ${text}`));
         });
       }
     } else if (Array.isArray(results)) {
       totalMatches = results.length;
-      results.forEach((match: any) => {
-        console.log(chalk.gray(`${match.file}:${match.line}: ${match.text || match.match}`));
+      results.forEach((match: unknown) => {
+        const m = match as Record<string, unknown>;
+        const file = typeof m.file === 'string' ? m.file : '?';
+        const line = m.line != null ? String(m.line) : '?';
+        const text =
+          typeof m.text === 'string' ? m.text : typeof m.match === 'string' ? m.match : '';
+        console.log(chalk.gray(`${file}:${line}: ${text}`));
       });
     }
 
     console.log(chalk.green(`\nTotal: ${totalMatches} matches`));
     return success(results);
-  } catch (err: any) {
-    console.log(chalk.red(`Error: ${err.message}`));
-    return error(err.message);
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.log(chalk.red(`Error: ${msg}`));
+    return error(msg);
   }
 }
 
@@ -203,18 +220,24 @@ async function handleRefs(args: string[]): Promise<CommandResult> {
     }
 
     console.log(chalk.green(`Found ${refs.length} reference(s):\n`));
-    refs.forEach((ref: any, index: number) => {
-      console.log(chalk.cyan(`${index + 1}. ${ref.file || ref.uri}`));
-      if (ref.line || ref.range?.start?.line) {
-        console.log(chalk.gray(`   Line: ${ref.line || ref.range?.start?.line}`));
+    refs.forEach((ref: unknown, index: number) => {
+      const r = ref as Record<string, unknown>;
+      const file = typeof r.file === 'string' ? r.file : '';
+      const uri = typeof r.uri === 'string' ? r.uri : '';
+      console.log(chalk.cyan(`${index + 1}. ${file || uri}`));
+      const range = r.range as Record<string, Record<string, unknown>> | undefined;
+      const line = typeof r.line === 'number' ? r.line : range?.start?.line;
+      if (line != null) {
+        console.log(chalk.gray(`   Line: ${line}`));
       }
       console.log('');
     });
 
     return success(refs);
-  } catch (err: any) {
-    console.log(chalk.red(`Error: ${err.message}`));
-    return error(err.message);
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.log(chalk.red(`Error: ${msg}`));
+    return error(msg);
   }
 }
 
@@ -234,9 +257,10 @@ async function handleRead(args: string[]): Promise<CommandResult> {
     const content = await serenaAgent.readFile(filePath);
     console.log(content);
     return success(content);
-  } catch (err: any) {
-    console.log(chalk.red(`Error: ${err.message}`));
-    return error(err.message);
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.log(chalk.red(`Error: ${msg}`));
+    return error(msg);
   }
 }
 
@@ -252,9 +276,10 @@ async function handleLs(args: string[]): Promise<CommandResult> {
     const listing = await serenaAgent.listDir(dirPath);
     console.log(JSON.stringify(listing, null, 2));
     return success(listing);
-  } catch (err: any) {
-    console.log(chalk.red(`Error: ${err.message}`));
-    return error(err.message);
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.log(chalk.red(`Error: ${msg}`));
+    return error(msg);
   }
 }
 
@@ -278,9 +303,10 @@ async function handleMemories(): Promise<CommandResult> {
     });
 
     return success(memories);
-  } catch (err: any) {
-    console.log(chalk.red(`Error: ${err.message}`));
-    return error(err.message);
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.log(chalk.red(`Error: ${msg}`));
+    return error(msg);
   }
 }
 
@@ -294,9 +320,10 @@ async function handleInstructions(): Promise<CommandResult> {
     const instructions = await serenaAgent.getInitialInstructions();
     console.log(instructions);
     return success(instructions);
-  } catch (err: any) {
-    console.log(chalk.red(`Error: ${err.message}`));
-    return error(err.message);
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.log(chalk.red(`Error: ${msg}`));
+    return error(msg);
   }
 }
 

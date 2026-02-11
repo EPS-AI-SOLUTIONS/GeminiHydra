@@ -30,7 +30,7 @@ import {
 // import { taskScopeLimiter } from './TaskScopeLimiter.js';
 import { getAgentMemoryIsolation } from './AgentMemoryIsolation.js';
 import { AGENT_PERSONAS, Agent } from './agent/Agent.js';
-import { AggregateHydraError } from './errors.js';
+import { AggregateHydraError, getErrorMessage } from './errors.js';
 import { factualGroundingChecker } from './FactualGrounding.js';
 import { logger } from './LiveLogger.js';
 import { loadGrimoires } from './PromptSystem.js';
@@ -200,8 +200,8 @@ export class GraphProcessor {
         chalk.gray(`│ [Cache] Miss: ${path.basename(filePath)} (${content.length} chars)`),
       );
       return content;
-    } catch (error: any) {
-      console.log(chalk.yellow(`│ [Cache] Error reading ${filePath}: ${error.message}`));
+    } catch (error: unknown) {
+      console.log(chalk.yellow(`│ [Cache] Error reading ${filePath}: ${getErrorMessage(error)}`));
       return null;
     }
   }
@@ -572,17 +572,17 @@ export class GraphProcessor {
       }
 
       return result;
-    } catch (error: any) {
+    } catch (error: unknown) {
       const _duration = Date.now() - startTime;
       logger.spinFail(`task-${task.id}`, `[${task.agent}] Task #${task.id} failed`);
-      logger.agentError(task.agent, error.message, false);
+      logger.agentError(task.agent, getErrorMessage(error), false);
       console.log(chalk.cyan(`└${'─'.repeat(50)}`));
 
       return {
         id: task.id,
         success: false,
-        error: error.message,
-        logs: [`FAILED: ${error.message}`],
+        error: getErrorMessage(error),
+        logs: [`FAILED: ${getErrorMessage(error)}`],
       };
     }
   }
@@ -676,8 +676,8 @@ export class GraphProcessor {
             logs: [`[Auto-Read] Odczytano ${results.length} plików natywnie`],
           };
         }
-      } catch (error: any) {
-        console.log(chalk.yellow(`│ [Auto-Read] Fallback do agenta: ${error.message}`));
+      } catch (error: unknown) {
+        console.log(chalk.yellow(`│ [Auto-Read] Fallback do agenta: ${getErrorMessage(error)}`));
         // Fall through to agent execution
       }
     }
@@ -723,14 +723,17 @@ export class GraphProcessor {
             data: output,
             logs: [output],
           };
-        } catch (error: any) {
-          const errorOutput = `EXECUTION FAILED:\nCOMMAND: ${cmd}\nERROR: ${error.message}\n${error.stdout || ''}${error.stderr || ''}`;
-          console.log(chalk.red(`│ [Auto-Exec] ✗ Błąd: ${error.message}`));
+        } catch (error: unknown) {
+          const errMsg = getErrorMessage(error);
+          const errStdout = (error as { stdout?: string })?.stdout || '';
+          const errStderr = (error as { stderr?: string })?.stderr || '';
+          const errorOutput = `EXECUTION FAILED:\nCOMMAND: ${cmd}\nERROR: ${errMsg}\n${errStdout}${errStderr}`;
+          console.log(chalk.red(`│ [Auto-Exec] ✗ Błąd: ${errMsg}`));
 
           return {
             id: task.id,
             success: false,
-            error: error.message,
+            error: errMsg,
             logs: [errorOutput],
           };
         }
@@ -815,7 +818,7 @@ export class GraphProcessor {
                 console.log(chalk.green(`│ [Auto-Analysis] ✓ Odczytano: ${fileName}`));
               }
             }
-          } catch (_error: any) {
+          } catch (_error: unknown) {
             console.log(chalk.yellow(`│ [Auto-Analysis] Nie można odczytać: ${fileName}`));
           }
         }
@@ -889,8 +892,10 @@ INSTRUKCJE:
               console.log(chalk.yellow(`│ [Auto-Modify] Nowy plik: ${file.path}`));
             }
           }
-        } catch (error: any) {
-          console.log(chalk.yellow(`│ [Auto-Modify] Pominięto: ${file.path} - ${error.message}`));
+        } catch (error: unknown) {
+          console.log(
+            chalk.yellow(`│ [Auto-Modify] Pominięto: ${file.path} - ${getErrorMessage(error)}`),
+          );
         }
       }
 
@@ -1135,7 +1140,7 @@ Teraz wykonaj zadanie PRAWIDŁOWO w TypeScript:`;
 
         // Sprawdź czy retry też ma halucynację
         let retryHallucination = false;
-        for (const { pattern, lang } of hallucinationPatterns) {
+        for (const { pattern, lang: _lang } of hallucinationPatterns) {
           if (pattern.test(retryResult)) {
             retryHallucination = true;
             break;
@@ -1161,8 +1166,8 @@ Teraz wykonaj zadanie PRAWIDŁOWO w TypeScript:`;
             logs: [`[Retry po halucynacji] ${retryResult}`],
           };
         }
-      } catch (retryError: any) {
-        console.log(chalk.red(`│ [Hallucination] Retry failed: ${retryError.message}`));
+      } catch (retryError: unknown) {
+        console.log(chalk.red(`│ [Hallucination] Retry failed: ${getErrorMessage(retryError)}`));
       }
 
       // Jeśli retry też się nie udał, zwróć błąd
@@ -1230,8 +1235,8 @@ Teraz wykonaj zadanie PRAWIDŁOWO w TypeScript:`;
                 logs: [`[Auto-Fix] Zadanie wykonane natywnie`],
               };
             }
-          } catch (e: any) {
-            console.log(chalk.yellow(`│ [Auto-Fix] Nie udało się: ${e.message}`));
+          } catch (e: unknown) {
+            console.log(chalk.yellow(`│ [Auto-Fix] Nie udało się: ${getErrorMessage(e)}`));
           }
         }
       }
@@ -1248,7 +1253,9 @@ Teraz wykonaj zadanie PRAWIDŁOWO w TypeScript:`;
     const validation = this.validateAgentResponse(resultText, task);
     if (validation.warnings.length > 0) {
       console.log(chalk.yellow(`│ [Validation] Warnings for task #${task.id}:`));
-      validation.warnings.forEach((w) => console.log(chalk.yellow(`│   - ${w}`)));
+      for (const w of validation.warnings) {
+        console.log(chalk.yellow(`│   - ${w}`));
+      }
     }
 
     // Solution 29: Validate factual grounding of the response
@@ -1650,13 +1657,13 @@ Teraz wykonaj zadanie PRAWIDŁOWO w TypeScript:`;
         data: result,
         logs: [`[Native FS] Operacja zakończona pomyślnie`],
       };
-    } catch (error: any) {
-      console.log(chalk.red(`│ [Native FS] BŁĄD: ${error.message}`));
+    } catch (error: unknown) {
+      console.log(chalk.red(`│ [Native FS] BŁĄD: ${getErrorMessage(error)}`));
       return {
         id: task.id,
         success: false,
-        error: error.message,
-        logs: [`[Native FS] Error: ${error.message}`],
+        error: getErrorMessage(error),
+        logs: [`[Native FS] Error: ${getErrorMessage(error)}`],
       };
     }
   }
@@ -1995,7 +2002,10 @@ Teraz wykonaj zadanie PRAWIDŁOWO w TypeScript:`;
    * Map generic params to tool-specific parameter names
    * Handles different MCP servers with different parameter conventions
    */
-  private mapToolParams(toolName: string, params: Record<string, any>): Record<string, any> {
+  private mapToolParams(
+    toolName: string,
+    params: Record<string, unknown>,
+  ): Record<string, unknown> {
     // Get base tool name and server
     const [server, ...toolParts] = toolName.split('__');
     const baseTool = toolParts.join('__') || server;
@@ -2007,7 +2017,7 @@ Teraz wykonaj zadanie PRAWIDŁOWO w TypeScript:`;
       case 'brave-search': {
         // brave-search expects: q (query), count (optional)
         // Remove 'path' parameter as it's not supported
-        const braveParams: Record<string, any> = {};
+        const braveParams: Record<string, unknown> = {};
         if (params.q) braveParams.q = params.q;
         else if (params.query) braveParams.q = params.query;
         if (params.count) braveParams.count = params.count;
@@ -2018,7 +2028,7 @@ Teraz wykonaj zadanie PRAWIDŁOWO w TypeScript:`;
       case 'context7': {
         // context7 expects: libraryId, query (for query-docs)
         // OR: query (for resolve-library-id)
-        const context7Params: Record<string, any> = {};
+        const context7Params: Record<string, unknown> = {};
         if (baseTool === 'query-docs') {
           // query-docs REQUIRES libraryId - try to extract from context or use default
           context7Params.libraryId = params.libraryId || params.library || 'typescript';
@@ -2032,7 +2042,7 @@ Teraz wykonaj zadanie PRAWIDŁOWO w TypeScript:`;
 
       case 'puppeteer': {
         // puppeteer uses 'url' parameter, not 'path'
-        const puppeteerParams: Record<string, any> = { ...params };
+        const puppeteerParams: Record<string, unknown> = { ...params };
         // Keep url as-is - it's supposed to be a URL
         if (puppeteerParams.path) {
           delete puppeteerParams.path; // Remove invalid 'path' parameter
@@ -2042,7 +2052,7 @@ Teraz wykonaj zadanie PRAWIDŁOWO w TypeScript:`;
 
       case 'playwright': {
         // playwright uses 'url' parameter for navigation
-        const playwrightParams: Record<string, any> = { ...params };
+        const playwrightParams: Record<string, unknown> = { ...params };
         if (playwrightParams.path) {
           delete playwrightParams.path; // Remove invalid 'path' parameter
         }
@@ -2051,7 +2061,7 @@ Teraz wykonaj zadanie PRAWIDŁOWO w TypeScript:`;
 
       case 'github': {
         // github expects query strings, not file paths
-        const githubParams: Record<string, any> = { ...params };
+        const githubParams: Record<string, unknown> = { ...params };
         if (githubParams.path) {
           delete githubParams.path; // Remove invalid 'path' parameter
         }
@@ -2065,7 +2075,7 @@ Teraz wykonaj zadanie PRAWIDŁOWO w TypeScript:`;
 
       case 'memory': {
         // memory (knowledge graph) uses query for search, not path
-        const memoryParams: Record<string, any> = { ...params };
+        const memoryParams: Record<string, unknown> = { ...params };
         if (memoryParams.path) {
           delete memoryParams.path; // Remove invalid 'path' parameter
         }
@@ -2084,7 +2094,7 @@ Teraz wykonaj zadanie PRAWIDŁOWO w TypeScript:`;
         // For unknown servers, pass params as-is but remove 'path' if it looks problematic
         const defaultParams = { ...params };
         // Only keep path if it looks like a valid local path (not URL, not external)
-        if (defaultParams.path && this.isUrlOrExternalResource(defaultParams.path)) {
+        if (defaultParams.path && this.isUrlOrExternalResource(String(defaultParams.path))) {
           delete defaultParams.path;
         }
         return defaultParams;
@@ -2100,8 +2110,11 @@ Teraz wykonaj zadanie PRAWIDŁOWO w TypeScript:`;
    * - read_file: relative_path (not path)
    * - create_text_file: relative_path, content (not path, content)
    */
-  private mapToSerenaParams(toolName: string, params: Record<string, any>): Record<string, any> {
-    const mapped: Record<string, any> = {};
+  private mapToSerenaParams(
+    toolName: string,
+    params: Record<string, unknown>,
+  ): Record<string, unknown> {
+    const mapped: Record<string, unknown> = {};
 
     // Get the base tool name (after serena__)
     const baseTool = toolName.replace('serena__', '');
@@ -2111,7 +2124,7 @@ Teraz wykonaj zadanie PRAWIDŁOWO w TypeScript:`;
         // Serena list_dir expects: relative_path, recursive
         if (params.path) {
           // Convert absolute path to relative if it starts with rootDir
-          mapped.relative_path = this.toRelativePath(params.path);
+          mapped.relative_path = this.toRelativePath(String(params.path));
         } else if (params.relative_path) {
           mapped.relative_path = params.relative_path;
         } else {
@@ -2123,7 +2136,7 @@ Teraz wykonaj zadanie PRAWIDŁOWO w TypeScript:`;
       case 'find_file':
         // Serena find_file expects: relative_path, file_mask
         if (params.path) {
-          mapped.relative_path = this.toRelativePath(params.path);
+          mapped.relative_path = this.toRelativePath(String(params.path));
         } else if (params.relative_path) {
           mapped.relative_path = params.relative_path;
         } else {
@@ -2137,7 +2150,7 @@ Teraz wykonaj zadanie PRAWIDŁOWO w TypeScript:`;
         // BUG-008 FIX: Serena/native read_file expects: relative_path (required!)
         // Ensure we always pass a path, fallback to "." if missing
         if (params.path) {
-          mapped.relative_path = this.toRelativePath(params.path);
+          mapped.relative_path = this.toRelativePath(String(params.path));
         } else if (params.relative_path) {
           mapped.relative_path = params.relative_path;
         } else if (params.file || params.filename) {
@@ -2155,7 +2168,7 @@ Teraz wykonaj zadanie PRAWIDŁOWO w TypeScript:`;
       case 'create_text_file':
         // Serena create_text_file expects: relative_path, content
         if (params.path) {
-          mapped.relative_path = this.toRelativePath(params.path);
+          mapped.relative_path = this.toRelativePath(String(params.path));
         } else if (params.relative_path) {
           mapped.relative_path = params.relative_path;
         }
@@ -2169,7 +2182,7 @@ Teraz wykonaj zadanie PRAWIDŁOWO w TypeScript:`;
         mapped.substring_pattern = searchPattern; // Real Serena MCP parameter name
         mapped.pattern = searchPattern; // Also keep pattern for native tools
         if (params.path) {
-          mapped.relative_path = this.toRelativePath(params.path);
+          mapped.relative_path = this.toRelativePath(String(params.path));
         } else if (params.relative_path) {
           mapped.relative_path = params.relative_path;
         }
@@ -2180,7 +2193,7 @@ Teraz wykonaj zadanie PRAWIDŁOWO w TypeScript:`;
         // For other Serena tools, pass params as-is but map common aliases
         Object.assign(mapped, params);
         if (params.path && !params.relative_path) {
-          mapped.relative_path = this.toRelativePath(params.path);
+          mapped.relative_path = this.toRelativePath(String(params.path));
           delete mapped.path;
         }
     }
@@ -2213,10 +2226,11 @@ Teraz wykonaj zadanie PRAWIDŁOWO w TypeScript:`;
    * Execute MCP tool task
    */
   private async executeMcpTask(task: ExtendedTask, agent: Agent): Promise<ExecutionResult> {
-    const toolName = this.normalizeMcpToolName(task.mcpTool!);
+    const toolName = this.normalizeMcpToolName(task.mcpTool ?? '');
 
     // Use auto-extracted params if available
-    let params: Record<string, any> = (task as any)._autoParams || {};
+    let params: Record<string, unknown> =
+      ((task as unknown as Record<string, unknown>)._autoParams as Record<string, unknown>) || {};
 
     // Parse params from task description if not auto-extracted
     if (Object.keys(params).length === 0) {
@@ -2279,7 +2293,7 @@ Teraz wykonaj zadanie PRAWIDŁOWO w TypeScript:`;
 
     // VALIDATE PATH PARAMETER before MCP call
     if (params.path) {
-      const validatedPath = this.validateAndNormalizePath(params.path);
+      const validatedPath = this.validateAndNormalizePath(params.path as string);
       if (!validatedPath) {
         console.log(chalk.red(`│ [MCP] BŁĄD: Nieprawidłowa ścieżka: ${params.path}`));
         return {
@@ -2306,7 +2320,9 @@ Teraz wykonaj zadanie PRAWIDŁOWO w TypeScript:`;
       let content = '';
       if (mcpResult.content && Array.isArray(mcpResult.content)) {
         content = mcpResult.content
-          .map((c: any) => (c.type === 'text' ? c.text : JSON.stringify(c)))
+          .map((c: { type?: string; text?: string }) =>
+            c.type === 'text' ? c.text : JSON.stringify(c),
+          )
           .join('\n');
       } else {
         content = JSON.stringify(mcpResult);
@@ -2385,13 +2401,13 @@ Odpowiadaj PO POLSKU z konkretnymi wynikami.`,
         success: true,
         logs: [`MCP: ${toolName}\n${execution}`],
       };
-    } catch (error: any) {
-      console.log(chalk.red(`│ [MCP] BŁĄD: ${error.message}`));
+    } catch (error: unknown) {
+      console.log(chalk.red(`│ [MCP] BŁĄD: ${getErrorMessage(error)}`));
       return {
         id: task.id,
         success: false,
-        error: `MCP Tool Error: ${error.message}`,
-        logs: [`MCP FAILED: ${toolName} - ${error.message}`],
+        error: `MCP Tool Error: ${getErrorMessage(error)}`,
+        logs: [`MCP FAILED: ${toolName} - ${getErrorMessage(error)}`],
       };
     }
   }
@@ -2521,9 +2537,9 @@ Odpowiadaj PO POLSKU z konkretnymi wynikami.`,
 
         // Clear cache for this file (it's been modified)
         this.clearFileCache(validatedPath);
-      } catch (error: any) {
-        console.log(chalk.red(`│ [AUTO-WRITE] BŁĄD: ${error.message}`));
-        writeResults.push(`❌ BŁĄD zapisu ${validatedPath}: ${error.message}`);
+      } catch (error: unknown) {
+        console.log(chalk.red(`│ [AUTO-WRITE] BŁĄD: ${getErrorMessage(error)}`));
+        writeResults.push(`❌ BŁĄD zapisu ${validatedPath}: ${getErrorMessage(error)}`);
         allSuccess = false;
       }
     }
@@ -2586,12 +2602,12 @@ Odpowiadaj PO POLSKU z konkretnymi wynikami.`,
             success: true,
             logs: [`[MCP:${fullToolName}] ${JSON.stringify(result).substring(0, 500)}`],
           };
-        } catch (mcpError: any) {
+        } catch (mcpError: unknown) {
           return {
             id: taskId,
             success: false,
-            error: `MCP call failed: ${mcpError.message}`,
-            logs: [`[MCP:${fullToolName}] ERROR: ${mcpError.message}`],
+            error: `MCP call failed: ${getErrorMessage(mcpError)}`,
+            logs: [`[MCP:${fullToolName}] ERROR: ${getErrorMessage(mcpError)}`],
           };
         }
       }
@@ -2606,6 +2622,11 @@ Odpowiadaj PO POLSKU z konkretnymi wynikami.`,
         error: `Invalid EXEC command format: ${cmd.substring(0, 50)}`,
         logs: [`EXEC rejected - invalid format. Command must start with valid shell command.`],
       };
+    }
+
+    // Translate Linux commands to Windows equivalents when on Windows
+    if (process.platform === 'win32') {
+      cmd = this.translateLinuxToWindows(cmd);
     }
 
     console.log(chalk.gray(`  [EXEC] Running: ${cmd.substring(0, 50)}...`));
@@ -2638,14 +2659,102 @@ ${stderr ? `STDERR:\n${stderr}` : ''}`;
         success: true,
         logs: [output],
       };
-    } catch (error: any) {
+    } catch (error: unknown) {
       return {
         id: taskId,
         success: false,
-        error: `EXEC FAILED: ${error.message}`,
-        logs: [`EXEC FAILURE:\nCOMMAND: ${cmd}\nERROR: ${error.message}`],
+        error: `EXEC FAILED: ${getErrorMessage(error)}`,
+        logs: [`EXEC FAILURE:\nCOMMAND: ${cmd}\nERROR: ${getErrorMessage(error)}`],
       };
     }
+  }
+
+  /**
+   * Translate Linux shell commands to Windows equivalents.
+   * Agents (LLMs) often generate Linux commands regardless of platform.
+   * This ensures they work on Windows by converting common patterns.
+   */
+  private translateLinuxToWindows(cmd: string): string {
+    const original = cmd;
+
+    // grep -r "pattern" path → findstr /S /I /C:"pattern" "path\*"
+    cmd = cmd.replace(
+      /^grep\s+(-[a-zA-Z]*r[a-zA-Z]*\s+)?(?:-[a-zA-Z]+\s+)*["']?([^"'\s]+)["']?\s+(.+)$/,
+      (_, _flags, pattern, searchPath) => {
+        const cleanPath = searchPath.replace(/\/$/, '').trim();
+        return `findstr /S /I /C:"${pattern}" "${path.resolve(this.rootDir, cleanPath)}\\*"`;
+      },
+    );
+
+    // grep "pattern" file → findstr /I /C:"pattern" "file"
+    cmd = cmd.replace(
+      /^grep\s+(?:-[a-zA-Z]+\s+)*["']?([^"'\s]+)["']?\s+(.+)$/,
+      (_, pattern, filePath) => {
+        return `findstr /I /C:"${pattern}" "${path.resolve(this.rootDir, filePath.trim())}"`;
+      },
+    );
+
+    // find path -name "pattern" → Get-ChildItem -Path "path" -Filter "pattern" -Recurse -File
+    cmd = cmd.replace(/^find\s+(\S+)\s+-name\s+["']?([^"'\s]+)["']?/, (_, searchPath, pattern) => {
+      const cleanPath = path.resolve(this.rootDir, searchPath.trim());
+      return `Get-ChildItem -Path "${cleanPath}" -Filter "${pattern}" -Recurse -File | Select-Object -ExpandProperty FullName`;
+    });
+
+    // find path -type f → Get-ChildItem -Path "path" -Recurse -File
+    cmd = cmd.replace(/^find\s+(\S+)\s+-type\s+f/, (_, searchPath) => {
+      const cleanPath = path.resolve(this.rootDir, searchPath.trim());
+      return `Get-ChildItem -Path "${cleanPath}" -Recurse -File | Select-Object -ExpandProperty FullName`;
+    });
+
+    // find path -type d → Get-ChildItem -Path "path" -Recurse -Directory
+    cmd = cmd.replace(/^find\s+(\S+)\s+-type\s+d/, (_, searchPath) => {
+      const cleanPath = path.resolve(this.rootDir, searchPath.trim());
+      return `Get-ChildItem -Path "${cleanPath}" -Recurse -Directory | Select-Object -ExpandProperty FullName`;
+    });
+
+    // cat file → Get-Content "file"
+    cmd = cmd.replace(/^cat\s+(.+)$/, (_, filePath) => {
+      return `Get-Content "${path.resolve(this.rootDir, filePath.trim())}"`;
+    });
+
+    // ls -la path | ls -l path | ls path → Get-ChildItem "path"
+    cmd = cmd.replace(/^ls\s+(?:-[a-zA-Z]+\s+)*(.*)$/, (_, dirPath) => {
+      const cleanPath = dirPath.trim() || this.rootDir;
+      return `Get-ChildItem "${path.resolve(this.rootDir, cleanPath)}"`;
+    });
+
+    // head -n N file → Get-Content "file" -Head N
+    cmd = cmd.replace(/^head\s+-n?\s*(\d+)\s+(.+)$/, (_, n, filePath) => {
+      return `Get-Content "${path.resolve(this.rootDir, filePath.trim())}" -Head ${n}`;
+    });
+
+    // tail -n N file → Get-Content "file" -Tail N
+    cmd = cmd.replace(/^tail\s+-n?\s*(\d+)\s+(.+)$/, (_, n, filePath) => {
+      return `Get-Content "${path.resolve(this.rootDir, filePath.trim())}" -Tail ${n}`;
+    });
+
+    // wc -l file → (Get-Content "file" | Measure-Object -Line).Lines
+    cmd = cmd.replace(/^wc\s+-l\s+(.+)$/, (_, filePath) => {
+      return `(Get-Content "${path.resolve(this.rootDir, filePath.trim())}" | Measure-Object -Line).Lines`;
+    });
+
+    // which command → Get-Command "command"
+    cmd = cmd.replace(/^which\s+(.+)$/, (_, command) => {
+      return `Get-Command "${command.trim()}" -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Source`;
+    });
+
+    // rm -rf path → Remove-Item "path" -Recurse -Force (BLOCKED for safety)
+    // rm/chmod are NOT translated - they should be blocked by security
+
+    if (cmd !== original) {
+      console.log(
+        chalk.cyan(
+          `  [EXEC] Translated: "${original.substring(0, 40)}..." → "${cmd.substring(0, 40)}..."`,
+        ),
+      );
+    }
+
+    return cmd;
   }
 
   /**

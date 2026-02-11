@@ -97,7 +97,7 @@ const INTENT_AGENT_MAP: Record<IntentCategory, string[]> = {
  * Detect the primary intent from user input
  */
 export async function detectIntent(input: string): Promise<DetectedIntent> {
-  const scores: Record<IntentCategory, number> = {} as any;
+  const scores = {} as Record<IntentCategory, number>;
 
   // Pattern matching
   for (const [category, patterns] of Object.entries(INTENT_PATTERNS)) {

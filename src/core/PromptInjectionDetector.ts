@@ -505,8 +505,11 @@ export class PromptInjectionDetector {
       patternDef.pattern.lastIndex = 0;
 
       // Find all matches
-      let match: RegExpExecArray | null;
-      while ((match = patternDef.pattern.exec(content)) !== null) {
+      for (
+        let match = patternDef.pattern.exec(content);
+        match !== null;
+        match = patternDef.pattern.exec(content)
+      ) {
         // Check whitelist
         if (this.isWhitelisted(match[0])) {
           continue;
@@ -663,7 +666,7 @@ export class PromptInjectionDetector {
     recentDetections: InjectionResult[];
   } {
     const allDetections = Array.from(this.detectionHistory.values()).flat();
-    const byType: Record<InjectionType, number> = {} as any;
+    const byType: Record<InjectionType, number> = {} as Record<InjectionType, number>;
     const bySeverity: Record<InjectionSeverity, number> = {
       low: 0,
       medium: 0,
@@ -737,8 +740,11 @@ export class PromptInjectionDetector {
     // - Box drawing: ═ ─ │ ┌ ┐ └ ┘ ├ ┤ ┬ ┴ ┼ (Unicode U+2500-U+257F)
     // - Horizontal lines commonly used in markdown/ASCII art
     const repeatedChars = /([#*_`~]{10,})/g; // Removed = and - which are common in reports
-    let match;
-    while ((match = repeatedChars.exec(content)) !== null) {
+    for (
+      let match = repeatedChars.exec(content);
+      match !== null;
+      match = repeatedChars.exec(content)
+    ) {
       // Additional check: skip if it looks like a markdown header or separator
       const context = content.substring(
         Math.max(0, match.index - 5),
@@ -766,9 +772,12 @@ export class PromptInjectionDetector {
 
     // Look for base64-like strings
     const base64Pattern = /[A-Za-z0-9+/]{40,}={0,2}/g;
-    let match;
 
-    while ((match = base64Pattern.exec(content)) !== null) {
+    for (
+      let match = base64Pattern.exec(content);
+      match !== null;
+      match = base64Pattern.exec(content)
+    ) {
       try {
         const decoded = atob(match[0]);
         // Check if decoded content contains injection patterns

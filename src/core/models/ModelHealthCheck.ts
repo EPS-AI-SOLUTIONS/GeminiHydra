@@ -37,13 +37,14 @@ class ModelHealthChecker {
 
       this.health.set(modelName, health);
       return health;
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : String(error);
       const health: ModelHealth = {
         model: modelName,
         available: false,
         latency: -1,
         lastCheck: new Date(),
-        error: error.message,
+        error: msg,
       };
 
       this.health.set(modelName, health);

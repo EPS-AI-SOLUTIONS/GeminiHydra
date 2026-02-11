@@ -208,11 +208,11 @@ export class CrossAgentValidator {
 
     for (const claim of typeClaims) {
       // Track agent votes
-      if (!agentVotes.has(claim.agentId)) {
+      const existing = agentVotes.get(claim.agentId);
+      if (!existing) {
         agentVotes.set(claim.agentId, claim.claim);
       } else {
         // Agent made multiple claims - append
-        const existing = agentVotes.get(claim.agentId)!;
         if (!existing.includes(claim.claim)) {
           agentVotes.set(claim.agentId, `${existing}, ${claim.claim}`);
         }
@@ -362,8 +362,7 @@ export class CrossAgentValidator {
     ];
 
     for (const pattern of fileModPatterns) {
-      let match;
-      while ((match = pattern.exec(content)) !== null) {
+      for (let match = pattern.exec(content); match !== null; match = pattern.exec(content)) {
         this.registerAgentClaim(agentId, taskId, match[1], 'file_modified');
       }
     }
@@ -376,8 +375,7 @@ export class CrossAgentValidator {
     ];
 
     for (const pattern of fileReadPatterns) {
-      let match;
-      while ((match = pattern.exec(content)) !== null) {
+      for (let match = pattern.exec(content); match !== null; match = pattern.exec(content)) {
         this.registerAgentClaim(agentId, taskId, match[1], 'file_read');
       }
     }
@@ -390,8 +388,7 @@ export class CrossAgentValidator {
     ];
 
     for (const pattern of funcPatterns) {
-      let match;
-      while ((match = pattern.exec(content)) !== null) {
+      for (let match = pattern.exec(content); match !== null; match = pattern.exec(content)) {
         this.registerAgentClaim(agentId, taskId, match[1], 'function_created');
       }
     }
@@ -404,8 +401,7 @@ export class CrossAgentValidator {
     ];
 
     for (const pattern of testPatterns) {
-      let match;
-      while ((match = pattern.exec(content)) !== null) {
+      for (let match = pattern.exec(content); match !== null; match = pattern.exec(content)) {
         this.registerAgentClaim(agentId, taskId, match[1], 'test_passed');
       }
     }
@@ -418,8 +414,7 @@ export class CrossAgentValidator {
     ];
 
     for (const pattern of errorPatterns) {
-      let match;
-      while ((match = pattern.exec(content)) !== null) {
+      for (let match = pattern.exec(content); match !== null; match = pattern.exec(content)) {
         this.registerAgentClaim(agentId, taskId, match[1].trim(), 'error_found');
       }
     }
@@ -432,8 +427,7 @@ export class CrossAgentValidator {
     ];
 
     for (const pattern of cmdPatterns) {
-      let match;
-      while ((match = pattern.exec(content)) !== null) {
+      for (let match = pattern.exec(content); match !== null; match = pattern.exec(content)) {
         this.registerAgentClaim(agentId, taskId, match[1].trim(), 'command_executed');
       }
     }

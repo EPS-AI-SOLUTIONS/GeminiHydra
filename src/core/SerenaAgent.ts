@@ -118,8 +118,9 @@ export class SerenaAgent {
       this.initialized = true;
       console.log(chalk.green('[SerenaAgent] Connected to real Serena MCP server'));
       return true;
-    } catch (error: any) {
-      console.log(chalk.red(`[SerenaAgent] Connection failed: ${error.message}`));
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : String(error);
+      console.log(chalk.red(`[SerenaAgent] Connection failed: ${msg}`));
       return false;
     }
   }
@@ -127,7 +128,7 @@ export class SerenaAgent {
   /**
    * Execute a Serena MCP tool directly
    */
-  async callSerenaTool(toolName: string, params: Record<string, any>): Promise<any> {
+  async callSerenaTool(toolName: string, params: Record<string, unknown>): Promise<unknown> {
     const connected = await this.ensureConnection();
     if (!connected) {
       throw new Error('Serena MCP server not connected');
@@ -146,7 +147,7 @@ export class SerenaAgent {
 
       // Extract content from MCP result
       if (result.content && Array.isArray(result.content)) {
-        const textContent = result.content.find((c: any) => c.type === 'text');
+        const textContent = result.content.find((c: Record<string, unknown>) => c.type === 'text');
         if (textContent) {
           try {
             return JSON.parse(textContent.text);
@@ -157,8 +158,9 @@ export class SerenaAgent {
       }
 
       return result.content;
-    } catch (error: any) {
-      console.log(chalk.red(`[SerenaAgent] Tool error: ${error.message}`));
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : String(error);
+      console.log(chalk.red(`[SerenaAgent] Tool error: ${msg}`));
       throw error;
     }
   }
@@ -179,19 +181,19 @@ export class SerenaAgent {
       depth?: number;
     },
   ): Promise<SerenaSymbol[]> {
-    return this.callSerenaTool(SERENA_TOOLS.FIND_SYMBOL, {
+    return (await this.callSerenaTool(SERENA_TOOLS.FIND_SYMBOL, {
       name_path_pattern: pattern,
       relative_path: options?.relativePath || '',
       include_body: options?.includeBody ?? false,
       include_info: options?.includeInfo ?? true,
       depth: options?.depth ?? 0,
-    });
+    })) as SerenaSymbol[];
   }
 
   /**
    * Get symbols overview (outline) of a file
    */
-  async getSymbolsOverview(relativePath: string, depth: number = 0): Promise<any> {
+  async getSymbolsOverview(relativePath: string, depth: number = 0): Promise<unknown> {
     return this.callSerenaTool(SERENA_TOOLS.GET_SYMBOLS_OVERVIEW, {
       relative_path: relativePath,
       depth,
@@ -201,29 +203,29 @@ export class SerenaAgent {
   /**
    * Find all references to a symbol
    */
-  async findReferences(namePath: string, relativePath: string): Promise<any[]> {
-    return this.callSerenaTool(SERENA_TOOLS.FIND_REFERENCING_SYMBOLS, {
+  async findReferences(namePath: string, relativePath: string): Promise<unknown[]> {
+    return (await this.callSerenaTool(SERENA_TOOLS.FIND_REFERENCING_SYMBOLS, {
       name_path: namePath,
       relative_path: relativePath,
-    });
+    })) as unknown[];
   }
 
   /**
    * Rename a symbol across the project
    */
   async renameSymbol(namePath: string, relativePath: string, newName: string): Promise<string> {
-    return this.callSerenaTool(SERENA_TOOLS.RENAME_SYMBOL, {
+    return (await this.callSerenaTool(SERENA_TOOLS.RENAME_SYMBOL, {
       name_path: namePath,
       relative_path: relativePath,
       new_name: newName,
-    });
+    })) as string;
   }
 
   /**
    * Replace the body of a symbol
    */
   async replaceSymbolBody(namePath: string, relativePath: string, newBody: string): Promise<void> {
-    return this.callSerenaTool(SERENA_TOOLS.REPLACE_SYMBOL_BODY, {
+    await this.callSerenaTool(SERENA_TOOLS.REPLACE_SYMBOL_BODY, {
       name_path: namePath,
       relative_path: relativePath,
       body: newBody,
@@ -234,7 +236,7 @@ export class SerenaAgent {
    * Insert content after a symbol
    */
   async insertAfterSymbol(namePath: string, relativePath: string, content: string): Promise<void> {
-    return this.callSerenaTool(SERENA_TOOLS.INSERT_AFTER_SYMBOL, {
+    await this.callSerenaTool(SERENA_TOOLS.INSERT_AFTER_SYMBOL, {
       name_path: namePath,
       relative_path: relativePath,
       body: content,
@@ -245,7 +247,7 @@ export class SerenaAgent {
    * Insert content before a symbol
    */
   async insertBeforeSymbol(namePath: string, relativePath: string, content: string): Promise<void> {
-    return this.callSerenaTool(SERENA_TOOLS.INSERT_BEFORE_SYMBOL, {
+    await this.callSerenaTool(SERENA_TOOLS.INSERT_BEFORE_SYMBOL, {
       name_path: namePath,
       relative_path: relativePath,
       body: content,
@@ -267,12 +269,12 @@ export class SerenaAgent {
       restrictToCode?: boolean;
     },
   ): Promise<SerenaSearchResult[]> {
-    return this.callSerenaTool(SERENA_TOOLS.SEARCH_FOR_PATTERN, {
+    return (await this.callSerenaTool(SERENA_TOOLS.SEARCH_FOR_PATTERN, {
       substring_pattern: pattern,
       relative_path: options?.relativePath,
       file_pattern: options?.filePattern,
       restrict_search_to_code_files: options?.restrictToCode ?? true,
-    });
+    })) as SerenaSearchResult[];
   }
 
   // ============================================================
@@ -283,15 +285,15 @@ export class SerenaAgent {
    * Read file contents
    */
   async readFile(relativePath: string): Promise<string> {
-    return this.callSerenaTool(SERENA_TOOLS.READ_FILE, {
+    return (await this.callSerenaTool(SERENA_TOOLS.READ_FILE, {
       relative_path: relativePath,
-    });
+    })) as string;
   }
 
   /**
    * List directory contents
    */
-  async listDir(relativePath: string = '.'): Promise<any> {
+  async listDir(relativePath: string = '.'): Promise<unknown> {
     return this.callSerenaTool(SERENA_TOOLS.LIST_DIR, {
       relative_path: relativePath,
     });
@@ -301,10 +303,10 @@ export class SerenaAgent {
    * Find files by pattern
    */
   async findFile(pattern: string, relativePath?: string): Promise<string[]> {
-    return this.callSerenaTool(SERENA_TOOLS.FIND_FILE, {
+    return (await this.callSerenaTool(SERENA_TOOLS.FIND_FILE, {
       pattern,
       relative_path: relativePath,
-    });
+    })) as string[];
   }
 
   /**
@@ -315,7 +317,7 @@ export class SerenaAgent {
     oldContent: string,
     newContent: string,
   ): Promise<void> {
-    return this.callSerenaTool(SERENA_TOOLS.REPLACE_CONTENT, {
+    await this.callSerenaTool(SERENA_TOOLS.REPLACE_CONTENT, {
       relative_path: relativePath,
       old_content: oldContent,
       new_content: newContent,
@@ -326,7 +328,7 @@ export class SerenaAgent {
    * Create a new text file
    */
   async createFile(relativePath: string, content: string): Promise<void> {
-    return this.callSerenaTool(SERENA_TOOLS.CREATE_TEXT_FILE, {
+    await this.callSerenaTool(SERENA_TOOLS.CREATE_TEXT_FILE, {
       relative_path: relativePath,
       content,
     });
@@ -340,28 +342,28 @@ export class SerenaAgent {
    * List all memories
    */
   async listMemories(): Promise<string[]> {
-    return this.callSerenaTool(SERENA_TOOLS.LIST_MEMORIES, {});
+    return (await this.callSerenaTool(SERENA_TOOLS.LIST_MEMORIES, {})) as string[];
   }
 
   /**
    * Read a memory by name
    */
   async readMemory(name: string): Promise<string> {
-    return this.callSerenaTool(SERENA_TOOLS.READ_MEMORY, { name });
+    return (await this.callSerenaTool(SERENA_TOOLS.READ_MEMORY, { name })) as string;
   }
 
   /**
    * Write/update a memory
    */
   async writeMemory(name: string, content: string): Promise<void> {
-    return this.callSerenaTool(SERENA_TOOLS.WRITE_MEMORY, { name, content });
+    await this.callSerenaTool(SERENA_TOOLS.WRITE_MEMORY, { name, content });
   }
 
   /**
    * Delete a memory
    */
   async deleteMemory(name: string): Promise<void> {
-    return this.callSerenaTool(SERENA_TOOLS.DELETE_MEMORY, { name });
+    await this.callSerenaTool(SERENA_TOOLS.DELETE_MEMORY, { name });
   }
 
   // ============================================================
@@ -372,7 +374,7 @@ export class SerenaAgent {
    * Activate a Serena project
    */
   async activateProject(projectName: string): Promise<void> {
-    return this.callSerenaTool(SERENA_TOOLS.ACTIVATE_PROJECT, {
+    await this.callSerenaTool(SERENA_TOOLS.ACTIVATE_PROJECT, {
       project: projectName,
     });
   }
@@ -381,7 +383,7 @@ export class SerenaAgent {
    * Get initial instructions from Serena
    */
   async getInitialInstructions(): Promise<string> {
-    return this.callSerenaTool(SERENA_TOOLS.INITIAL_INSTRUCTIONS, {});
+    return (await this.callSerenaTool(SERENA_TOOLS.INITIAL_INSTRUCTIONS, {})) as string;
   }
 
   // ============================================================

@@ -206,7 +206,8 @@ export class CommandDiagnostics {
         }
 
         if (seenAliases.has(alias)) {
-          const existingCmd = seenAliases.get(alias)!;
+          const existingCmd = seenAliases.get(alias);
+          if (!existingCmd) continue;
           issues.push({
             type: 'error',
             code: 'DUPLICATE_ALIAS',
@@ -337,10 +338,12 @@ export class CommandDiagnostics {
     for (const cmd of commands) {
       // Check command name
       if (nameToCommand.has(cmd.name)) {
+        const existingCmd = nameToCommand.get(cmd.name);
+        if (!existingCmd) continue;
         duplicates.push({
           name: cmd.name,
           type: 'name',
-          conflictsWith: nameToCommand.get(cmd.name)!,
+          conflictsWith: existingCmd,
           description: `Command name "${cmd.name}" is duplicated`,
         });
       } else {
@@ -351,21 +354,25 @@ export class CommandDiagnostics {
       for (const alias of cmd.aliases || []) {
         // Check if alias conflicts with a command name
         if (nameToCommand.has(alias)) {
+          const existingCmd = nameToCommand.get(alias);
+          if (!existingCmd) continue;
           duplicates.push({
             name: alias,
             type: 'cross',
-            conflictsWith: nameToCommand.get(alias)!,
+            conflictsWith: existingCmd,
             description: `Alias "${alias}" of command "${cmd.name}" conflicts with command name`,
           });
         }
 
         // Check if alias is duplicated
         if (aliasToCommand.has(alias)) {
+          const existingCmd = aliasToCommand.get(alias);
+          if (!existingCmd) continue;
           duplicates.push({
             name: alias,
             type: 'alias',
-            conflictsWith: aliasToCommand.get(alias)!,
-            description: `Alias "${alias}" is used by both "${cmd.name}" and "${aliasToCommand.get(alias)}"`,
+            conflictsWith: existingCmd,
+            description: `Alias "${alias}" is used by both "${cmd.name}" and "${existingCmd}"`,
           });
         } else {
           aliasToCommand.set(alias, cmd.name);

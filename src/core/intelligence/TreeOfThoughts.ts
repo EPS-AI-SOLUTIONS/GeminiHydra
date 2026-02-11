@@ -242,7 +242,7 @@ Odpowiadaj PO POLSKU. Zwróć TYLKO JSON.`;
     const response = await geminiSemaphore.withPermit(async () => {
       const model = genAI.getGenerativeModel({
         model: INTELLIGENCE_MODEL,
-        generationConfig: { temperature: 0.6, maxOutputTokens: 2048 },
+        generationConfig: { temperature: 1.0, maxOutputTokens: 2048 }, // Temperature locked at 1.0 for Gemini - do not change
       });
       const result = await model.generateContent(prompt);
       return result.response.text();
@@ -254,12 +254,12 @@ Odpowiadaj PO POLSKU. Zwróć TYLKO JSON.`;
       .trim();
     const parsed = JSON.parse(jsonStr);
 
-    return (parsed.children || []).map((child: any, index: number) => ({
+    return (parsed.children || []).map((child: Record<string, unknown>, index: number) => ({
       id: uuidv4(),
       thought: child.thought,
       content: child.thought,
-      evaluation: Math.min(100, Math.max(0, child.evaluation || 50)),
-      score: Math.min(100, Math.max(0, child.evaluation || 50)) / 100,
+      evaluation: Math.min(100, Math.max(0, (child.evaluation as number) || 50)),
+      score: Math.min(100, Math.max(0, (child.evaluation as number) || 50)) / 100,
       children: [],
       isTerminal: child.isTerminal || false,
       reasoning: child.reasoning || '',
@@ -271,8 +271,9 @@ Odpowiadaj PO POLSKU. Zwróć TYLKO JSON.`;
         attempt: index + 1,
       },
     }));
-  } catch (error: any) {
-    console.log(chalk.yellow(`[ToT] Child generation failed: ${error.message}`));
+  } catch (error: unknown) {
+    const msg = error instanceof Error ? error.message : String(error);
+    console.log(chalk.yellow(`[ToT] Child generation failed: ${msg}`));
     return [];
   }
 }
@@ -300,14 +301,14 @@ Odpowiadaj PO POLSKU.`;
     const response = await geminiSemaphore.withPermit(async () => {
       const model = genAI.getGenerativeModel({
         model: INTELLIGENCE_MODEL,
-        generationConfig: { temperature: 0.2, maxOutputTokens: 2048 },
+        generationConfig: { temperature: 1.0, maxOutputTokens: 2048 }, // Temperature locked at 1.0 for Gemini - do not change
       });
       const result = await model.generateContent(prompt);
       return result.response.text();
     });
 
     return response.trim();
-  } catch (_error: any) {
+  } catch (_error: unknown) {
     return bestPath[bestPath.length - 1]?.thought || task;
   }
 }
@@ -421,7 +422,7 @@ Zwróć TYLKO JSON.`;
     const response = await geminiSemaphore.withPermit(async () => {
       const model = genAI.getGenerativeModel({
         model: INTELLIGENCE_MODEL,
-        generationConfig: { temperature: 0.3, maxOutputTokens: 1024 },
+        generationConfig: { temperature: 1.0, maxOutputTokens: 1024 }, // Temperature locked at 1.0 for Gemini - do not change
       });
       const result = await model.generateContent(prompt);
       return result.response.text();

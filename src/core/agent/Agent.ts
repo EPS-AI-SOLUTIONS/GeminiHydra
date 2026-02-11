@@ -143,26 +143,31 @@ export class Agent {
     const timeoutMs = options?.timeout || DEFAULT_THINK_TIMEOUT_MS;
     const externalSignal = options?.signal;
 
-    // Create timeout promise
+    let timeoutId: ReturnType<typeof setTimeout> | undefined;
+
     const timeoutPromise = new Promise<never>((_, reject) => {
-      const timeoutId = setTimeout(() => {
+      timeoutId = setTimeout(() => {
         reject(new Error(`Agent ${this.persona.name} timeout after ${timeoutMs}ms`));
       }, timeoutMs);
 
-      // Clear timeout if external signal aborts
       if (externalSignal) {
-        externalSignal.addEventListener('abort', () => {
-          clearTimeout(timeoutId);
-          reject(new Error(`Agent ${this.persona.name} aborted by external signal`));
-        });
+        externalSignal.addEventListener(
+          'abort',
+          () => {
+            clearTimeout(timeoutId);
+            reject(new Error(`Agent ${this.persona.name} aborted by external signal`));
+          },
+          { once: true },
+        );
       }
     });
 
-    // Execute actual thinking with timeout race
     try {
-      return await Promise.race([this.thinkInternal(prompt, context), timeoutPromise]);
+      const result = await Promise.race([this.thinkInternal(prompt, context), timeoutPromise]);
+      clearTimeout(timeoutId);
+      return result;
     } catch (error: unknown) {
-      // Re-throw with better context (#16: type-safe catch)
+      clearTimeout(timeoutId);
       const msg = getErrorMessage(error);
       if (msg.includes('timeout') || msg.includes('aborted')) {
         logger.agentError(this.persona.name, msg, false);
@@ -286,7 +291,7 @@ WAŻNE: Dołącz dowody wykonania (===ZAPIS===, [ODCZYTANO], EXEC:, [MCP:], etc.
 
         // FIX #27: Use centralized isOllamaModel() helper instead of duplicated logic
         const modelToUse: string = isOllamaModel(this.modelOverride)
-          ? this.modelOverride!
+          ? (this.modelOverride ?? '')
           : this.persona.model && this.persona.model !== 'gemini-cloud'
             ? this.persona.model
             : 'qwen3:4b';
@@ -463,7 +468,7 @@ WAŻNE: Dołącz dowody wykonania (===ZAPIS===, [ODCZYTANO], EXEC:, [MCP:], etc.
       const model = genAI.getGenerativeModel({
         model: selectedModel,
         generationConfig: {
-          temperature: tempResult.temperature, // Agent-specific adaptive temperature
+          temperature: tempResult.temperature,
           maxOutputTokens: GEMINI_MAX_OUTPUT_TOKENS,
         },
       });
@@ -503,9 +508,10 @@ WAŻNE: Dołącz dowody wykonania (===ZAPIS===, [ODCZYTANO], EXEC:, [MCP:], etc.
       );
 
       return responseText;
-    } catch (error: any) {
-      logger.agentError(this.persona.name, `Gemini API: ${error.message}`, false);
-      logger.apiCall('gemini', 'unknown', 'error', error.message);
+    } catch (error: unknown) {
+      const msg = getErrorMessage(error);
+      logger.agentError(this.persona.name, `Gemini API: ${msg}`, false);
+      logger.apiCall('gemini', 'unknown', 'error', msg);
       throw error;
     }
   }
@@ -601,10 +607,11 @@ WAŻNE: Dołącz dowody wykonania (===ZAPIS===, [ODCZYTANO], EXEC:, [MCP:], etc.
         );
 
         return responseText;
-      } catch (err: any) {
-        logger.agentError(this.persona.name, `Gemini fallback failed: ${err.message}`, false);
+      } catch (err: unknown) {
+        const msg = getErrorMessage(err);
+        logger.agentError(this.persona.name, `Gemini fallback failed: ${msg}`, false);
         logger.apiCall('gemini', fallbackModel, 'error', 'Agent Lobotomized');
-        throw new Error(`Agent Lobotomized: Gemini fallback failed - ${err.message}`);
+        throw new Error(`Agent Lobotomized: Gemini fallback failed - ${msg}`);
       }
     });
   }
@@ -644,108 +651,129 @@ WAŻNE: Dołącz dowody wykonania (===ZAPIS===, [ODCZYTANO], EXEC:, [MCP:], etc.
       'debug',
     );
 
-    for (let i = 0; i < DIJKSTRA_CHAIN.length; i++) {
-      const modelConfig = DIJKSTRA_CHAIN[i];
+    const chainExecution = async (): Promise<string> => {
+      for (let i = 0; i < DIJKSTRA_CHAIN.length; i++) {
+        const modelConfig = DIJKSTRA_CHAIN[i];
 
-      try {
-        // Calculate temperature with full context
-        const stepTempResult = getEnhancedAdaptiveTemperature('dijkstra', prompt, {
-          taskType: 'planning',
-          currentStep: i,
-          totalSteps: DIJKSTRA_CHAIN.length,
-          previousResults: chainResults,
-          // Confidence decreases with each retry
-          confidenceLevel: 1 - i * 0.2,
-          retryCount: i,
-        });
-
-        const currentTemp = stepTempResult.temperature;
-
-        logger.system(
-          `[Dijkstra] Attempting: ${modelConfig.name} [${modelConfig.role}] | ` +
-            `Temp: ${currentTemp} | Step: ${i + 1}/${DIJKSTRA_CHAIN.length}`,
-          'debug',
-        );
-
-        const startTime = Date.now();
-
-        const result = await geminiSemaphore.withPermit(async () => {
-          const model = genAI.getGenerativeModel({
-            model: modelConfig.name,
-            generationConfig: {
-              temperature: currentTemp, // Context-aware adaptive temperature
-              maxOutputTokens: GEMINI_MAX_OUTPUT_TOKENS,
-            },
+        try {
+          // Calculate temperature with full context
+          const stepTempResult = getEnhancedAdaptiveTemperature('dijkstra', prompt, {
+            taskType: 'planning',
+            currentStep: i,
+            totalSteps: DIJKSTRA_CHAIN.length,
+            previousResults: chainResults,
+            // Confidence decreases with each retry
+            confidenceLevel: 1 - i * 0.2,
+            retryCount: i,
           });
 
-          return model.generateContent(prompt);
-        });
+          const currentTemp = stepTempResult.temperature;
 
-        const response = result.response.text().trim();
-        const responseTime = Date.now() - startTime;
+          logger.system(
+            `[Dijkstra] Attempting: ${modelConfig.name} [${modelConfig.role}] | ` +
+              `Temp: ${currentTemp} | Step: ${i + 1}/${DIJKSTRA_CHAIN.length}`,
+            'debug',
+          );
 
-        if (!response) {
-          throw new Error('Empty response');
+          const startTime = Date.now();
+
+          const result = await geminiSemaphore.withPermit(async () => {
+            const model = genAI.getGenerativeModel({
+              model: modelConfig.name,
+              generationConfig: {
+                temperature: currentTemp,
+                maxOutputTokens: GEMINI_MAX_OUTPUT_TOKENS,
+              },
+            });
+
+            return model.generateContent(prompt);
+          });
+
+          const response = result.response.text().trim();
+          const responseTime = Date.now() - startTime;
+
+          if (!response) {
+            throw new Error('Empty response');
+          }
+
+          // Estimate quality and record for learning
+          const estimatedQuality = this.estimateResponseQuality(response, prompt);
+
+          // Record successful result
+          chainResults.push({
+            temperature: currentTemp,
+            quality: estimatedQuality,
+            wasSuccessful: true,
+          });
+
+          // Learn from successful generation
+          controller.learnFromResult(
+            'dijkstra',
+            currentTemp,
+            'planning',
+            estimatedQuality,
+            responseTime,
+            true,
+          );
+
+          logger.system(
+            `[Dijkstra] ✓ SUCCESS with ${modelConfig.name} | ` +
+              `Temp: ${currentTemp} | Quality: ${(estimatedQuality * 100).toFixed(0)}% | ` +
+              `Time: ${responseTime}ms`,
+            'info',
+          );
+
+          return response;
+        } catch (error: unknown) {
+          const errMsg = getErrorMessage(error);
+          // Record failed attempt
+          chainResults.push({
+            temperature: tempResult.temperature + i * 0.05,
+            quality: 0,
+            wasSuccessful: false,
+          });
+
+          // Learn from failure
+          controller.learnFromResult(
+            'dijkstra',
+            tempResult.temperature + i * 0.05,
+            'planning',
+            0,
+            0,
+            false,
+          );
+
+          logger.system(
+            `[Dijkstra] ${modelConfig.name} failed: ${errMsg} | ` +
+              `Attempting next model with adjusted temperature...`,
+            'warn',
+          );
+          // Continue to next model in chain
         }
-
-        // Estimate quality and record for learning
-        const estimatedQuality = this.estimateResponseQuality(response, prompt);
-
-        // Record successful result
-        chainResults.push({
-          temperature: currentTemp,
-          quality: estimatedQuality,
-          wasSuccessful: true,
-        });
-
-        // Learn from successful generation
-        controller.learnFromResult(
-          'dijkstra',
-          currentTemp,
-          'planning',
-          estimatedQuality,
-          responseTime,
-          true,
-        );
-
-        logger.system(
-          `[Dijkstra] ✓ SUCCESS with ${modelConfig.name} | ` +
-            `Temp: ${currentTemp} | Quality: ${(estimatedQuality * 100).toFixed(0)}% | ` +
-            `Time: ${responseTime}ms`,
-          'info',
-        );
-
-        return response;
-      } catch (error: unknown) {
-        const errMsg = getErrorMessage(error);
-        // Record failed attempt
-        chainResults.push({
-          temperature: tempResult.temperature + i * 0.05,
-          quality: 0,
-          wasSuccessful: false,
-        });
-
-        // Learn from failure
-        controller.learnFromResult(
-          'dijkstra',
-          tempResult.temperature + i * 0.05,
-          'planning',
-          0,
-          0,
-          false,
-        );
-
-        logger.system(
-          `[Dijkstra] ${modelConfig.name} failed: ${errMsg} | ` +
-            `Attempting next model with adjusted temperature...`,
-          'warn',
-        );
-        // Continue to next model in chain
       }
-    }
 
-    throw new Error(
-      'CRITICAL ERROR: Dijkstra chain exhausted. All Gemini models failed. Check API key and network.',
-    );
+      throw new Error(
+        'CRITICAL ERROR: Dijkstra chain exhausted. All Gemini models failed. Check API key and network.',
+      );
+    };
+
+    // Wrap chain in timeout to prevent indefinite blocking
+    const CHAIN_TIMEOUT_MS = 5 * 60 * 1000;
+    let timeoutId: ReturnType<typeof setTimeout> | undefined;
+    const timeoutPromise = new Promise<never>((_, reject) => {
+      timeoutId = setTimeout(
+        () => reject(new Error(`Dijkstra chain timeout after ${CHAIN_TIMEOUT_MS}ms`)),
+        CHAIN_TIMEOUT_MS,
+      );
+    });
+
+    try {
+      const result = await Promise.race([chainExecution(), timeoutPromise]);
+      clearTimeout(timeoutId);
+      return result;
+    } catch (error: unknown) {
+      clearTimeout(timeoutId);
+      throw error;
+    }
   }
 }

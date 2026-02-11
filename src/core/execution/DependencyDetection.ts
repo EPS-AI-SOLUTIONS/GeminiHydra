@@ -54,10 +54,9 @@ export async function autoDetectDependencies(
 
   for (const task of tasks) {
     const entities = new Set<string>();
-    let match;
     // Reset regex lastIndex for each task
     const pattern = new RegExp(ENTITY_PATTERN.source, 'gi');
-    while ((match = pattern.exec(task.task)) !== null) {
+    for (let match = pattern.exec(task.task); match !== null; match = pattern.exec(task.task)) {
       entities.add(match[1].toLowerCase());
     }
     taskEntities.set(task.id, entities);
@@ -66,13 +65,13 @@ export async function autoDetectDependencies(
   // Detect dependencies based on entity overlap and keyword analysis
   for (let i = 0; i < tasks.length; i++) {
     const currentTask = tasks[i];
-    const currentEntities = taskEntities.get(currentTask.id)!;
+    const currentEntities = taskEntities.get(currentTask.id) ?? new Set<string>();
     const currentLower = currentTask.task.toLowerCase();
 
     // Check if this task references outputs from previous tasks
     for (let j = 0; j < i; j++) {
       const previousTask = tasks[j];
-      const previousEntities = taskEntities.get(previousTask.id)!;
+      const previousEntities = taskEntities.get(previousTask.id) ?? new Set<string>();
       const previousLower = previousTask.task.toLowerCase();
 
       // Check entity overlap
@@ -91,7 +90,7 @@ export async function autoDetectDependencies(
         (overlap.length > 0 && previousProduces && currentConsumes) ||
         (previousWrites && currentReads && overlap.length > 0)
       ) {
-        const deps = dependencies.get(currentTask.id)!;
+        const deps = dependencies.get(currentTask.id) ?? [];
         if (!deps.includes(previousTask.id)) {
           deps.push(previousTask.id);
           console.log(
@@ -114,9 +113,12 @@ export async function autoDetectDependencies(
  */
 export function extractEntities(taskDescription: string): Set<string> {
   const entities = new Set<string>();
-  let match;
   const pattern = new RegExp(ENTITY_PATTERN.source, 'gi');
-  while ((match = pattern.exec(taskDescription)) !== null) {
+  for (
+    let match = pattern.exec(taskDescription);
+    match !== null;
+    match = pattern.exec(taskDescription)
+  ) {
     entities.add(match[1].toLowerCase());
   }
   return entities;

@@ -385,9 +385,8 @@ export class SemanticSimilarityChecker {
 
     // 1. Extract technical terms
     for (const pattern of TECHNICAL_PATTERNS) {
-      let match;
       const regex = new RegExp(pattern.source, pattern.flags);
-      while ((match = regex.exec(text)) !== null) {
+      for (let match = regex.exec(text); match !== null; match = regex.exec(text)) {
         const term = match[0].toLowerCase();
         if (!seen.has(term)) {
           seen.add(term);
@@ -403,9 +402,8 @@ export class SemanticSimilarityChecker {
 
     // 2. Extract action verbs
     for (const pattern of ACTION_PATTERNS) {
-      let match;
       const regex = new RegExp(pattern.source, pattern.flags);
-      while ((match = regex.exec(text)) !== null) {
+      for (let match = regex.exec(text); match !== null; match = regex.exec(text)) {
         const term = match[0].toLowerCase();
         if (!seen.has(term)) {
           seen.add(term);
@@ -421,9 +419,8 @@ export class SemanticSimilarityChecker {
 
     // 3. Extract entities (paths, URLs, identifiers)
     for (const pattern of ENTITY_PATTERNS) {
-      let match;
       const regex = new RegExp(pattern.source, pattern.flags);
-      while ((match = regex.exec(text)) !== null) {
+      for (let match = regex.exec(text); match !== null; match = regex.exec(text)) {
         const term = match[0].toLowerCase();
         if (!seen.has(term) && term.length > 2) {
           seen.add(term);

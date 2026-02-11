@@ -89,7 +89,7 @@ export async function classifyTaskComplexity(task: string): Promise<TaskComplexi
   try {
     const classifierModel = genAI.getGenerativeModel({
       model: MODEL_TIERS.classifier,
-      generationConfig: { temperature: 0, maxOutputTokens: 20 },
+      generationConfig: { temperature: 1.0, maxOutputTokens: 20 }, // Temperature locked at 1.0 for Gemini - do not change
     });
 
     const prompt = `Classify this task complexity. Reply with ONLY one word: trivial, simple, medium, complex, or critical.

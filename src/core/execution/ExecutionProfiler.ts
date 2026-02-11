@@ -116,12 +116,12 @@ class ExecutionProfiler {
     }
 
     const endTime = new Date();
-    const duration = endTime.getTime() - profile.startTime?.getTime();
+    const duration = endTime.getTime() - (profile.startTime?.getTime() ?? endTime.getTime());
 
     const fullProfile: ExecutionProfile = {
       taskId,
-      agent: profile.agent!,
-      startTime: profile.startTime!,
+      agent: profile.agent ?? 'unknown',
+      startTime: profile.startTime ?? new Date(),
       endTime,
       duration,
       tokensUsed: profile.tokensUsed || 0,
@@ -129,7 +129,7 @@ class ExecutionProfiler {
       retries: profile.retries || 0,
       success,
       errorType,
-      model: profile.model!,
+      model: profile.model ?? 'unknown',
       phaseTimings: profile.phaseTimings || {},
     };
 
@@ -345,10 +345,10 @@ class ExecutionProfiler {
     try {
       const data = JSON.parse(json);
       if (Array.isArray(data.profiles)) {
-        const imported = data.profiles.map((p: any) => ({
+        const imported = data.profiles.map((p: Record<string, unknown>) => ({
           ...p,
-          startTime: new Date(p.startTime),
-          endTime: new Date(p.endTime),
+          startTime: new Date(p.startTime as string | number),
+          endTime: new Date(p.endTime as string | number),
         }));
         this.profiles.push(...imported);
 

@@ -219,7 +219,7 @@ Lines: ${file.lines ?? 0}
     try {
       const model = genAI.getGenerativeModel({
         model: 'gemini-3-pro-preview',
-        generationConfig: { temperature: 0.8, maxOutputTokens: 512 },
+        generationConfig: { temperature: 1.0, maxOutputTokens: 512 }, // Temperature locked at 1.0 for Gemini - do not change
       });
 
       const prompt = `Analyze this Q&A exchange for learning value. Return JSON only.
@@ -393,7 +393,7 @@ Instructions:
   async buildContextForAgent(agentContext: AgentContext): Promise<string> {
     await this.init();
 
-    const { query, agentName, projectContext, conversationHistory } = agentContext;
+    const { query, agentName: _agentName, projectContext, conversationHistory } = agentContext;
 
     const parts: string[] = [];
 
@@ -523,8 +523,9 @@ PARAMETER num_ctx 4096
       console.log(chalk.green(`[KnowledgeAgent] Model created: ${modelName}`));
 
       return modelName;
-    } catch (error: any) {
-      console.error(chalk.red(`[KnowledgeAgent] Model creation failed: ${error.message}`));
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : String(error);
+      console.error(chalk.red(`[KnowledgeAgent] Model creation failed: ${msg}`));
       throw error;
     }
   }

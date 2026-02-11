@@ -170,7 +170,8 @@ export async function loadGrimoires(
     // Check cache first
     const cacheKey = `${rootPath}:${name}`;
     if (grimoireCache.has(cacheKey)) {
-      contents.push(grimoireCache.get(cacheKey)!);
+      const cached = grimoireCache.get(cacheKey);
+      if (cached) contents.push(cached);
       continue;
     }
 
@@ -618,7 +619,7 @@ export function buildPlanningPrompt(options: {
   mcpTools?: string;
   memories?: string;
 }): string {
-  const { objective, availableAgents, mcpTools = '', memories = '' } = options;
+  const { objective, availableAgents: _availableAgents, mcpTools = '', memories = '' } = options;
 
   return `
 CEL: ${objective}

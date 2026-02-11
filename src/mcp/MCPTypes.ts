@@ -151,9 +151,7 @@ export interface MCPClient {
     name: string;
     arguments?: Record<string, string>;
   }): Promise<{ messages: Array<{ role: string; content: { type: string; text: string } }> }>;
-  readResource(params: {
-    uri: string;
-  }): Promise<{
+  readResource(params: { uri: string }): Promise<{
     contents: Array<{ uri: string; mimeType?: string; text?: string; blob?: string }>;
   }>;
 }

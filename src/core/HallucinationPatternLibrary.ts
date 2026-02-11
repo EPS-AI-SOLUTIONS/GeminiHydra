@@ -555,8 +555,7 @@ export class HallucinationPatternLibrary {
       // Reset regex state
       regex.lastIndex = 0;
 
-      let match: RegExpExecArray | null;
-      while ((match = regex.exec(content)) !== null) {
+      for (let match = regex.exec(content); match !== null; match = regex.exec(content)) {
         const matchKey = `${pattern.pattern}:${match.index}:${match[0]}`;
 
         if (!seenMatches.has(matchKey)) {

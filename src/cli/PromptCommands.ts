@@ -211,10 +211,11 @@ export class PromptCommands {
       console.log('');
 
       return { success: true, prompt };
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : String(error);
       return {
         success: false,
-        message: `Błąd zapisu: ${error.message}`,
+        message: `Błąd zapisu: ${msg}`,
       };
     }
   }
@@ -566,7 +567,7 @@ export class PromptCommands {
       };
     }
 
-    const updates: any = {};
+    const updates: Record<string, string | string[]> = {};
 
     for (let i = 1; i < args.length; i++) {
       const arg = args[i];
@@ -692,15 +693,16 @@ export class PromptCommands {
       console.log(chalk.gray(`  Pominięto (duplikaty): ${result.skipped}`));
       if (result.errors.length > 0) {
         console.log(chalk.red(`  Błędy: ${result.errors.length}`));
-        result.errors.forEach((e) => console.log(chalk.red(`    - ${e}`)));
+        for (const e of result.errors) console.log(chalk.red(`    - ${e}`));
       }
       console.log('');
 
       return { success: true };
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : String(error);
       return {
         success: false,
-        message: `Błąd importu: ${error.message}`,
+        message: `Błąd importu: ${msg}`,
       };
     }
   }

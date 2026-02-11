@@ -203,7 +203,9 @@ export class TemplateManager {
 
   constructor() {
     // Load built-in templates
-    BUILT_IN_TEMPLATES.forEach((t) => this.templates.set(t.name, t));
+    for (const t of BUILT_IN_TEMPLATES) {
+      this.templates.set(t.name, t);
+    }
   }
 
   async loadCustomTemplates(): Promise<void> {

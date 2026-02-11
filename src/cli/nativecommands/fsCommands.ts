@@ -58,19 +58,22 @@ export const fsCommands = {
         },
         `File: ${filePath}`,
       );
-    } catch (err: any) {
+    } catch (err: unknown) {
       // Provide more helpful error messages
-      if (err.code === 'ENOENT') {
+      const code =
+        err instanceof Error && 'code' in err ? (err as NodeJS.ErrnoException).code : undefined;
+      const msg = err instanceof Error ? err.message : String(err);
+      if (code === 'ENOENT') {
         return error(
           `File not found: ${filePath}\n${chalk.gray('Use /fs diagnose to check path issues')}`,
         );
       }
-      if (err.code === 'EACCES') {
+      if (code === 'EACCES') {
         return error(
           `Permission denied: ${filePath}\n${chalk.gray('Use /fs perms to check permissions')}`,
         );
       }
-      if (err.message?.includes('blocked')) {
+      if (msg?.includes('blocked')) {
         return error(
           `Path is blocked: ${filePath}\n${chalk.gray('Use /fs unblock to temporarily allow access')}`,
         );
@@ -150,19 +153,22 @@ export const fsCommands = {
         },
         `Written to: ${filePath}`,
       );
-    } catch (err: any) {
+    } catch (err: unknown) {
       // Provide more helpful error messages
-      if (err.code === 'EACCES' || err.code === 'EPERM') {
+      const code =
+        err instanceof Error && 'code' in err ? (err as NodeJS.ErrnoException).code : undefined;
+      const msg = err instanceof Error ? err.message : String(err);
+      if (code === 'EACCES' || code === 'EPERM') {
         return error(
           `Permission denied: ${filePath}\n${chalk.gray('Try using --force to remove readonly attribute')}`,
         );
       }
-      if (err.code === 'ENOENT') {
+      if (code === 'ENOENT') {
         return error(
           `Directory not found for: ${filePath}\n${chalk.gray('Parent directory must exist')}`,
         );
       }
-      if (err.message?.includes('blocked')) {
+      if (msg?.includes('blocked')) {
         return error(
           `Path is blocked: ${filePath}\n${chalk.gray('Use /fs unblock to temporarily allow access')}`,
         );

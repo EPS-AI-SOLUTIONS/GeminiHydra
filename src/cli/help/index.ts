@@ -92,8 +92,9 @@ async function helpHandler(ctx: CommandContext): Promise<CommandResult> {
       const outputPath = path.resolve(ctx.cwd, filename);
       await fs.writeFile(outputPath, content, 'utf-8');
       return success({ path: outputPath, format }, `Help exported to: ${outputPath}`);
-    } catch (err: any) {
-      return error(`Failed to export help: ${err.message}`);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      return error(`Failed to export help: ${msg}`);
     }
   }
 

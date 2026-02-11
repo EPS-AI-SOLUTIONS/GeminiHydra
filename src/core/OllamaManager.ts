@@ -147,8 +147,9 @@ class OllamaManager {
       if (!this.isAlive) {
         console.log(chalk.red('[Ollama Monitor] ✗ Auto-restart failed - server not responding'));
       }
-    } catch (error: any) {
-      console.log(chalk.red(`[Ollama Monitor] ✗ Auto-restart error: ${error.message}`));
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : String(error);
+      console.log(chalk.red(`[Ollama Monitor] ✗ Auto-restart error: ${msg}`));
     } finally {
       this.isRestarting = false;
     }
@@ -362,7 +363,7 @@ class OllamaManager {
       if (!response.ok) return [];
 
       const data = await response.json();
-      return data.models?.map((m: any) => m.name) || [];
+      return data.models?.map((m: { name: string }) => m.name) || [];
     } catch {
       return [];
     }

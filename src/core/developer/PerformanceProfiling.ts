@@ -116,7 +116,7 @@ export async function profilePerformance(
   try {
     const model = genAI.getGenerativeModel({
       model: QUALITY_MODEL,
-      generationConfig: { temperature: 0.2, maxOutputTokens: 4096 },
+      generationConfig: { temperature: 1.0, maxOutputTokens: 4096 }, // Temperature locked at 1.0 for Gemini - do not change
     });
 
     const result = await model.generateContent(prompt);
@@ -142,8 +142,9 @@ export async function profilePerformance(
       hotspots: parsed.hotspots || [],
       optimizations: parsed.optimizations || [],
     };
-  } catch (error: any) {
-    console.log(chalk.yellow(`[Performance] Profiling failed: ${error.message}`));
+  } catch (error: unknown) {
+    const msg = error instanceof Error ? error.message : String(error);
+    console.log(chalk.yellow(`[Performance] Profiling failed: ${msg}`));
     return {
       file: filename,
       overallScore: 0,

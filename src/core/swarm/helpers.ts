@@ -161,15 +161,15 @@ export function checkMultiAgentConsensus(results: ExecutionResult[]): {
 
     // Extract file paths mentioned
     const filePaths = content.match(/(?:src|lib|app)\/[\w/-]+\.\w+/g) || [];
-    filePaths.forEach((p) => facts.add(`file:${p}`));
+    for (const p of filePaths) facts.add(`file:${p}`);
 
     // Extract function/class names
     const definitions = content.match(/(?:function|class|interface|type)\s+(\w+)/g) || [];
-    definitions.forEach((d) => facts.add(`def:${d}`));
+    for (const d of definitions) facts.add(`def:${d}`);
 
     // Extract commands executed
     const commands = content.match(/EXEC:\s*([^\n]+)/g) || [];
-    commands.forEach((c) => facts.add(`cmd:${c}`));
+    for (const c of commands) facts.add(`cmd:${c}`);
 
     factsByAgent.set(result.id, facts);
   }

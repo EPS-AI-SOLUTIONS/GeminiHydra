@@ -383,8 +383,9 @@ export class EnvManager {
       };
       await fs.writeFile(this.persistPath, JSON.stringify(data, null, 2));
       console.log(chalk.gray('[EnvManager] Environments saved'));
-    } catch (error: any) {
-      console.log(chalk.yellow(`[EnvManager] Persist failed: ${error.message}`));
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : String(error);
+      console.log(chalk.yellow(`[EnvManager] Persist failed: ${msg}`));
     }
   }
 
@@ -399,7 +400,7 @@ export class EnvManager {
     const env = this.environments.get(name);
     if (!env) return '{}';
 
-    const exported: any = {
+    const exported: Record<string, unknown> = {
       name: env.name,
       description: env.description,
       variables: {},
@@ -407,11 +408,12 @@ export class EnvManager {
     };
 
     const variables = this.getVariables(name);
+    const vars = exported.variables as Record<string, string>;
     for (const [key, value] of Object.entries(variables)) {
       if (env.secrets.includes(key) && !includeSecrets) {
-        exported.variables[key] = '<REDACTED>';
+        vars[key] = '<REDACTED>';
       } else {
-        exported.variables[key] = value;
+        vars[key] = value;
       }
     }
 

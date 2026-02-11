@@ -27,12 +27,12 @@ export interface NativeToolDefinition {
   /** JSON Schema for input parameters */
   inputSchema: MCPToolInputSchema;
   /** Handler function */
-  handler: (params: Record<string, any>) => Promise<any>;
+  handler: (params: Record<string, unknown>) => Promise<unknown>;
 }
 
 export interface NativeToolResult {
   success: boolean;
-  data?: any;
+  data?: unknown;
   error?: string;
 }
 
@@ -78,12 +78,12 @@ function createToolDefinitions(
         required: ['pattern'],
       },
       handler: async (params) => {
-        const symbols = await nativeCode.findSymbol(params.pattern);
+        const symbols = await nativeCode.findSymbol(params.pattern as string);
 
         // Filter by kind if specified
         let filtered = symbols;
         if (params.kind) {
-          const kindLower = params.kind.toLowerCase();
+          const kindLower = (params.kind as string).toLowerCase();
           filtered = symbols.filter((s) => {
             const symbolKind = getSymbolKindName(s.kind).toLowerCase();
             return symbolKind.includes(kindLower);
@@ -91,7 +91,7 @@ function createToolDefinitions(
         }
 
         // Limit results
-        const maxResults = params.maxResults || 50;
+        const maxResults = (params.maxResults as number) || 50;
         return filtered.slice(0, maxResults);
       },
     },
@@ -114,7 +114,7 @@ function createToolDefinitions(
         },
       },
       handler: async (params) => {
-        const patterns = params.patterns || ['**/*.{ts,tsx,js,jsx}'];
+        const patterns = (params.patterns as string[] | undefined) || ['**/*.{ts,tsx,js,jsx}'];
         return nativeCode.getSymbolsOverview(patterns);
       },
     },
@@ -143,8 +143,8 @@ function createToolDefinitions(
       },
       handler: async (params) => {
         // Convert to 0-indexed for LSP
-        const line = params.line - 1;
-        return nativeCode.findReferences(params.filePath, line, params.character);
+        const line = Number(params.line) - 1;
+        return nativeCode.findReferences(params.filePath as string, line, Number(params.character));
       },
     },
 
@@ -183,11 +183,11 @@ function createToolDefinitions(
       },
       handler: async (params) => {
         const options: GlobOptions = {
-          pattern: params.pattern,
-          ignore: params.ignore,
-          maxDepth: params.maxDepth,
+          pattern: params.pattern as string,
+          ignore: params.ignore as string[] | undefined,
+          maxDepth: params.maxDepth as number | undefined,
           sortByMtime: params.sortByMtime !== false,
-          limit: params.limit,
+          limit: params.limit as number | undefined,
         };
 
         const results = await nativeGlob.glob(options);
@@ -220,12 +220,12 @@ function createToolDefinitions(
         },
       },
       handler: async (params) => {
-        const dirPath = params.relative_path || '.';
+        const dirPath = (params.relative_path as string) || '.';
         const entries = await nativeCode.listDir(dirPath);
 
         // Filter by file_mask if provided
         if (params.file_mask) {
-          const pattern = params.file_mask.replace(/\*/g, '.*').replace(/\?/g, '.');
+          const pattern = (params.file_mask as string).replace(/\*/g, '.*').replace(/\?/g, '.');
           const regex = new RegExp(`^${pattern}$`, 'i');
           return {
             entries: entries.filter((e) => e.type === 'directory' || regex.test(e.name)),
@@ -260,7 +260,9 @@ function createToolDefinitions(
       },
       handler: async (params) => {
         // BUG-008 FIX: Handle multiple param names for path
-        const filePath = params.relative_path || params.path || params.file || params.filename;
+        const filePath = (params.relative_path || params.path || params.file || params.filename) as
+          | string
+          | undefined;
 
         if (!filePath) {
           throw new Error(`read_file requires a path. Received params: ${JSON.stringify(params)}`);
@@ -270,8 +272,9 @@ function createToolDefinitions(
 
         if (params.start_line !== undefined || params.end_line !== undefined) {
           const lines = content.split('\n');
-          const start = params.start_line || 0;
-          const end = params.end_line !== undefined ? params.end_line + 1 : lines.length;
+          const start = (params.start_line as number) || 0;
+          const end =
+            params.end_line !== undefined ? (params.end_line as number) + 1 : lines.length;
           return lines.slice(start, end).join('\n');
         }
 
@@ -297,8 +300,8 @@ function createToolDefinitions(
         required: ['relative_path', 'content'],
       },
       handler: async (params) => {
-        await nativeCode.createFile(params.relative_path, params.content);
-        return { success: true, path: params.relative_path };
+        await nativeCode.createFile(params.relative_path as string, params.content as string);
+        return { success: true, path: params.relative_path as string };
       },
     },
 
@@ -349,7 +352,10 @@ function createToolDefinitions(
       },
       handler: async (params) => {
         // BUG-007 FIX: Accept both 'pattern' and 'substring_pattern' (Serena MCP compatibility)
-        const searchPattern = params.pattern || params.substring_pattern || params.query || '';
+        const searchPattern = (params.pattern ||
+          params.substring_pattern ||
+          params.query ||
+          '') as string;
 
         if (!searchPattern) {
           throw new Error(
@@ -359,13 +365,13 @@ function createToolDefinitions(
 
         const options: GrepOptions = {
           pattern: searchPattern,
-          glob: params.glob,
-          type: params.type,
-          ignoreCase: params.ignoreCase,
-          multiline: params.multiline,
-          context: params.context,
-          outputMode: params.outputMode || 'content',
-          maxResults: params.maxResults || 100,
+          glob: params.glob as string | undefined,
+          type: params.type as string | undefined,
+          ignoreCase: params.ignoreCase as boolean | undefined,
+          multiline: params.multiline as boolean | undefined,
+          context: params.context as number | undefined,
+          outputMode: (params.outputMode as GrepOptions['outputMode']) || 'content',
+          maxResults: (params.maxResults as number) || 100,
         };
 
         return nativeGrep.grep(options);
@@ -406,12 +412,12 @@ function createToolDefinitions(
       },
       handler: async (params) => {
         const result = await nativeCode.replaceContent(
-          params.relative_path,
-          params.needle,
-          params.replacement,
+          params.relative_path as string,
+          params.needle as string,
+          params.replacement as string,
           {
-            isRegex: params.mode === 'regex',
-            replaceAll: params.replaceAll || false,
+            isRegex: (params.mode as string) === 'regex',
+            replaceAll: (params.replaceAll as boolean) || false,
           },
         );
         return result;
@@ -441,9 +447,9 @@ function createToolDefinitions(
       },
       handler: async (params) => {
         return nativeCode.replaceSymbolBody(
-          params.relative_path,
-          params.symbol_name,
-          params.new_body,
+          params.relative_path as string,
+          params.symbol_name as string,
+          params.new_body as string,
         );
       },
     },
@@ -471,9 +477,9 @@ function createToolDefinitions(
       },
       handler: async (params) => {
         return nativeCode.insertBeforeSymbol(
-          params.relative_path,
-          params.symbol_name,
-          params.content,
+          params.relative_path as string,
+          params.symbol_name as string,
+          params.content as string,
         );
       },
     },
@@ -501,9 +507,9 @@ function createToolDefinitions(
       },
       handler: async (params) => {
         return nativeCode.insertAfterSymbol(
-          params.relative_path,
-          params.symbol_name,
-          params.content,
+          params.relative_path as string,
+          params.symbol_name as string,
+          params.content as string,
         );
       },
     },
@@ -537,8 +543,10 @@ function createToolDefinitions(
         required: ['key'],
       },
       handler: async (params) => {
-        const value = await nativeCode.readMemory(params.key);
-        return value !== null ? { key: params.key, value } : { error: 'Memory not found' };
+        const value = await nativeCode.readMemory(params.key as string);
+        return value !== null
+          ? { key: params.key as string, value }
+          : { error: 'Memory not found' };
       },
     },
 
@@ -560,8 +568,8 @@ function createToolDefinitions(
         required: ['key', 'value'],
       },
       handler: async (params) => {
-        await nativeCode.writeMemory(params.key, params.value);
-        return { success: true, key: params.key };
+        await nativeCode.writeMemory(params.key as string, params.value as string);
+        return { success: true, key: params.key as string };
       },
     },
 
@@ -579,8 +587,8 @@ function createToolDefinitions(
         required: ['key'],
       },
       handler: async (params) => {
-        const deleted = await nativeCode.deleteMemory(params.key);
-        return { success: deleted, key: params.key };
+        const deleted = await nativeCode.deleteMemory(params.key as string);
+        return { success: deleted, key: params.key as string };
       },
     },
 
@@ -609,8 +617,8 @@ function createToolDefinitions(
         required: ['filePath', 'line', 'character'],
       },
       handler: async (params) => {
-        const line = params.line - 1; // Convert to 0-indexed
-        return nativeCode.goToDefinition(params.filePath, line, params.character);
+        const line = Number(params.line) - 1; // Convert to 0-indexed
+        return nativeCode.goToDefinition(params.filePath as string, line, Number(params.character));
       },
     },
 
@@ -640,8 +648,13 @@ function createToolDefinitions(
         required: ['filePath', 'line', 'character', 'newName'],
       },
       handler: async (params) => {
-        const line = params.line - 1; // Convert to 0-indexed
-        return nativeCode.renameSymbol(params.filePath, line, params.character, params.newName);
+        const line = Number(params.line) - 1; // Convert to 0-indexed
+        return nativeCode.renameSymbol(
+          params.filePath as string,
+          line,
+          Number(params.character),
+          params.newName as string,
+        );
       },
     },
   ];
@@ -746,7 +759,7 @@ export class NativeSerenaTools {
   /**
    * Execute a tool by name
    */
-  async executeTool(name: string, params: Record<string, any>): Promise<NativeToolResult> {
+  async executeTool(name: string, params: Record<string, unknown>): Promise<NativeToolResult> {
     const tool = this.tools.get(name);
 
     if (!tool) {
@@ -762,10 +775,11 @@ export class NativeSerenaTools {
         success: true,
         data,
       };
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : String(error);
       return {
         success: false,
-        error: error.message || String(error),
+        error: msg,
       };
     }
   }

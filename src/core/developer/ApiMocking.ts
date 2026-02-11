@@ -22,7 +22,7 @@ export interface MockEndpoint {
   description: string;
   requestSchema?: object;
   responseSchema: object;
-  mockResponse: any;
+  mockResponse: unknown;
   statusCode: number;
 }
 
@@ -82,7 +82,7 @@ export function generateMockEndpoints(apiSpec: { endpoints: ApiEndpointSpec[] })
  * @param path - Endpoint path to generate mock data for
  * @returns Mock data object
  */
-export function generateMockData(path: string): any {
+export function generateMockData(path: string): unknown {
   // Generate contextual mock data based on path
   const lowerPath = path.toLowerCase();
 
@@ -175,7 +175,7 @@ export function generateMockList<T extends object>(count: number, template: T): 
   const items: T[] = [];
 
   for (let i = 0; i < count; i++) {
-    const item: any = { ...template };
+    const item: Record<string, unknown> = { ...template } as Record<string, unknown>;
 
     // Replace any id fields with new UUIDs
     for (const key of Object.keys(item)) {
@@ -187,7 +187,7 @@ export function generateMockList<T extends object>(count: number, template: T): 
       }
     }
 
-    items.push(item);
+    items.push(item as T);
   }
 
   return items;
@@ -301,12 +301,12 @@ export function generateMockHandler(config: MockApiConfig): string {
   lines.push(`interface MockRequest {`);
   lines.push(`  method: string;`);
   lines.push(`  path: string;`);
-  lines.push(`  body?: any;`);
+  lines.push(`  body?: unknown;`);
   lines.push(`}\n`);
 
   lines.push(`interface MockResponse {`);
   lines.push(`  status: number;`);
-  lines.push(`  data: any;`);
+  lines.push(`  data: unknown;`);
   lines.push(`}\n`);
 
   lines.push(`const mockEndpoints = ${JSON.stringify(config.endpoints, null, 2)};\n`);

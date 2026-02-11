@@ -17,6 +17,7 @@ import { pipeline } from 'node:stream/promises';
 import { promisify } from 'node:util';
 import chalk from 'chalk';
 import { glob } from 'glob';
+import { getErrorCodeSafe, getErrorMessage } from '../../core/errors.js';
 import type {
   EncodingInfo,
   ReadFileWithEncodingOptions,
@@ -416,8 +417,8 @@ export class NativeFileSystem {
       }
 
       return { allowed: true };
-    } catch (error: any) {
-      return { allowed: false, reason: `Invalid path: ${error.message}` };
+    } catch (error: unknown) {
+      return { allowed: false, reason: `Invalid path: ${getErrorMessage(error)}` };
     }
   }
 
@@ -609,8 +610,8 @@ export class NativeFileSystem {
               `  Path type: file`,
           );
         }
-      } catch (err: any) {
-        if (err.code === 'ENOENT') {
+      } catch (err: unknown) {
+        if (getErrorCodeSafe(err) === 'ENOENT') {
           throw new Error(
             `Cannot set root directory: Path does not exist\n` +
               `  Attempted path: ${resolvedNewRoot}\n` +
@@ -702,8 +703,8 @@ export class NativeFileSystem {
   /**
    * Handle directory creation errors with descriptive messages
    */
-  private handleDirectoryCreationError(error: any, dirPath: string): never {
-    const code = error.code || 'UNKNOWN';
+  private handleDirectoryCreationError(error: unknown, dirPath: string): never {
+    const code = getErrorCodeSafe(error) || 'UNKNOWN';
     const relativePath = this.toRelative(dirPath);
 
     let message: string;
@@ -730,13 +731,16 @@ export class NativeFileSystem {
         message = `Name too long: Path "${relativePath}" exceeds maximum length.`;
         break;
       default:
-        message = `Failed to create directory "${relativePath}": ${error.message || code}`;
+        message = `Failed to create directory "${relativePath}": ${getErrorMessage(error) || code}`;
     }
 
     const enhancedError = new Error(message) as DirectoryCreationError;
     enhancedError.code = code;
     enhancedError.path = dirPath;
-    enhancedError.syscall = error.syscall;
+    enhancedError.syscall =
+      error instanceof Error && 'syscall' in error
+        ? (error as NodeJS.ErrnoException).syscall
+        : undefined;
 
     throw enhancedError;
   }
@@ -776,10 +780,11 @@ export class NativeFileSystem {
         error.path = resolved;
         throw error;
       }
-    } catch (error: any) {
-      if (error.code !== 'ENOENT') {
+    } catch (error: unknown) {
+      const errCode = getErrorCodeSafe(error);
+      if (errCode !== 'ENOENT') {
         // Re-throw if it's not a "not found" error
-        if (error.code) {
+        if (errCode) {
           throw error; // Already a DirectoryCreationError
         }
         this.handleDirectoryCreationError(error, resolved);
@@ -792,7 +797,7 @@ export class NativeFileSystem {
     // Create the directory with recursive option
     try {
       await fs.mkdir(resolved, { recursive: true });
-    } catch (error: any) {
+    } catch (error: unknown) {
       this.handleDirectoryCreationError(error, resolved);
     }
 
@@ -866,8 +871,8 @@ export class NativeFileSystem {
       paths.map(async (p) => {
         try {
           results.set(p, await this.readFile(p));
-        } catch (error: any) {
-          results.set(p, error);
+        } catch (error: unknown) {
+          results.set(p, error instanceof Error ? error : new Error(String(error)));
         }
       }),
     );
@@ -878,7 +883,7 @@ export class NativeFileSystem {
   /**
    * Read JSON file
    */
-  async readJson<T = any>(filePath: string): Promise<T> {
+  async readJson<T = unknown>(filePath: string): Promise<T> {
     const content = await this.readFile(filePath);
     return JSON.parse(content);
   }
@@ -924,7 +929,7 @@ export class NativeFileSystem {
         try {
           await fs.mkdir(dirPath, { recursive: true });
           this.logDirectoryCreation(dirPath, missingDirs);
-        } catch (error: any) {
+        } catch (error: unknown) {
           this.handleDirectoryCreationError(error, dirPath);
         }
       }
@@ -955,7 +960,7 @@ export class NativeFileSystem {
         try {
           await fs.mkdir(dirPath, { recursive: true });
           this.logDirectoryCreation(dirPath, missingDirs);
-        } catch (error: any) {
+        } catch (error: unknown) {
           this.handleDirectoryCreationError(error, dirPath);
         }
       }
@@ -969,7 +974,7 @@ export class NativeFileSystem {
    */
   async writeJson(
     filePath: string,
-    data: any,
+    data: unknown,
     options?: { pretty?: boolean; createDirs?: boolean },
   ): Promise<void> {
     const content =
@@ -996,7 +1001,7 @@ export class NativeFileSystem {
         try {
           await fs.mkdir(dirPath, { recursive: true });
           this.logDirectoryCreation(dirPath, missingDirs);
-        } catch (error: any) {
+        } catch (error: unknown) {
           this.handleDirectoryCreationError(error, dirPath);
         }
       }
@@ -1202,7 +1207,7 @@ export class NativeFileSystem {
         try {
           await fs.mkdir(dirPath, { recursive: true });
           this.logDirectoryCreation(dirPath, missingDirs);
-        } catch (error: any) {
+        } catch (error: unknown) {
           this.handleDirectoryCreationError(error, dirPath);
         }
       }
@@ -1231,7 +1236,7 @@ export class NativeFileSystem {
         try {
           await fs.mkdir(dirPath, { recursive: true });
           this.logDirectoryCreation(dirPath, missingDirs);
-        } catch (error: any) {
+        } catch (error: unknown) {
           this.handleDirectoryCreationError(error, dirPath);
         }
       }
@@ -1339,12 +1344,12 @@ export class NativeFileSystem {
 
     try {
       await fs.symlink(resolvedTarget, resolvedLink, symlinkType);
-    } catch (error: any) {
+    } catch (error: unknown) {
       // Provide helpful error message for Windows permission issues
-      if (process.platform === 'win32' && error.code === 'EPERM') {
+      if (process.platform === 'win32' && getErrorCodeSafe(error) === 'EPERM') {
         throw new Error(
           `Permission denied creating symlink. On Windows, try using 'junction' type for directories, ` +
-            `or enable Developer Mode in Windows Settings. Original error: ${error.message}`,
+            `or enable Developer Mode in Windows Settings. Original error: ${getErrorMessage(error)}`,
         );
       }
       throw error;
@@ -1597,8 +1602,8 @@ export class NativeFileSystem {
         archive: attributePart.includes('A'),
         raw: attributePart,
       };
-    } catch (error: any) {
-      throw new Error(`Failed to get file attributes: ${error.message}`);
+    } catch (error: unknown) {
+      throw new Error(`Failed to get file attributes: ${getErrorMessage(error)}`);
     }
   }
 
@@ -1624,8 +1629,8 @@ export class NativeFileSystem {
         archive: false, // No archive attribute on Unix
         raw: `mode=${stats.mode.toString(8)}`,
       };
-    } catch (error: any) {
-      throw new Error(`Failed to get file attributes: ${error.message}`);
+    } catch (error: unknown) {
+      throw new Error(`Failed to get file attributes: ${getErrorMessage(error)}`);
     }
   }
 
@@ -1657,10 +1662,10 @@ export class NativeFileSystem {
         previousAttributes,
         newAttributes,
       };
-    } catch (error: any) {
+    } catch (error: unknown) {
       return {
         success: false,
-        error: error.message,
+        error: getErrorMessage(error),
       };
     }
   }
@@ -1774,11 +1779,11 @@ export class NativeFileSystem {
         error:
           'File is readonly. Use autoRemoveReadonly option to automatically remove the attribute.',
       };
-    } catch (error: any) {
+    } catch (error: unknown) {
       return {
         wasReadonly: false,
         isNowWritable: false,
-        error: error.message,
+        error: getErrorMessage(error),
       };
     }
   }
@@ -1891,7 +1896,7 @@ export class NativeFileSystem {
         };
 
         const callbacks = this.watchCallbacks.get(resolved) || [];
-        callbacks.forEach((cb) => cb(event));
+        for (const cb of callbacks) cb(event);
       });
 
       this.watchers.set(resolved, watcher);
@@ -1966,10 +1971,10 @@ export class NativeFileSystem {
       } else {
         return await this.checkFileLockUnix(resolved, baseLockInfo);
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       return {
         ...baseLockInfo,
-        error: `Lock detection failed: ${error.message}`,
+        error: `Lock detection failed: ${getErrorMessage(error)}`,
       };
     }
   }
@@ -2250,16 +2255,17 @@ export class NativeFileSystem {
           attempts: attempt,
           totalTimeMs: Date.now() - startTime,
         };
-      } catch (error: any) {
-        lastError = error;
+      } catch (error: unknown) {
+        lastError = error instanceof Error ? error : new Error(String(error));
+        const errCode = getErrorCodeSafe(error);
 
         // Check if error is due to file being locked (EBUSY, EACCES, EPERM)
-        if (error.code === 'EBUSY' || error.code === 'EACCES' || error.code === 'EPERM') {
+        if (errCode === 'EBUSY' || errCode === 'EACCES' || errCode === 'EPERM') {
           lastLockInfo = {
             isLocked: true,
             filePath: resolved,
             detectedAt: new Date(),
-            error: error.message,
+            error: getErrorMessage(error),
           };
 
           if (attempt > retryOptions.maxRetries) {

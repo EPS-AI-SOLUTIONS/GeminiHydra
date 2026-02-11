@@ -158,8 +158,9 @@ export class CorrectionLearner {
         lastSaved: Date.now(),
       };
       await fs.writeFile(this.persistPath, JSON.stringify(data, null, 2));
-    } catch (error: any) {
-      console.log(chalk.yellow(`[CorrectionLearner] Persist failed: ${error.message}`));
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : String(error);
+      console.log(chalk.yellow(`[CorrectionLearner] Persist failed: ${msg}`));
     }
   }
 

@@ -234,7 +234,7 @@ class TaskTemplateManager {
 
       return {
         id: idx + 1,
-        agent: struct.agent as any,
+        agent: struct.agent as unknown as SwarmTask['agent'],
         task: taskText,
         dependencies: struct.dependencies,
         status: 'pending' as const,

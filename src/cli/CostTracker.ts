@@ -51,9 +51,9 @@ export class CostTracker {
     try {
       const data = await fs.readFile(USAGE_FILE, 'utf-8');
       const parsed = JSON.parse(data);
-      this.usage = parsed.usage.map((u: any) => ({
+      this.usage = parsed.usage.map((u: Record<string, unknown>) => ({
         ...u,
-        timestamp: new Date(u.timestamp),
+        timestamp: new Date(u.timestamp as string | number),
       }));
       this.budget = parsed.budget || null;
     } catch {

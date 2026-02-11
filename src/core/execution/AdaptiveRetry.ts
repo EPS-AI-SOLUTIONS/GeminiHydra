@@ -174,9 +174,9 @@ export async function adaptiveRetry<T>(
   while (totalAttempts < maxTotalAttempts) {
     try {
       return await fn();
-    } catch (error: any) {
-      lastError = error;
-      lastErrorType = classifyError(error);
+    } catch (error: unknown) {
+      lastError = error instanceof Error ? error : new Error(String(error));
+      lastErrorType = classifyError(lastError);
       currentConfig = configs[lastErrorType];
 
       const attemptForType = totalAttempts % currentConfig.maxRetries;
@@ -200,7 +200,12 @@ export async function adaptiveRetry<T>(
       );
 
       if (options.onRetry) {
-        options.onRetry(totalAttempts, error, lastErrorType, delay);
+        options.onRetry(
+          totalAttempts,
+          lastError ?? new Error('Unknown error'),
+          lastErrorType,
+          delay,
+        );
       }
 
       await new Promise((resolve) => setTimeout(resolve, delay));

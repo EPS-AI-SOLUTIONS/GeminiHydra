@@ -322,7 +322,7 @@ export class ProjectContext {
 
     if (relevantFiles.length > 0) {
       context.push('\nRelevant files:');
-      relevantFiles.forEach((f) => context.push(`  - ${f.relativePath}`));
+      for (const f of relevantFiles) context.push(`  - ${f.relativePath}`);
     }
 
     return context.join('\n');

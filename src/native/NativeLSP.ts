@@ -596,7 +596,8 @@ export class NativeLSP {
   async getClient(languageId: string): Promise<LSPClient | null> {
     // Check if already running
     if (this.clients.has(languageId)) {
-      const client = this.clients.get(languageId)!;
+      const client = this.clients.get(languageId);
+      if (!client) return null;
       if (client.isInitialized()) {
         return client;
       }

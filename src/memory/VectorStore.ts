@@ -5,6 +5,7 @@
 
 import fs from 'node:fs/promises';
 import path from 'node:path';
+import { getErrorCodeSafe } from '../core/errors.js';
 import { loadFromFile, saveToFile } from '../native/persistence.js';
 import { type AgentRole, resolveAgentRoleSafe, type SwarmMemory } from '../types/index.js';
 
@@ -184,8 +185,8 @@ export class AgentVectorMemory {
         .sort((a, b) => b.score - a.score)
         .slice(0, topK)
         .map((s) => s.memory);
-    } catch (error: any) {
-      if (error.code === 'ENOENT') {
+    } catch (error: unknown) {
+      if (getErrorCodeSafe(error) === 'ENOENT') {
         return []; // File doesn't exist yet
       }
       throw error;
@@ -201,7 +202,7 @@ export class AgentVectorMemory {
     query: string,
     tokenLimit: number = 8192,
   ): Promise<string> {
-    const memories: any[] = [];
+    const memories: { type: string; content: string; timestamp: string }[] = [];
     let tokenCount = 0;
 
     // Get related memories

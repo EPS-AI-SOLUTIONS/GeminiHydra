@@ -89,7 +89,7 @@ export class MCPAgentBridge {
       if (tool.inputSchema?.properties) {
         desc += 'Parameters:\n';
         for (const [name, schema] of Object.entries(tool.inputSchema.properties)) {
-          const s = schema as any;
+          const s = schema as Record<string, unknown>;
           const required = tool.inputSchema.required?.includes(name) ? ' (required)' : '';
           desc += `  - ${name}${required}: ${s.description || s.type}\n`;
         }
@@ -194,7 +194,7 @@ export class MCPAgentBridge {
   /**
    * Execute an MCP tool and return parsed result
    */
-  async executeTool(toolName: string, params: Record<string, any>): Promise<MCPToolResult> {
+  async executeTool(toolName: string, params: Record<string, unknown>): Promise<MCPToolResult> {
     try {
       const result = await mcpManager.callTool(toolName, params);
       return {
@@ -202,11 +202,12 @@ export class MCPAgentBridge {
         content: this.parseContent(result.content),
         error: result.isError ? 'Tool returned an error' : undefined,
       };
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : String(error);
       return {
         success: false,
         content: null,
-        error: error.message,
+        error: msg,
       };
     }
   }
@@ -214,12 +215,12 @@ export class MCPAgentBridge {
   /**
    * Unified content parsing
    */
-  private parseContent(content: any): any {
+  private parseContent(content: unknown): unknown {
     if (!content) return null;
 
     if (Array.isArray(content)) {
       return content
-        .map((c: any) => {
+        .map((c: Record<string, unknown>) => {
           if (c.type === 'text') return c.text;
           if (c.type === 'image') return `[Image: ${c.mimeType}]`;
           if (c.type === 'resource') return `[Resource: ${c.uri}]`;
@@ -239,12 +240,10 @@ export class MCPAgentBridge {
    * Parse agent response for MCP tool calls
    * Pattern: MCP_CALL: mcp__server__tool({"param": "value"})
    */
-  parseToolCalls(response: string): Array<{ tool: string; params: Record<string, any> }> {
-    const calls: Array<{ tool: string; params: Record<string, any> }> = [];
+  parseToolCalls(response: string): Array<{ tool: string; params: Record<string, unknown> }> {
+    const calls: Array<{ tool: string; params: Record<string, unknown> }> = [];
     const pattern = /MCP_CALL:\s*(\w+__\w+__\w+)\s*\(([^)]*)\)/g;
-    let match;
-
-    while ((match = pattern.exec(response)) !== null) {
+    for (let match = pattern.exec(response); match !== null; match = pattern.exec(response)) {
       try {
         const tool = match[1];
         const paramsStr = match[2];
@@ -308,7 +307,7 @@ Provide your final response based on these results.`;
   /**
    * Create MCP task string for a specific tool
    */
-  createMCPTask(tool: MCPTool, params: Record<string, any>): string {
+  createMCPTask(tool: MCPTool, params: Record<string, unknown>): string {
     return `Execute MCP tool:
 Server: ${tool.serverName}
 Tool: ${tool.name}

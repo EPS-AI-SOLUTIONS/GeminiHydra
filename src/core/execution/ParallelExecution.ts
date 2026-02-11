@@ -118,11 +118,12 @@ export async function executeParallelGroups(
             output,
             duration: Date.now() - startTime,
           });
-        } catch (error: any) {
+        } catch (error: unknown) {
+          const msg = error instanceof Error ? error.message : String(error);
           results.set(task.id, {
             subTaskId: task.id,
             success: false,
-            output: error.message,
+            output: msg,
             duration: Date.now() - startTime,
           });
         } finally {

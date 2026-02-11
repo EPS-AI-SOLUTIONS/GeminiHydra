@@ -116,8 +116,6 @@ export function getToolCount() {
  * Utility for quick tool creation without extending BaseTool
  */
 export function createSimpleTool({ name, description, inputSchema, handler, timeoutMs = 30000 }) {
-  const { z } = require('zod');
-
   class SimpleTool extends BaseTool {
     constructor() {
       super({ name, description, inputSchema, timeoutMs });

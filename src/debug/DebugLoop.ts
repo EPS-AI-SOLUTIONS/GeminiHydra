@@ -21,6 +21,7 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 import chalk from 'chalk';
 import { GEMINIHYDRA_DIR } from '../config/paths.config.js';
 import { Agent } from '../core/agent/Agent.js';
+import { getErrorMessage } from '../core/errors.js';
 import { FileHandlers } from '../files/FileHandlers.js';
 import 'dotenv/config';
 
@@ -127,7 +128,7 @@ export class DebugLoop {
 
       if (analysis.errors.length > 0) {
         console.log(chalk.red('Errors found:'));
-        analysis.errors.forEach((e) => console.log(chalk.red(`  - ${e}`)));
+        for (const e of analysis.errors) console.log(chalk.red(`  - ${e}`));
       } else {
         console.log(chalk.green('✓ No errors detected'));
       }
@@ -196,7 +197,7 @@ export class DebugLoop {
         } else {
           console.log(chalk.yellow('Could not generate automatic fix'));
           console.log(chalk.cyan('Suggestions:'));
-          analysis.suggestions.forEach((s) => console.log(chalk.gray(`  - ${s}`)));
+          for (const s of analysis.suggestions) console.log(chalk.gray(`  - ${s}`));
         }
       }
 
@@ -254,8 +255,8 @@ export class DebugLoop {
       // Verify file exists
       await fs.access(filepath);
       return filepath;
-    } catch (error: any) {
-      console.error(chalk.red(`Screenshot failed: ${error.message}`));
+    } catch (error: unknown) {
+      console.error(chalk.red(`Screenshot failed: ${getErrorMessage(error)}`));
       return null;
     }
   }
@@ -333,8 +334,8 @@ CHANGES: Manual intervention required`;
 
       console.log(chalk.gray(`Backup created: ${backupPath}`));
       return true;
-    } catch (error: any) {
-      console.error(chalk.red(`Apply fix failed: ${error.message}`));
+    } catch (error: unknown) {
+      console.error(chalk.red(`Apply fix failed: ${getErrorMessage(error)}`));
       return false;
     }
   }
@@ -358,18 +359,18 @@ CHANGES: Manual intervention required`;
     const fixes = this.session.iterations.filter((i) => i.fix?.applied);
     if (fixes.length > 0) {
       lines.push(`\nFixes applied:`);
-      fixes.forEach((f) => {
+      for (const f of fixes) {
         lines.push(`  - ${f.fix?.file}`);
-      });
+      }
     }
 
     const unresolvedErrors =
       this.session.iterations[this.session.iterations.length - 1]?.analysis.errors || [];
     if (unresolvedErrors.length > 0) {
       lines.push(`\nUnresolved errors:`);
-      unresolvedErrors.forEach((e) => {
+      for (const e of unresolvedErrors) {
         lines.push(`  - ${e}`);
-      });
+      }
     }
 
     return lines.join('\n');

@@ -10,7 +10,11 @@
 import path from 'node:path';
 import chalk from 'chalk';
 import { createDocumentToolDefinitions } from '../native/NativeDocumentTools.js';
-import { createNativeSerenaTools, type NativeSerenaTools } from '../native/NativeSerenaTools.js';
+import {
+  createNativeSerenaTools,
+  type NativeSerenaTools,
+  type NativeToolResult,
+} from '../native/NativeSerenaTools.js';
 import { sanitizeNumericParams } from './MCPAliases.js';
 import { mcpToolRegistry } from './MCPToolRegistry.js';
 import type { MCPTool, MCPToolResult } from './MCPTypes.js';
@@ -193,7 +197,8 @@ function sanitizePath(value: string, rootDir: string): string {
   let sanitized = value.replace(/\0/g, '');
 
   // Layer 2: Remove control characters (keep tabs/newlines but strip others)
-  sanitized = sanitized.replace(/[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]/g, '');
+  // biome-ignore lint/suspicious/noControlCharactersInRegex: intentional control char sanitization
+  sanitized = sanitized.replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/g, '');
 
   // Layer 3: Defense-in-depth - reject paths containing '..' traversal sequences
   const forwardSlashPath = sanitized.replace(/\\/g, '/');
@@ -255,7 +260,8 @@ function sanitizeFilename(value: string): string {
 
   const sanitized = value
     .replace(/\0/g, '') // null bytes
-    .replace(/[\x00-\x1f\x7f]/g, '') // control characters
+    // biome-ignore lint/suspicious/noControlCharactersInRegex: intentional control char sanitization
+    .replace(/[\u0000-\u001f\u007f]/g, '') // control characters
     .replace(/[<>:"|?*]/g, '') // Windows-illegal characters
     .replace(/\.\./g, '') // directory traversal
     .replace(/[/\\]/g, '') // any slash characters (path separators)
@@ -281,7 +287,10 @@ function sanitizeFilename(value: string): string {
  * Sanitize path/filename fields in a nested object (one level deep).
  * Used for operation objects inside arrays (e.g. Excel edit operations).
  */
-function sanitizeNestedObject(obj: Record<string, any>, rootDir: string): Record<string, any> {
+function sanitizeNestedObject(
+  obj: Record<string, unknown>,
+  rootDir: string,
+): Record<string, unknown> {
   const result = { ...obj };
 
   for (const [key, value] of Object.entries(result)) {
@@ -306,7 +315,10 @@ function sanitizeNestedObject(obj: Record<string, any>, rootDir: string): Record
  * - Numeric parameters (clamped to safe ranges via sanitizeNumericParams)
  * - Nested objects with path/filename fields inside arrays (one level deep)
  */
-function sanitizeToolParams(params: Record<string, any>, rootDir: string): Record<string, any> {
+function sanitizeToolParams(
+  params: Record<string, unknown>,
+  rootDir: string,
+): Record<string, unknown> {
   // First apply numeric range sanitization
   const sanitized = sanitizeNumericParams(params);
 
@@ -323,7 +335,7 @@ function sanitizeToolParams(params: Record<string, any>, rootDir: string): Recor
     else if (Array.isArray(value)) {
       sanitized[key] = value.map((item) => {
         if (typeof item === 'object' && item !== null && !Array.isArray(item)) {
-          return sanitizeNestedObject(item, rootDir);
+          return sanitizeNestedObject(item as Record<string, unknown>, rootDir);
         }
         return item;
       });
@@ -393,10 +405,11 @@ export class NativeToolsServer {
     if (typeof value !== 'string') return value;
     try {
       return JSON.parse(value);
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
       console.warn(
         chalk.yellow(
-          `[NativeToolsServer] JSON.parse failed for ${context}: ${err.message}. Using raw string value.`,
+          `[NativeToolsServer] JSON.parse failed for ${context}: ${msg}. Using raw string value.`,
         ),
       );
       return value;
@@ -407,7 +420,7 @@ export class NativeToolsServer {
    * Pre-process params: if any known array/object params arrive as JSON strings,
    * parse them safely before passing to the tool handler.
    */
-  private preprocessParams(params: Record<string, any>): Record<string, any> {
+  private preprocessParams(params: Record<string, unknown>): Record<string, unknown> {
     const result = { ...params };
 
     // Known keys that may arrive as stringified JSON and should be objects/arrays
@@ -429,7 +442,7 @@ export class NativeToolsServer {
    * can crash the process. All failures are returned in MCP protocol
    * error format: { content: [{ type: "text", text: "Error: ..." }], isError: true }
    */
-  async callTool(toolName: string, params: Record<string, any>): Promise<MCPToolResult> {
+  async callTool(toolName: string, params: Record<string, unknown>): Promise<MCPToolResult> {
     // Global try/catch — nothing thrown inside this method can crash the server
     try {
       if (!this.registered) {
@@ -437,13 +450,14 @@ export class NativeToolsServer {
       }
 
       // Pre-process params: safely parse any stringified JSON values
-      let processedParams: Record<string, any>;
+      let processedParams: Record<string, unknown>;
       try {
         processedParams = this.preprocessParams(params);
-      } catch (err: any) {
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : String(err);
         console.error(
           chalk.red(
-            `[NativeToolsServer] Parameter preprocessing failed for tool "${toolName}": ${err.message}`,
+            `[NativeToolsServer] Parameter preprocessing failed for tool "${toolName}": ${msg}`,
           ),
         );
         return {
@@ -451,22 +465,23 @@ export class NativeToolsServer {
           content: [
             {
               type: 'text',
-              text: `Error: Parameter preprocessing failed for tool "${toolName}": ${err.message}`,
+              text: `Error: Parameter preprocessing failed for tool "${toolName}": ${msg}`,
             },
           ],
-          error: `Parameter preprocessing failed: ${err.message}`,
+          error: `Parameter preprocessing failed: ${msg}`,
           isError: true,
         };
       }
 
       // Sanitize all parameters before passing to native tools
-      let sanitizedParams: Record<string, any>;
+      let sanitizedParams: Record<string, unknown>;
       try {
         sanitizedParams = sanitizeToolParams(processedParams, this.rootDir);
-      } catch (err: any) {
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : String(err);
         console.error(
           chalk.red(
-            `[NativeToolsServer] Parameter sanitization failed for tool "${toolName}": ${err.message}`,
+            `[NativeToolsServer] Parameter sanitization failed for tool "${toolName}": ${msg}`,
           ),
         );
         return {
@@ -474,20 +489,20 @@ export class NativeToolsServer {
           content: [
             {
               type: 'text',
-              text: `Error: Parameter sanitization failed for tool "${toolName}": ${err.message}`,
+              text: `Error: Parameter sanitization failed for tool "${toolName}": ${msg}`,
             },
           ],
-          error: `Parameter sanitization failed: ${err.message}`,
+          error: `Parameter sanitization failed: ${msg}`,
           isError: true,
         };
       }
 
       // Execute the tool
-      let result;
+      let result: NativeToolResult;
       try {
         result = await this.tools.executeTool(toolName, sanitizedParams);
-      } catch (execErr: any) {
-        const execMessage = execErr.message || String(execErr);
+      } catch (execErr: unknown) {
+        const execMessage = execErr instanceof Error ? execErr.message : String(execErr);
         console.error(
           chalk.red(`[NativeToolsServer] Tool execution threw for "${toolName}": ${execMessage}`),
         );
@@ -515,10 +530,10 @@ export class NativeToolsServer {
           isError: true,
         };
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       // Last-resort catch: this should never be reached if the inner catches work,
       // but guarantees the server never crashes from a tool call.
-      const errorMessage = error.message || String(error);
+      const errorMessage = error instanceof Error ? error.message : String(error);
       const paramKeys = Object.keys(params || {}).join(', ');
       console.error(
         chalk.red(

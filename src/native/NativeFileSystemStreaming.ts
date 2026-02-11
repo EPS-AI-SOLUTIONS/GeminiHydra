@@ -454,6 +454,7 @@ export class NativeFileSystemStreaming {
       filePath,
       (chunk) => {
         chunks.push(typeof chunk === 'string' ? chunk : chunk.toString(encoding));
+        return true;
       },
       { ...options, asText: true, encoding },
     );

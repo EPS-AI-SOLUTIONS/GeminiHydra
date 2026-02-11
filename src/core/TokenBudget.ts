@@ -52,10 +52,10 @@ export class TokenBudgetManager {
 
   constructor(config: BudgetConfig = {}) {
     this.config = {
-      dailyLimit: config.dailyLimit ?? DEFAULT_CONFIG.dailyLimit!,
-      sessionLimit: config.sessionLimit ?? DEFAULT_CONFIG.sessionLimit!,
-      taskLimit: config.taskLimit ?? DEFAULT_CONFIG.taskLimit!,
-      warningThreshold: config.warningThreshold ?? DEFAULT_CONFIG.warningThreshold!,
+      dailyLimit: config.dailyLimit ?? DEFAULT_CONFIG.dailyLimit ?? 1_000_000,
+      sessionLimit: config.sessionLimit ?? DEFAULT_CONFIG.sessionLimit ?? 200_000,
+      taskLimit: config.taskLimit ?? DEFAULT_CONFIG.taskLimit ?? 50_000,
+      warningThreshold: config.warningThreshold ?? DEFAULT_CONFIG.warningThreshold ?? 0.8,
       onLimitReached:
         config.onLimitReached ??
         ((type, used, limit) => {
@@ -114,8 +114,9 @@ export class TokenBudgetManager {
           2,
         ),
       );
-    } catch (error: any) {
-      console.error(chalk.yellow(`[Budget] Failed to save: ${error.message}`));
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : String(error);
+      console.error(chalk.yellow(`[Budget] Failed to save: ${msg}`));
     }
   }
 
@@ -125,9 +126,20 @@ export class TokenBudgetManager {
   track(taskId: string, usage: TokenUsage): void {
     const total = usage.input + usage.output;
 
-    // Track per-task
+    // Track per-task (with pruning to prevent unbounded growth)
     if (!this.state.tasks[taskId]) {
       this.state.tasks[taskId] = { input: 0, output: 0, total: 0 };
+
+      // Prune old tasks if map grows too large
+      const MAX_TRACKED_TASKS = 500;
+      const taskKeys = Object.keys(this.state.tasks);
+      if (taskKeys.length > MAX_TRACKED_TASKS) {
+        // Remove oldest half of tasks (FIFO by insertion order)
+        const toRemove = taskKeys.slice(0, Math.floor(MAX_TRACKED_TASKS / 2));
+        for (const key of toRemove) {
+          delete this.state.tasks[key];
+        }
+      }
     }
     this.state.tasks[taskId].input += usage.input;
     this.state.tasks[taskId].output += usage.output;

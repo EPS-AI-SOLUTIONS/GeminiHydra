@@ -12,7 +12,7 @@ import { type GenerativeModel, GoogleGenerativeAI } from '@google/generative-ai'
 import 'dotenv/config';
 
 import { GEMINI_MODELS } from '../config/models.config.js';
-import { TASK_TEMPERATURES, TEMPERATURE_PRESETS } from '../config/temperatures.config.js';
+import { TEMPERATURE_PRESETS } from '../config/temperatures.config.js';
 import { mcpManager } from '../mcp/index.js';
 import { nativeCodeIntelligence } from '../native/NativeCodeIntelligence.js';
 import { logger } from './LiveLogger.js';
@@ -71,7 +71,7 @@ export class CodeAnalysisEngine {
     this.model = this.genAI.getGenerativeModel({
       model: GEMINI_MODELS.FLASH,
       generationConfig: {
-        temperature: TASK_TEMPERATURES.performance_analysis, // 0.9 for focused analysis
+        temperature: 1.0, // Temperature locked at 1.0 for Gemini - do not change
         maxOutputTokens: 4096,
       },
     });

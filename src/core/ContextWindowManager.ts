@@ -432,7 +432,8 @@ export class ContextWindowManager {
 
     // System messages first
     if (bySource.has('system')) {
-      const systemEntries = bySource.get('system')!;
+      const systemEntries = bySource.get('system');
+      if (!systemEntries) return '';
       sections.push(systemEntries.map((e) => e.content).join('\n'));
       bySource.delete('system');
     }

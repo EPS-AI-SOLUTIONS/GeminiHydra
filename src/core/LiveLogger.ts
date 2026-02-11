@@ -528,6 +528,14 @@ export class LiveLogger {
   divider(char: string = '─', length: number = 60): void {
     console.log(chalk.gray(char.repeat(length)));
   }
+
+  setQuietStartup(enabled: boolean): void {
+    this.config.quietStartup = enabled;
+  }
+
+  isQuietStartup(): boolean {
+    return this.config.quietStartup;
+  }
 }
 
 // ============================================================================
@@ -552,7 +560,7 @@ export function setLoggerConfig(config: Partial<LoggerConfig>): void {
  */
 export function enableQuietStartup(): void {
   if (loggerInstance) {
-    (loggerInstance as any).config.quietStartup = true;
+    loggerInstance.setQuietStartup(true);
   }
 }
 
@@ -561,7 +569,7 @@ export function enableQuietStartup(): void {
  */
 export function disableQuietStartup(): void {
   if (loggerInstance) {
-    (loggerInstance as any).config.quietStartup = false;
+    loggerInstance.setQuietStartup(false);
   }
 }
 
@@ -569,7 +577,7 @@ export function disableQuietStartup(): void {
  * Check if quiet startup is enabled
  */
 export function isQuietStartupEnabled(): boolean {
-  return isQuietStartup || (loggerInstance as any)?.config?.quietStartup || false;
+  return isQuietStartup || loggerInstance?.isQuietStartup() || false;
 }
 
 /**

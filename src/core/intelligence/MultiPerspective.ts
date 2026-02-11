@@ -58,7 +58,7 @@ Odpowiadaj PO POLSKU. Zwróć TYLKO JSON.`;
       const result = await geminiSemaphore.withPermit(async () => {
         const model = genAI.getGenerativeModel({
           model: INTELLIGENCE_MODEL,
-          generationConfig: { temperature: 0.4, maxOutputTokens: 1024 },
+          generationConfig: { temperature: 1.0, maxOutputTokens: 1024 }, // Temperature locked at 1.0 for Gemini - do not change
         });
         const res = await model.generateContent(prompt);
         return res.response.text();
@@ -69,7 +69,7 @@ Odpowiadaj PO POLSKU. Zwróć TYLKO JSON.`;
         .replace(/```/g, '')
         .trim();
       return JSON.parse(jsonStr) as Perspective;
-    } catch (_error: any) {
+    } catch (_error: unknown) {
       return {
         viewpoint,
         analysis: `Analiza ${viewpoint} nie powiodła się`,

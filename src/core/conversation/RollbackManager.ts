@@ -136,8 +136,9 @@ export class RollbackManager {
             // File doesn't exist, that's fine
           }
         }
-      } catch (error: any) {
-        errors.push(`${file.path}: ${error.message}`);
+      } catch (error: unknown) {
+        const msg = error instanceof Error ? error.message : String(error);
+        errors.push(`${file.path}: ${msg}`);
       }
     }
 

@@ -84,6 +84,7 @@ export const searchCommands = {
       spinner.start();
       const symbols = await tools.search.searchSymbols({
         pattern,
+        // biome-ignore lint/suspicious/noExplicitAny: user-provided string cast to symbol type enum
         types: type ? [type as any] : undefined,
         maxResults: 20,
       });

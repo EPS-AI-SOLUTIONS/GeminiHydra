@@ -38,7 +38,7 @@ interface SessionData {
   planJson?: string;
   startTime?: string;
   lastUpdate?: string;
-  custom: Record<string, any>;
+  custom: Record<string, unknown>;
 }
 
 /**
@@ -46,21 +46,25 @@ interface SessionData {
  */
 export class SessionCache {
   private config: SessionCacheConfig;
-  private cache: Map<string, any> = new Map();
+  private cache: Map<string, unknown> = new Map();
   private cacheFile: string;
   private saveTimeout: NodeJS.Timeout | null = null;
   private dirty: boolean = false;
 
   constructor(config: SessionCacheConfig = {}) {
     this.config = { ...DEFAULT_CONFIG, ...config };
-    this.cacheFile = path.join(process.cwd(), this.config.basePath!, 'session_cache.json');
+    this.cacheFile = path.join(
+      process.cwd(),
+      this.config.basePath ?? '.serena/memories/cache',
+      'session_cache.json',
+    );
   }
 
   /**
    * Load cache from disk
    */
   async load(): Promise<void> {
-    const parsed = await loadFromFile<Record<string, any>>(this.cacheFile);
+    const parsed = await loadFromFile<Record<string, unknown>>(this.cacheFile);
 
     if (parsed) {
       // Convert to Map
@@ -92,8 +96,9 @@ export class SessionCache {
           await new Promise((resolve) => setTimeout(resolve, 100));
         }
       }
-    } catch (error: any) {
-      console.log(chalk.red(`[SessionCache] Save error: ${error.message}`));
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : String(error);
+      console.log(chalk.red(`[SessionCache] Save error: ${msg}`));
     }
   }
 
@@ -117,7 +122,7 @@ export class SessionCache {
   /**
    * Set a cache value
    */
-  async set(key: string, value: any): Promise<void> {
+  async set(key: string, value: unknown): Promise<void> {
     this.cache.set(key, value);
     this.dirty = true;
     this.scheduleSave();
@@ -126,7 +131,7 @@ export class SessionCache {
   /**
    * Get a cache value
    */
-  get<T = any>(key: string): T | undefined {
+  get<T = unknown>(key: string): T | undefined {
     return this.cache.get(key) as T | undefined;
   }
 
@@ -173,7 +178,7 @@ export class SessionCache {
   /**
    * Get all entries
    */
-  entries(): [string, any][] {
+  entries(): [string, unknown][] {
     return Array.from(this.cache.entries());
   }
 

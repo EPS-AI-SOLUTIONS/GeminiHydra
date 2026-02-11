@@ -21,7 +21,7 @@ export interface LanguageServerConfig {
   /** Command arguments */
   serverArgs?: string[];
   /** Initialization options */
-  initOptions?: Record<string, any>;
+  initOptions?: Record<string, unknown>;
   /** Server capabilities to request */
   capabilities?: string[];
   /** Whether server supports workspace symbols */

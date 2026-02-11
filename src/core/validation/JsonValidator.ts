@@ -49,7 +49,7 @@ export function validateJson(
     return;
   }
 
-  let parsed: any;
+  let parsed: unknown;
   try {
     parsed = JSON.parse(jsonContent);
   } catch (e) {
@@ -78,7 +78,7 @@ export function validateJson(
  * Validate value against JSON Schema
  */
 export function validateJsonSchema(
-  value: any,
+  value: unknown,
   schema: JsonSchema,
   path: string,
   errors: FormatError[],
@@ -133,7 +133,7 @@ export function validateJsonSchema(
       for (const [key, propSchema] of Object.entries(schema.properties)) {
         if (key in value) {
           validateJsonSchema(
-            value[key],
+            (value as Record<string, unknown>)[key],
             propSchema,
             path ? `${path}.${key}` : key,
             errors,
@@ -179,9 +179,10 @@ export function validateJsonSchema(
       });
     }
     if (schema.items) {
-      value.forEach((item, idx) => {
-        validateJsonSchema(item, schema.items!, `${path}[${idx}]`, errors, suggestions);
-      });
+      const items = schema.items;
+      for (let idx = 0; idx < value.length; idx++) {
+        validateJsonSchema(value[idx], items, `${path}[${idx}]`, errors, suggestions);
+      }
     }
   }
 
@@ -264,7 +265,7 @@ export function autoCorrectJson(output: string, _spec: FormatSpec): string {
   }
 }
 
-function getJsonType(value: any): string {
+function getJsonType(value: unknown): string {
   if (value === null) return 'null';
   if (Array.isArray(value)) return 'array';
   return typeof value;

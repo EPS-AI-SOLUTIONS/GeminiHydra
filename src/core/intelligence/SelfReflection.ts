@@ -390,7 +390,7 @@ Bądź SUROWY ale SPRAWIEDLIWY. Zwróć TYLKO JSON.`;
     const result = await geminiSemaphore.withPermit(async () => {
       const model = genAI.getGenerativeModel({
         model: INTELLIGENCE_MODEL,
-        generationConfig: { temperature: 0.2, maxOutputTokens: 2048 },
+        generationConfig: { temperature: 1.0, maxOutputTokens: 2048 }, // Temperature locked at 1.0 for Gemini - do not change
       });
       const response = await model.generateContent(evaluationPrompt);
       return response.response.text();
@@ -401,8 +401,9 @@ Bądź SUROWY ale SPRAWIEDLIWY. Zwróć TYLKO JSON.`;
       .replace(/```/g, '')
       .trim();
     return JSON.parse(jsonStr);
-  } catch (error: any) {
-    console.log(chalk.yellow(`[Evaluate] Evaluation failed: ${error.message}`));
+  } catch (error: unknown) {
+    const msg = error instanceof Error ? error.message : String(error);
+    console.log(chalk.yellow(`[Evaluate] Evaluation failed: ${msg}`));
     return {
       score: 50,
       isCorrect: false,
@@ -460,7 +461,7 @@ Wyciągnij 1-3 NAJWAŻNIEJSZYCH lekcji. Zwróć TYLKO JSON array.`;
     const result = await geminiSemaphore.withPermit(async () => {
       const model = genAI.getGenerativeModel({
         model: INTELLIGENCE_MODEL,
-        generationConfig: { temperature: 0.3, maxOutputTokens: 2048 },
+        generationConfig: { temperature: 1.0, maxOutputTokens: 2048 }, // Temperature locked at 1.0 for Gemini - do not change
       });
       const response = await model.generateContent(learningPrompt);
       return response.response.text();
@@ -486,8 +487,9 @@ Wyciągnij 1-3 NAJWAŻNIEJSZYCH lekcji. Zwróć TYLKO JSON array.`;
 
     console.log(chalk.cyan(`[Learn] Extracted ${savedLessons.length} lessons from failure`));
     return savedLessons;
-  } catch (error: any) {
-    console.log(chalk.yellow(`[Learn] Failed to extract lessons: ${error.message}`));
+  } catch (error: unknown) {
+    const msg = error instanceof Error ? error.message : String(error);
+    console.log(chalk.yellow(`[Learn] Failed to extract lessons: ${msg}`));
     return [];
   }
 }
@@ -656,7 +658,7 @@ Zwróć TYLKO JSON.`;
       const result = await geminiSemaphore.withPermit(async () => {
         const model = genAI.getGenerativeModel({
           model: INTELLIGENCE_MODEL,
-          generationConfig: { temperature: 0.4, maxOutputTokens: 8192 },
+          generationConfig: { temperature: 1.0, maxOutputTokens: 8192 }, // Temperature locked at 1.0 for Gemini - do not change
         });
         const response = await model.generateContent(reflectionPrompt);
         return response.response.text();
@@ -677,8 +679,9 @@ Zwróć TYLKO JSON.`;
           `[Reflexion] Fixed: ${parsed.fixedErrors?.length || 0} errors, Added: ${parsed.addedElements?.length || 0} elements`,
         ),
       );
-    } catch (error: any) {
-      console.log(chalk.yellow(`[Reflexion] Iteration ${iteration + 1} failed: ${error.message}`));
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : String(error);
+      console.log(chalk.yellow(`[Reflexion] Iteration ${iteration + 1} failed: ${msg}`));
     }
   }
 
@@ -770,7 +773,7 @@ Odpowiadaj PO POLSKU. Zwróć TYLKO JSON.`;
       const response = await geminiSemaphore.withPermit(async () => {
         const model = genAI.getGenerativeModel({
           model: INTELLIGENCE_MODEL,
-          generationConfig: { temperature: 0.3, maxOutputTokens: 4096 },
+          generationConfig: { temperature: 1.0, maxOutputTokens: 4096 }, // Temperature locked at 1.0 for Gemini - do not change
         });
         const result = await model.generateContent(reflectionPrompt);
         return result.response.text();
@@ -794,8 +797,9 @@ Odpowiadaj PO POLSKU. Zwróć TYLKO JSON.`;
         console.log(chalk.gray(`[Reflect] Iteration ${i + 1}: No significant improvement needed`));
         break;
       }
-    } catch (error: any) {
-      console.log(chalk.yellow(`[Reflect] Iteration ${i + 1} failed: ${error.message}`));
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : String(error);
+      console.log(chalk.yellow(`[Reflect] Iteration ${i + 1} failed: ${msg}`));
       break;
     }
   }
@@ -1012,11 +1016,13 @@ export class SelfReflectionEngine {
       this.reflectionHistory.set(taskKey, []);
     }
 
-    const history = this.reflectionHistory.get(taskKey)!;
-    history.push(result);
+    const history = this.reflectionHistory.get(taskKey);
+    if (history) {
+      history.push(result);
 
-    if (history.length > 10) {
-      history.shift();
+      if (history.length > 10) {
+        history.shift();
+      }
     }
   }
 

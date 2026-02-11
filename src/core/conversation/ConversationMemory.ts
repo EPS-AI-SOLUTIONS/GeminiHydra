@@ -31,7 +31,7 @@ export interface ConversationSession {
   startTime: number;
   lastActivity: number;
   turns: ConversationTurn[];
-  context: Record<string, any>;
+  context: Record<string, unknown>;
   topics: string[];
 }
 
@@ -88,7 +88,10 @@ export class ConversationMemory {
       this.startSession();
     }
 
-    const session = this.sessions.get(this.currentSessionId!)!;
+    const sessionId = this.currentSessionId;
+    if (!sessionId) return undefined as unknown as ConversationTurn;
+    const session = this.sessions.get(sessionId);
+    if (!session) return undefined as unknown as ConversationTurn;
     const turn: ConversationTurn = {
       id: crypto.randomUUID(),
       timestamp: Date.now(),
@@ -138,14 +141,15 @@ export class ConversationMemory {
         lastSaved: Date.now(),
       };
       await fs.writeFile(this.persistPath, JSON.stringify(data, null, 2));
-    } catch (error: any) {
-      console.log(chalk.yellow(`[ConversationMemory] Persist failed: ${error.message}`));
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : String(error);
+      console.log(chalk.yellow(`[ConversationMemory] Persist failed: ${msg}`));
     }
   }
 
   getSessionStats(): { sessions: number; totalTurns: number; currentTurns: number } {
     let totalTurns = 0;
-    this.sessions.forEach((s) => (totalTurns += s.turns.length));
+    for (const [, s] of this.sessions) totalTurns += s.turns.length;
     const currentTurns = this.currentSessionId
       ? this.sessions.get(this.currentSessionId)?.turns.length || 0
       : 0;
