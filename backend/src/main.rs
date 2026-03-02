@@ -258,6 +258,14 @@ async fn main() -> anyhow::Result<()> {
     // ── Spawn background watchdog ──
     let _watchdog = watchdog::spawn(state.clone());
 
+    // ── Spawn MCP client startup (connect to enabled MCP servers) ──
+    let mcp_state = state.clone();
+    tokio::spawn(async move {
+        if let Err(e) = mcp_state.mcp_client.startup_connect().await {
+            tracing::error!("MCP startup_connect failed: {}", e);
+        }
+    });
+
     let port: u16 = std::env::var("PORT")
         .unwrap_or_else(|_| "8081".to_string())
         .parse()?;

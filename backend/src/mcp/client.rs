@@ -1,10 +1,12 @@
 // Jaskier Shared Pattern -- mcp/client
-//! Lightweight MCP client manager using JSON-RPC 2.0 over HTTP.
+//! Lightweight MCP client manager using JSON-RPC 2.0.
 //!
+//! Supports HTTP transport (Streamable HTTP) and stdio transport (child process).
 //! Connects to external MCP servers, discovers their tools, and proxies
 //! `tools/call` requests so Gemini agents can use them.
 
 use std::collections::HashMap;
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -15,6 +17,9 @@ use sqlx::PgPool;
 use tokio::sync::RwLock;
 
 use super::config::{self, McpServerConfig};
+
+/// Default timeout for tool execution (30 seconds).
+const TOOL_CALL_TIMEOUT: Duration = Duration::from_secs(30);
 
 // ── MCP Tool descriptor ─────────────────────────────────────────────────────
 
@@ -35,6 +40,22 @@ pub struct McpTool {
     pub input_schema: Value,
 }
 
+// ── Transport ────────────────────────────────────────────────────────────────
+
+/// Transport layer for communicating with an MCP server.
+#[derive(Debug)]
+enum McpTransport {
+    Http {
+        url: String,
+        auth_token: Option<String>,
+    },
+    Stdio {
+        _child: tokio::sync::Mutex<tokio::process::Child>,
+        stdin: tokio::sync::Mutex<tokio::process::ChildStdin>,
+        stdout: tokio::sync::Mutex<tokio::io::BufReader<tokio::process::ChildStdout>>,
+    },
+}
+
 // ── Connection state ────────────────────────────────────────────────────────
 
 /// An active connection to an MCP server.
@@ -42,12 +63,9 @@ pub struct McpTool {
 struct McpConnection {
     server_id: String,
     server_name: String,
-    url: String,
-    auth_token: Option<String>,
+    transport: McpTransport,
     timeout: Duration,
     tools: Vec<McpTool>,
-    /// MCP session ID returned by `initialize`, sent as `Mcp-Session-Id` header.
-    session_id: Option<String>,
 }
 
 // ── Client Manager ──────────────────────────────────────────────────────────
@@ -61,6 +79,7 @@ pub struct McpClientManager {
     connections: RwLock<HashMap<String, Arc<McpConnection>>>,
     db: PgPool,
     client: Client,
+    request_id: AtomicU64,
 }
 
 impl McpClientManager {
@@ -69,7 +88,13 @@ impl McpClientManager {
             connections: RwLock::new(HashMap::new()),
             db,
             client,
+            request_id: AtomicU64::new(1),
         }
+    }
+
+    /// Get next unique JSON-RPC request ID.
+    fn next_id(&self) -> u64 {
+        self.request_id.fetch_add(1, Ordering::Relaxed)
     }
 
     // ── Startup: connect to all enabled servers ─────────────────────────
@@ -112,95 +137,69 @@ impl McpClientManager {
 
     /// Connect to a single MCP server: initialize + discover tools.
     pub async fn connect_server(&self, cfg: &McpServerConfig) -> Result<(), String> {
-        if cfg.transport != "http" {
-            return Err(format!(
-                "Only HTTP transport is supported (got '{}').",
-                cfg.transport
-            ));
-        }
-
-        let url = cfg
-            .url
-            .as_deref()
-            .ok_or("HTTP transport requires a URL")?;
-
         let timeout = Duration::from_secs(cfg.timeout_secs.max(5) as u64);
-
-        // Step 1: Initialize
-        let init_response = self
-            .json_rpc_call(url, cfg.auth_token.as_deref(), timeout, json!({
-                "jsonrpc": "2.0",
-                "id": 1,
-                "method": "initialize",
-                "params": {
-                    "protocolVersion": "2024-11-05",
-                    "capabilities": {
-                        "tools": { "listChanged": true }
-                    },
-                    "clientInfo": {
-                        "name": "GeminiHydra",
-                        "version": "15.0.0"
-                    }
-                }
-            }))
-            .await?;
-
-        let session_id = init_response
-            .get("_mcp_session_id")
-            .and_then(|v| v.as_str())
-            .map(String::from);
-
-        let server_name = init_response
-            .pointer("/result/serverInfo/name")
-            .and_then(|v| v.as_str())
-            .unwrap_or(&cfg.name);
-
-        tracing::debug!(
-            "MCP: initialized '{}' (protocol version: {})",
-            server_name,
-            init_response
-                .pointer("/result/protocolVersion")
-                .and_then(|v| v.as_str())
-                .unwrap_or("unknown")
-        );
-
-        // Step 2: List tools
-        let tools_response = self
-            .json_rpc_call(url, cfg.auth_token.as_deref(), timeout, json!({
-                "jsonrpc": "2.0",
-                "id": 2,
-                "method": "tools/list"
-            }))
-            .await?;
-
-        let raw_tools = tools_response
-            .pointer("/result/tools")
-            .and_then(|v| v.as_array())
-            .cloned()
-            .unwrap_or_default();
-
         let sanitized_name = sanitize_server_name(&cfg.name);
 
-        let tools: Vec<McpTool> = raw_tools
-            .iter()
-            .filter_map(|t| {
-                let name = t.get("name")?.as_str()?.to_string();
-                let description = t.get("description").and_then(|d| d.as_str()).map(String::from);
-                let input_schema = t.get("inputSchema").cloned().unwrap_or(json!({"type": "object", "properties": {}}));
-                let prefixed = format!("mcp_{}_{}", sanitized_name, name);
+        let (transport, tools) = match cfg.transport.as_str() {
+            "http" => {
+                let url = cfg
+                    .url
+                    .as_deref()
+                    .ok_or("HTTP transport requires a URL")?;
 
-                Some(McpTool {
-                    name,
-                    prefixed_name: prefixed,
-                    server_name: cfg.name.clone(),
-                    server_id: cfg.id.clone(),
-                    description,
-                    input_schema,
-                })
-            })
-            .collect();
+                // Step 1: Initialize
+                let _init_result = self
+                    .http_jsonrpc(url, cfg.auth_token.as_deref(), timeout, "initialize", json!({
+                        "protocolVersion": "2025-03-26",
+                        "capabilities": {
+                            "tools": { "listChanged": true }
+                        },
+                        "clientInfo": {
+                            "name": "GeminiHydra",
+                            "version": "15.0.0"
+                        }
+                    }))
+                    .await?;
 
-        // Step 3: Persist discovered tools to DB
+                // Step 2: Send initialized notification
+                let _ = self
+                    .http_jsonrpc_notify(url, cfg.auth_token.as_deref(), timeout, "notifications/initialized", json!({}))
+                    .await;
+
+                // Step 3: List tools
+                let raw_tools = self.http_list_tools(url, cfg.auth_token.as_deref(), timeout).await?;
+
+                let transport = McpTransport::Http {
+                    url: url.to_string(),
+                    auth_token: cfg.auth_token.clone(),
+                };
+
+                let tools = build_tool_list(&raw_tools, &sanitized_name, &cfg.name, &cfg.id);
+                (transport, tools)
+            }
+            "stdio" => {
+                let command = cfg
+                    .command
+                    .as_deref()
+                    .ok_or("stdio transport requires a command")?;
+
+                let args: Vec<String> = serde_json::from_str(&cfg.args).unwrap_or_default();
+                let env_vars: HashMap<String, String> =
+                    serde_json::from_str(&cfg.env_vars).unwrap_or_default();
+
+                let (transport, raw_tools) = self
+                    .stdio_connect(command, &args, &env_vars, timeout)
+                    .await?;
+
+                let tools = build_tool_list(&raw_tools, &sanitized_name, &cfg.name, &cfg.id);
+                (transport, tools)
+            }
+            other => {
+                return Err(format!("Unsupported transport '{}' — use 'http' or 'stdio'", other));
+            }
+        };
+
+        // Persist discovered tools to DB
         let db_tools: Vec<(String, Option<String>, String)> = tools
             .iter()
             .map(|t| (t.name.clone(), t.description.clone(), t.input_schema.to_string()))
@@ -209,15 +208,13 @@ impl McpClientManager {
             tracing::warn!("MCP: failed to persist tools for '{}': {}", cfg.name, e);
         }
 
-        // Step 4: Store connection
+        // Store connection
         let conn = Arc::new(McpConnection {
             server_id: cfg.id.clone(),
             server_name: cfg.name.clone(),
-            url: url.to_string(),
-            auth_token: cfg.auth_token.clone(),
+            transport,
             timeout,
             tools,
-            session_id,
         });
 
         self.connections.write().await.insert(cfg.id.clone(), conn);
@@ -226,8 +223,11 @@ impl McpClientManager {
 
     /// Disconnect from a server (remove from active connections).
     pub async fn disconnect_server(&self, server_id: &str) {
-        self.connections.write().await.remove(server_id);
-        tracing::info!("MCP: disconnected server {}", server_id);
+        if let Some(conn) = self.connections.write().await.remove(server_id) {
+            tracing::info!("MCP: disconnected server '{}'", conn.server_name);
+            // For stdio, the child process is dropped when all Arc references are gone.
+            // tokio::process::Child::drop kills the child.
+        }
     }
 
     // ── Tool access ─────────────────────────────────────────────────────
@@ -264,6 +264,7 @@ impl McpClientManager {
     // ── Call tool ───────────────────────────────────────────────────────
 
     /// Call a tool on a connected MCP server by its prefixed name.
+    /// Enforces a timeout of max(TOOL_CALL_TIMEOUT, server.timeout).
     pub async fn call_tool(
         &self,
         prefixed_name: &str,
@@ -274,62 +275,56 @@ impl McpClientManager {
             .await
             .ok_or_else(|| format!("MCP tool '{}' not found in any connected server", prefixed_name))?;
 
-        let response = self
-            .json_rpc_call(
-                &conn.url,
-                conn.auth_token.as_deref(),
-                conn.timeout,
-                json!({
-                    "jsonrpc": "2.0",
-                    "id": 3,
-                    "method": "tools/call",
-                    "params": {
-                        "name": original_name,
-                        "arguments": arguments
-                    }
-                }),
-            )
-            .await?;
+        let call_timeout = conn.timeout.max(TOOL_CALL_TIMEOUT);
 
-        // Extract result content
-        if let Some(error) = response.get("error") {
-            let msg = error.get("message").and_then(|m| m.as_str()).unwrap_or("Unknown MCP error");
-            let code = error.get("code").and_then(|c| c.as_i64()).unwrap_or(-1);
-            return Err(format!("MCP error {}: {}", code, msg));
-        }
+        let result = tokio::time::timeout(call_timeout, async {
+            match &conn.transport {
+                McpTransport::Http { url, auth_token } => {
+                    let response = self
+                        .http_jsonrpc(
+                            url,
+                            auth_token.as_deref(),
+                            conn.timeout,
+                            "tools/call",
+                            json!({
+                                "name": original_name,
+                                "arguments": arguments
+                            }),
+                        )
+                        .await?;
 
-        // MCP tools/call result is { content: [{ type: "text", text: "..." }] }
-        if let Some(content) = response.pointer("/result/content") {
-            if let Some(arr) = content.as_array() {
-                let texts: Vec<&str> = arr
-                    .iter()
-                    .filter_map(|c| {
-                        if c.get("type").and_then(|t| t.as_str()) == Some("text") {
-                            c.get("text").and_then(|t| t.as_str())
-                        } else {
-                            None
-                        }
-                    })
-                    .collect();
-                if !texts.is_empty() {
-                    return Ok(texts.join("\n"));
+                    extract_tool_result(&response)
+                }
+                McpTransport::Stdio { stdin, stdout, .. } => {
+                    self.stdio_call_tool(stdin, stdout, &original_name, arguments, conn.timeout)
+                        .await
                 }
             }
-            return Ok(content.to_string());
-        }
+        })
+        .await
+        .map_err(|_| format!("MCP tool '{}' timed out after {}s", prefixed_name, call_timeout.as_secs()))?;
 
-        Ok(response.get("result").map(|r| r.to_string()).unwrap_or_else(|| "{}".to_string()))
+        result
     }
 
-    // ── JSON-RPC transport ──────────────────────────────────────────────
+    // ── HTTP JSON-RPC helpers ────────────────────────────────────────────
 
-    async fn json_rpc_call(
+    async fn http_jsonrpc(
         &self,
         url: &str,
         auth_token: Option<&str>,
         timeout: Duration,
-        body: Value,
+        method: &str,
+        params: Value,
     ) -> Result<Value, String> {
+        let id = self.next_id();
+        let body = json!({
+            "jsonrpc": "2.0",
+            "id": id,
+            "method": method,
+            "params": params,
+        });
+
         let mut req = self
             .client
             .post(url)
@@ -345,12 +340,6 @@ impl McpClientManager {
             format!("MCP HTTP request to '{}' failed: {}", url, e)
         })?;
 
-        let session_id = response
-            .headers()
-            .get("mcp-session-id")
-            .and_then(|v| v.to_str().ok())
-            .map(String::from);
-
         let status = response.status();
         if !status.is_success() {
             let body_text = response.text().await.unwrap_or_default();
@@ -361,15 +350,249 @@ impl McpClientManager {
             ));
         }
 
-        let mut json: Value = response.json().await.map_err(|e| {
+        let json: Value = response.json().await.map_err(|e| {
             format!("MCP response is not valid JSON: {}", e)
         })?;
 
-        if let Some(sid) = session_id {
-            json["_mcp_session_id"] = Value::String(sid);
+        if let Some(error) = json.get("error") {
+            return Err(format!("MCP JSON-RPC error: {}", error));
         }
 
-        Ok(json)
+        Ok(json.get("result").cloned().unwrap_or(json!(null)))
+    }
+
+    /// Send a JSON-RPC notification (no id, no response expected).
+    async fn http_jsonrpc_notify(
+        &self,
+        url: &str,
+        auth_token: Option<&str>,
+        timeout: Duration,
+        method: &str,
+        params: Value,
+    ) -> Result<(), String> {
+        let body = json!({
+            "jsonrpc": "2.0",
+            "method": method,
+            "params": params,
+        });
+
+        let mut req = self
+            .client
+            .post(url)
+            .header("Content-Type", "application/json")
+            .timeout(timeout)
+            .json(&body);
+
+        if let Some(token) = auth_token {
+            req = req.header("Authorization", format!("Bearer {}", token));
+        }
+
+        let _ = req.send().await.map_err(|e| {
+            format!("MCP notification to '{}' failed: {}", url, e)
+        })?;
+
+        Ok(())
+    }
+
+    async fn http_list_tools(
+        &self,
+        url: &str,
+        auth_token: Option<&str>,
+        timeout: Duration,
+    ) -> Result<Vec<RawMcpTool>, String> {
+        let result = self
+            .http_jsonrpc(url, auth_token, timeout, "tools/list", json!({}))
+            .await?;
+
+        Ok(parse_tools_list(&result))
+    }
+
+    // ── Stdio transport helpers ──────────────────────────────────────────
+
+    async fn stdio_connect(
+        &self,
+        command: &str,
+        args: &[String],
+        env_vars: &HashMap<String, String>,
+        timeout: Duration,
+    ) -> Result<(McpTransport, Vec<RawMcpTool>), String> {
+        use tokio::io::{AsyncWriteExt, BufReader};
+        use tokio::process::Command;
+
+        let mut cmd = Command::new(command);
+        cmd.args(args)
+            .envs(env_vars)
+            .stdin(std::process::Stdio::piped())
+            .stdout(std::process::Stdio::piped())
+            .stderr(std::process::Stdio::piped());
+
+        let mut child = cmd.spawn().map_err(|e| {
+            format!("Failed to spawn MCP stdio server '{}': {}", command, e)
+        })?;
+
+        let stdin = child
+            .stdin
+            .take()
+            .ok_or_else(|| "Failed to capture stdin".to_string())?;
+        let stdout = child
+            .stdout
+            .take()
+            .ok_or_else(|| "Failed to capture stdout".to_string())?;
+
+        let stdin_mutex = tokio::sync::Mutex::new(stdin);
+        let stdout_mutex = tokio::sync::Mutex::new(BufReader::new(stdout));
+
+        // Initialize
+        let _init_result = self
+            .stdio_request(
+                &stdin_mutex,
+                &stdout_mutex,
+                "initialize",
+                json!({
+                    "protocolVersion": "2025-03-26",
+                    "capabilities": {
+                        "tools": { "listChanged": true }
+                    },
+                    "clientInfo": {
+                        "name": "GeminiHydra",
+                        "version": "15.0.0"
+                    }
+                }),
+                timeout,
+            )
+            .await?;
+
+        // Send initialized notification
+        {
+            let notif = json!({
+                "jsonrpc": "2.0",
+                "method": "notifications/initialized",
+                "params": {}
+            });
+            let mut line = serde_json::to_string(&notif).unwrap_or_default();
+            line.push('\n');
+            let mut guard = stdin_mutex.lock().await;
+            guard.write_all(line.as_bytes()).await.map_err(|e| {
+                format!("Failed to send initialized notification: {}", e)
+            })?;
+            guard.flush().await.map_err(|e| {
+                format!("Failed to flush stdin: {}", e)
+            })?;
+        }
+
+        // List tools
+        let tools_result = self
+            .stdio_request(&stdin_mutex, &stdout_mutex, "tools/list", json!({}), timeout)
+            .await?;
+
+        let tools = parse_tools_list(&tools_result);
+
+        let transport = McpTransport::Stdio {
+            _child: tokio::sync::Mutex::new(child),
+            stdin: stdin_mutex,
+            stdout: stdout_mutex,
+        };
+
+        Ok((transport, tools))
+    }
+
+    async fn stdio_request(
+        &self,
+        stdin: &tokio::sync::Mutex<tokio::process::ChildStdin>,
+        stdout: &tokio::sync::Mutex<tokio::io::BufReader<tokio::process::ChildStdout>>,
+        method: &str,
+        params: Value,
+        timeout: Duration,
+    ) -> Result<Value, String> {
+        use tokio::io::{AsyncBufReadExt, AsyncWriteExt};
+
+        let id = self.next_id();
+        let id_str = id.to_string();
+        let request = json!({
+            "jsonrpc": "2.0",
+            "id": id,
+            "method": method,
+            "params": params,
+        });
+
+        let mut line = serde_json::to_string(&request)
+            .map_err(|e| format!("Failed to serialize JSON-RPC request: {}", e))?;
+        line.push('\n');
+
+        // Write request
+        {
+            let mut guard = stdin.lock().await;
+            guard.write_all(line.as_bytes()).await.map_err(|e| {
+                format!("Failed to write to MCP stdio stdin: {}", e)
+            })?;
+            guard.flush().await.map_err(|e| {
+                format!("Failed to flush MCP stdio stdin: {}", e)
+            })?;
+        }
+
+        // Read response (line-delimited JSON-RPC)
+        let response = tokio::time::timeout(timeout, async {
+            let mut guard = stdout.lock().await;
+            loop {
+                let mut buf = String::new();
+                let n = guard.read_line(&mut buf).await.map_err(|e| {
+                    format!("MCP stdio read error: {}", e)
+                })?;
+                if n == 0 {
+                    return Err("MCP stdio: EOF while reading response".to_string());
+                }
+                let buf = buf.trim();
+                if buf.is_empty() {
+                    continue;
+                }
+                let parsed: Value = serde_json::from_str(buf).map_err(|e| {
+                    format!("MCP stdio: invalid JSON response: {}", e)
+                })?;
+                // Match by id (skip notifications)
+                let resp_id = parsed.get("id");
+                let matches = resp_id
+                    .map(|v| {
+                        v.as_u64() == Some(id) || v.as_str() == Some(&id_str)
+                    })
+                    .unwrap_or(false);
+
+                if matches {
+                    if let Some(error) = parsed.get("error") {
+                        return Err(format!("MCP JSON-RPC error: {}", error));
+                    }
+                    return Ok(parsed.get("result").cloned().unwrap_or(json!(null)));
+                }
+                // else: notification or mismatched id, skip
+            }
+        })
+        .await
+        .map_err(|_| format!("MCP stdio: timeout waiting for response to '{}'", method))??;
+
+        Ok(response)
+    }
+
+    async fn stdio_call_tool(
+        &self,
+        stdin: &tokio::sync::Mutex<tokio::process::ChildStdin>,
+        stdout: &tokio::sync::Mutex<tokio::io::BufReader<tokio::process::ChildStdout>>,
+        tool_name: &str,
+        arguments: &Value,
+        timeout: Duration,
+    ) -> Result<String, String> {
+        let result = self
+            .stdio_request(
+                stdin,
+                stdout,
+                "tools/call",
+                json!({
+                    "name": tool_name,
+                    "arguments": arguments,
+                }),
+                timeout,
+            )
+            .await?;
+
+        extract_tool_result(&result)
     }
 
     // ── Build Gemini tool declarations for MCP tools ────────────────────
@@ -392,7 +615,106 @@ impl McpClientManager {
     }
 }
 
+// ── Raw tool (before prefixing) ──────────────────────────────────────────────
+
+struct RawMcpTool {
+    name: String,
+    description: Option<String>,
+    input_schema: Value,
+}
+
 // ── Helpers ─────────────────────────────────────────────────────────────────
+
+/// Parse tools/list result into raw tool descriptors.
+fn parse_tools_list(result: &Value) -> Vec<RawMcpTool> {
+    let tools_array = result
+        .get("tools")
+        .and_then(|v| v.as_array())
+        .cloned()
+        .unwrap_or_default();
+
+    tools_array
+        .iter()
+        .filter_map(|t| {
+            let name = t.get("name")?.as_str()?.to_string();
+            if name.is_empty() {
+                return None;
+            }
+            let description = t.get("description").and_then(|d| d.as_str()).map(String::from);
+            let input_schema = t
+                .get("inputSchema")
+                .cloned()
+                .unwrap_or(json!({"type": "object", "properties": {}}));
+            Some(RawMcpTool {
+                name,
+                description,
+                input_schema,
+            })
+        })
+        .collect()
+}
+
+/// Build prefixed McpTool list from raw tools.
+fn build_tool_list(
+    raw_tools: &[RawMcpTool],
+    sanitized_name: &str,
+    server_name: &str,
+    server_id: &str,
+) -> Vec<McpTool> {
+    raw_tools
+        .iter()
+        .map(|t| {
+            let prefixed = format!("mcp_{}_{}", sanitized_name, t.name);
+            McpTool {
+                name: t.name.clone(),
+                prefixed_name: prefixed,
+                server_name: server_name.to_string(),
+                server_id: server_id.to_string(),
+                description: t.description.clone(),
+                input_schema: t.input_schema.clone(),
+            }
+        })
+        .collect()
+}
+
+/// Extract text content from a tools/call result.
+fn extract_tool_result(result: &Value) -> Result<String, String> {
+    // Check for isError flag
+    let is_error = result
+        .get("isError")
+        .and_then(|v| v.as_bool())
+        .unwrap_or(false);
+
+    // MCP tools/call result is { content: [{ type: "text", text: "..." }] }
+    if let Some(content) = result.get("content") {
+        if let Some(arr) = content.as_array() {
+            let mut text_parts: Vec<String> = Vec::new();
+            for part in arr {
+                let part_type = part.get("type").and_then(|v| v.as_str()).unwrap_or("");
+                match part_type {
+                    "text" => {
+                        if let Some(text) = part.get("text").and_then(|t| t.as_str()) {
+                            text_parts.push(text.to_string());
+                        }
+                    }
+                    "image" | "resource" => {
+                        text_parts.push(format!("[{} content]", part_type));
+                    }
+                    _ => {}
+                }
+            }
+            if !text_parts.is_empty() {
+                let combined = text_parts.join("\n");
+                return if is_error { Err(combined) } else { Ok(combined) };
+            }
+            let serialized = content.to_string();
+            return if is_error { Err(serialized) } else { Ok(serialized) };
+        }
+    }
+
+    let fallback = result.to_string();
+    if is_error { Err(fallback) } else { Ok(fallback) }
+}
 
 fn sanitize_server_name(name: &str) -> String {
     let mut result = String::with_capacity(name.len());
@@ -437,5 +759,26 @@ mod tests {
     fn test_truncate_str() {
         assert_eq!(truncate_str("hello", 10), "hello");
         assert_eq!(truncate_str("hello world", 5), "hello...");
+    }
+
+    #[test]
+    fn test_extract_tool_result_text() {
+        let result = json!({
+            "content": [
+                { "type": "text", "text": "Hello world" }
+            ]
+        });
+        assert_eq!(extract_tool_result(&result), Ok("Hello world".to_string()));
+    }
+
+    #[test]
+    fn test_extract_tool_result_error() {
+        let result = json!({
+            "content": [
+                { "type": "text", "text": "Something failed" }
+            ],
+            "isError": true
+        });
+        assert_eq!(extract_tool_result(&result), Err("Something failed".to_string()));
     }
 }

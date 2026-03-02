@@ -5,6 +5,7 @@ pub mod auth;
 pub mod files;
 pub mod handlers;
 pub mod logs;
+pub mod mcp;
 pub mod model_registry;
 pub mod models;
 pub mod oauth;
@@ -18,7 +19,7 @@ pub mod watchdog;
 use axum::extract::State;
 use axum::http::HeaderValue;
 use axum::middleware;
-use axum::routing::{delete, get, post};
+use axum::routing::{delete, get, patch, post};
 use axum::Router;
 use tower_governor::{governor::GovernorConfigBuilder, GovernorLayer};
 use utoipa::OpenApi;
@@ -220,7 +221,9 @@ pub fn create_router(state: AppState) -> Router {
         // A2A v0.3 — Agent Card discovery (public, no auth)
         .route("/.well-known/agent-card.json", get(a2a::agent_card))
         // ADK sidecar internal tool bridge (localhost only, no auth)
-        .route("/api/internal/tool", post(handlers::internal_tool_execute));
+        .route("/api/internal/tool", post(handlers::internal_tool_execute))
+        // MCP server endpoint (public — MCP spec requires open access for tool discovery)
+        .route("/mcp", post(mcp::server::mcp_handler));
 
     // WebSocket with its own stricter rate limit (10 per minute)
     let ws_routes = Router::new()
@@ -263,6 +266,13 @@ pub fn create_router(state: AppState) -> Router {
         .route("/a2a/message/stream", post(a2a::message_stream))
         .route("/a2a/tasks/{id}", get(a2a::tasks_get))
         .route("/a2a/tasks/{id}/cancel", post(a2a::tasks_cancel))
+        // ── MCP routes ────────────────────────────────────────────
+        .route("/api/mcp/servers", get(mcp::config::mcp_server_list).post(mcp::config::mcp_server_create))
+        .route("/api/mcp/servers/{id}", patch(mcp::config::mcp_server_update).delete(mcp::config::mcp_server_delete))
+        .route("/api/mcp/servers/{id}/connect", post(mcp::config::mcp_server_connect))
+        .route("/api/mcp/servers/{id}/disconnect", post(mcp::config::mcp_server_disconnect))
+        .route("/api/mcp/servers/{id}/tools", get(mcp::config::mcp_server_tools))
+        .route("/api/mcp/tools", get(mcp::config::mcp_all_tools))
         .route_layer(middleware::from_fn_with_state(state.clone(), auth::require_auth));
 
     // ── Metrics endpoint (public, no auth) ─────────────────────────

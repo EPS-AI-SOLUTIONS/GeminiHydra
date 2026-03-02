@@ -297,6 +297,31 @@ pub async fn execute_tool(name: &str, args: &Value, state: &AppState, working_di
         "crawl_website" => {
             web_scraping::tool_crawl_website(args, &state.client).await
         }
+        // ── MCP proxy tools (mcp_{server}_{tool}) ──
+        _ if name.starts_with("mcp_") => {
+            state.mcp_client.call_tool(name, args)
+                .await
+                .map(ToolOutput::text)
+                .map_err(|e| format!("MCP tool error: {}", e))
+        }
+        // ── MCP meta tools ──
+        "list_mcp_tools" => {
+            let tools = state.mcp_client.list_all_tools().await;
+            let info: Vec<Value> = tools.iter().map(|t| json!({
+                "name": t.prefixed_name,
+                "server": t.server_name,
+                "description": t.description,
+            })).collect();
+            Ok(ToolOutput::text(serde_json::to_string_pretty(&info).unwrap_or_else(|_| "[]".to_string())))
+        }
+        "execute_mcp_tool" => {
+            let tool_name = args["tool_name"].as_str().ok_or("Missing tool_name")?;
+            let tool_args = args.get("arguments").cloned().unwrap_or(json!({}));
+            state.mcp_client.call_tool(tool_name, &tool_args)
+                .await
+                .map(ToolOutput::text)
+                .map_err(|e| format!("MCP tool error: {}", e))
+        }
         _ => Err(format!("Unknown tool: {}", name)),
     }
 }

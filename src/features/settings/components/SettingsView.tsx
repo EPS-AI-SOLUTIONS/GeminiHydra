@@ -10,6 +10,7 @@ import { useViewTheme } from '@/shared/hooks/useViewTheme';
 import { cn } from '@/shared/utils/cn';
 import { CompletionSoundSection } from './CompletionSoundSection';
 import { MaxIterationsSection } from './MaxIterationsSection';
+import { McpServersSection } from './McpServersSection';
 import { OAuthSection } from './OAuthSection';
 
 export const SettingsView = memo(() => {
@@ -50,6 +51,13 @@ export const SettingsView = memo(() => {
         <Card>
           <div className="p-6">
             <CompletionSoundSection />
+          </div>
+        </Card>
+
+        {/* MCP Servers Section */}
+        <Card>
+          <div className="p-6">
+            <McpServersSection />
           </div>
         </Card>
       </motion.div>

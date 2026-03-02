@@ -11,6 +11,7 @@ use sqlx::PgPool;
 use tokio::sync::RwLock;
 use tokio_util::sync::CancellationToken;
 
+use crate::mcp::client::McpClientManager;
 use crate::model_registry::ModelCache;
 use crate::models::WitcherAgent;
 
@@ -260,6 +261,8 @@ pub struct AppState {
     /// Cached native tool definitions (computed once, reused across all requests).
     /// MCP tools are merged at request time since they can change dynamically.
     pub tool_defs_cache: Arc<OnceLock<serde_json::Value>>,
+    /// MCP client manager — connects to external MCP servers, discovers tools.
+    pub mcp_client: Arc<McpClientManager>,
 }
 
 // ── Shared: readiness helpers ───────────────────────────────────────────────
@@ -332,18 +335,22 @@ impl AppState {
             api_keys.keys().collect::<Vec<_>>()
         );
 
+        let client = Client::builder()
+            .pool_max_idle_per_host(10)
+            .timeout(std::time::Duration::from_secs(120))
+            .connect_timeout(std::time::Duration::from_secs(5))
+            .build()
+            .expect("Failed to build HTTP client");
+
+        let mcp_client = Arc::new(McpClientManager::new(db.clone(), client.clone()));
+
         Self {
             db,
             agents: Arc::new(RwLock::new(agents_vec)),
             runtime: Arc::new(RwLock::new(RuntimeState { api_keys })),
             model_cache: Arc::new(RwLock::new(ModelCache::new())),
             start_time: Instant::now(),
-            client: Client::builder()
-                .pool_max_idle_per_host(10)
-                .timeout(std::time::Duration::from_secs(120))
-                .connect_timeout(std::time::Duration::from_secs(5))
-                .build()
-                .expect("Failed to build HTTP client"),
+            client,
             oauth_pkce: Arc::new(RwLock::new(None)),
             system_monitor: Arc::new(RwLock::new(SystemSnapshot::default())),
             ready: Arc::new(AtomicBool::new(false)),
@@ -354,6 +361,7 @@ impl AppState {
             oauth_gemini_valid: Arc::new(AtomicBool::new(true)),
             log_buffer,
             tool_defs_cache: Arc::new(OnceLock::new()),
+            mcp_client,
         }
     }
 

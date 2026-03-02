@@ -976,7 +976,38 @@ pub(crate) fn build_tools(state: &crate::state::AppState) -> Value {
                 "name": "execute_command",
                 "description": "Execute a shell command on the local Windows machine. ONLY use for build/test/git/npm/cargo CLI operations. NEVER use for file reading (use read_file), directory listing (use list_directory), or text search (use search_files). ALWAYS set working_directory when running project commands (cargo, npm, git).",
                 "parameters": { "type": "object", "properties": { "command": { "type": "string", "description": "Shell command to execute (Windows cmd.exe). Do NOT include 'cd' — use working_directory instead." }, "working_directory": { "type": "string", "description": "Absolute path to set as the working directory before executing the command. REQUIRED for cargo/npm/git commands. Example: C:\\Users\\BIURODOM\\Desktop\\GeminiHydra-v15\\backend" } }, "required": ["command"] }
+            },
+            {
+                "name": "list_mcp_tools",
+                "description": "List all available MCP tools from connected external servers. Returns tool names, descriptions, and which server provides each tool.",
+                "parameters": { "type": "object", "properties": {}, "required": [] }
+            },
+            {
+                "name": "execute_mcp_tool",
+                "description": "Execute a specific MCP tool by its prefixed name (mcp_servername_toolname) with custom arguments. Use list_mcp_tools first to discover available tools.",
+                "parameters": { "type": "object", "properties": { "tool_name": { "type": "string", "description": "Prefixed MCP tool name (e.g. mcp_brave_web_search)" }, "arguments": { "type": "object", "description": "Tool arguments as a JSON object" } }, "required": ["tool_name"] }
             }
         ]
     }])).clone()
+}
+
+/// Build tools including dynamically discovered MCP tools.
+/// Native tools are cached (OnceLock), MCP tools merged at request time.
+pub(crate) async fn build_tools_with_mcp(state: &crate::state::AppState) -> serde_json::Value {
+    let native = build_tools(state);
+    let mcp_decls = state.mcp_client.build_gemini_tool_declarations().await;
+
+    if mcp_decls.is_empty() {
+        return native;
+    }
+
+    // Clone native and merge MCP declarations into the function_declarations array
+    let mut result = native.clone();
+    if let Some(arr) = result.get_mut(0)
+        .and_then(|v| v.get_mut("function_declarations"))
+        .and_then(|v| v.as_array_mut())
+    {
+        arr.extend(mcp_decls);
+    }
+    result
 }

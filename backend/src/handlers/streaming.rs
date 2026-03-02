@@ -17,7 +17,7 @@ use uuid::Uuid;
 use crate::models::{WsClientMessage, WsServerMessage};
 use crate::state::AppState;
 
-use super::{build_thinking_config, build_tools, prepare_execution, ExecuteContext};
+use super::{build_thinking_config, build_tools_with_mcp, prepare_execution, ExecuteContext};
 
 // ---------------------------------------------------------------------------
 // SSE Parser
@@ -634,7 +634,7 @@ async fn execute_streaming_gemini(
             return String::new();
         }
     };
-    let tools = build_tools(&state);
+    let tools = build_tools_with_mcp(&state).await;
     let mut contents = if let Some(s) = &sid { load_session_history(&state.db, s).await } else { Vec::new() };
     contents.push(json!({ "role": "user", "parts": [{ "text": ctx.final_user_prompt }] }));
 
