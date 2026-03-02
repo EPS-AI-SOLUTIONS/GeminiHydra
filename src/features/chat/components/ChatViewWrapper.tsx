@@ -10,6 +10,7 @@
 import { lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useChatExecuteMutation } from '@/features/chat/hooks/useChat';
 import { useSessionSync } from '@/features/chat/hooks/useSessionSync';
+import { useCompletionFeedback } from '@/shared/hooks/useCompletionFeedback';
 import type { WsCallbacks } from '@/shared/hooks/useWebSocketChat';
 import { MAX_RECONNECT_ATTEMPTS, useWebSocketChat } from '@/shared/hooks/useWebSocketChat';
 import { useViewStore } from '@/stores/viewStore';
@@ -27,6 +28,7 @@ const TOKEN_BATCH_INTERVAL_MS = 50;
 const LazyChatContainer = lazy(() => import('@/features/chat/components/ChatContainer'));
 
 export function ChatViewWrapper() {
+  const { triggerCompletion, flashActive } = useCompletionFeedback();
   const executeMutation = useChatExecuteMutation();
   const addMessageToSession = useViewStore((s) => s.addMessageToSession);
   const updateLastMessageInSession = useViewStore((s) => s.updateLastMessageInSession);
@@ -177,6 +179,7 @@ export function ChatViewWrapper() {
         flushTokens();
         setAgentActivity((prev) => ({ ...prev, isActive: false }));
         handleOrchComplete();
+        triggerCompletion();
         // Background title generation after first exchange (#8) — delayed 2s, non-blocking
         if (needsTitleRef.current.has(sessionId)) {
           needsTitleRef.current.delete(sessionId);
@@ -234,6 +237,7 @@ export function ChatViewWrapper() {
       addMessageToSession,
       flushTokens,
       scheduleBackgroundTitleGeneration,
+      triggerCompletion,
       handleOrchStart,
       handleDelegation,
       handleAgentOutput,
@@ -315,6 +319,7 @@ export function ChatViewWrapper() {
                   scheduleBackgroundTitleGeneration(sid);
                 }
               }
+              triggerCompletion();
               setHttpStreamingSessionId(null);
               httpStreamingSessionIdRef.current = null;
             },
@@ -343,6 +348,7 @@ export function ChatViewWrapper() {
       executeMutation,
       createSessionWithSync,
       scheduleBackgroundTitleGeneration,
+      triggerCompletion,
     ],
   );
 
@@ -399,7 +405,7 @@ export function ChatViewWrapper() {
   }, [usingFallback, cancelStream, resetOrchestration]);
 
   return (
-    <>
+    <div className={flashActive ? 'completion-flash rounded-xl h-full' : 'h-full'}>
       {connectionGaveUp && (
         <div className="flex items-center justify-center gap-2 p-3 bg-red-500/10 border border-red-500/20 rounded-lg text-sm mx-4 mt-2">
           <span className="text-red-400">Connection lost after {MAX_RECONNECT_ATTEMPTS} attempts</span>
@@ -420,7 +426,7 @@ export function ChatViewWrapper() {
         agentActivity={agentActivity}
         orchestration={orchestration}
       />
-    </>
+    </div>
   );
 }
 
