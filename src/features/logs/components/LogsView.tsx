@@ -175,12 +175,12 @@ export const LogsView = memo(() => {
 
             {logs.length > 0 && (
               <div className={cn('space-y-px rounded-lg overflow-hidden max-h-[65vh] overflow-y-auto', theme.border)}>
-                {logs.map((log: BackendLogEntry) => (
+                {logs.map((log: BackendLogEntry, index: number) => (
                   <div
                     key={`${log.timestamp}-${log.target}-${log.message.substring(0, 20)}`}
                     className={cn(
                       'flex items-start gap-2 px-3 py-1.5 font-mono text-xs',
-                      i % 2 === 0 ? (theme.isLight ? 'bg-white/20' : 'bg-white/[0.02]') : 'bg-transparent',
+                      index % 2 === 0 ? (theme.isLight ? 'bg-white/20' : 'bg-white/[0.02]') : 'bg-transparent',
                     )}
                   >
                     <span className={cn('flex-shrink-0 tabular-nums', theme.textMuted)}>
