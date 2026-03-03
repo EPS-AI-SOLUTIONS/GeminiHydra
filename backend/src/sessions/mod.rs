@@ -148,6 +148,9 @@ pub struct PartialSettings {
     /// Working directory for filesystem tools (empty = absolute paths only)
     #[serde(default)]
     pub working_directory: Option<String>,
+    /// Force all agents to use this model (empty string = clear, model ID = force)
+    #[serde(default)]
+    pub force_model: Option<String>,
 }
 
 #[derive(Debug, Deserialize, ToSchema)]
@@ -198,6 +201,7 @@ pub(crate) fn row_to_settings(row: SettingsRow) -> crate::models::AppSettings {
             row.thinking_level
         },
         working_directory: row.working_directory,
+        force_model: row.force_model,
     }
 }
 

@@ -27,6 +27,9 @@ pub struct SettingsRow {
     /// Working directory for filesystem tools (empty = absolute paths only)
     #[sqlx(default)]
     pub working_directory: String,
+    /// Force all agents to use this model (NULL = auto-select per agent)
+    #[sqlx(default)]
+    pub force_model: Option<String>,
 }
 
 #[derive(sqlx::FromRow)]
@@ -214,6 +217,8 @@ pub struct AppSettings {
     pub thinking_level: String,
     /// Working directory for filesystem tools (empty = absolute paths only)
     pub working_directory: String,
+    /// Force all agents to use this model (None = auto-select per agent)
+    pub force_model: Option<String>,
 }
 
 impl Default for AppSettings {
@@ -231,6 +236,7 @@ impl Default for AppSettings {
             max_iterations: 10,
             thinking_level: "medium".into(),
             working_directory: String::new(),
+            force_model: None,
         }
     }
 }

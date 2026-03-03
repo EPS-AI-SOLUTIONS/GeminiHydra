@@ -47,6 +47,7 @@ import { cn } from '@/shared/utils/cn';
 import { useViewStore, type View } from '@/stores/viewStore';
 import { FooterControls } from './sidebar/FooterControls';
 import { LogoButton } from './sidebar/LogoButton';
+import { ProModeToggle } from './sidebar/ProModeToggle';
 
 // ============================================
 // TYPES
@@ -613,6 +614,11 @@ export function Sidebar() {
           </button>
         </div>
       )}
+
+      {/* Pro Mode Toggle */}
+      <div className={cn(isLight ? 'glass-panel-light' : 'glass-panel-dark', 'p-2')}>
+        <ProModeToggle collapsed={sidebarCollapsed} />
+      </div>
 
       {/* Footer / Lang & Theme Toggle + Version */}
       <FooterControls

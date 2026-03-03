@@ -22,7 +22,7 @@ pub async fn get_settings(
 ) -> Result<Json<AppSettings>, StatusCode> {
     let row = sqlx::query_as::<_, SettingsRow>(
         "SELECT temperature, max_tokens, default_model, language, theme, welcome_message, \
-         use_docker_sandbox, top_p, response_style, max_iterations, thinking_level, working_directory \
+         use_docker_sandbox, top_p, response_style, max_iterations, thinking_level, working_directory, force_model \
          FROM gh_settings WHERE id = 1",
     )
     .fetch_one(&state.db)
@@ -62,7 +62,7 @@ pub async fn update_settings(
 
     let current = sqlx::query_as::<_, SettingsRow>(
         "SELECT temperature, max_tokens, default_model, language, theme, welcome_message, \
-         use_docker_sandbox, top_p, response_style, max_iterations, thinking_level, working_directory \
+         use_docker_sandbox, top_p, response_style, max_iterations, thinking_level, working_directory, force_model \
          FROM gh_settings WHERE id = 1",
     )
     .fetch_one(&state.db)
@@ -88,6 +88,12 @@ pub async fn update_settings(
     let working_directory = patch
         .working_directory
         .unwrap_or(current.working_directory);
+    // Empty string = clear force_model (set to NULL); absent = keep current; model ID = force
+    let force_model = match patch.force_model {
+        None => current.force_model,
+        Some(ref s) if s.is_empty() => None,
+        Some(s) => Some(s),
+    };
 
     // Validate working_directory if non-empty
     if !working_directory.is_empty() && !std::path::Path::new(&working_directory).is_dir() {
@@ -98,9 +104,9 @@ pub async fn update_settings(
         "UPDATE gh_settings SET temperature=$1, max_tokens=$2, default_model=$3, \
          language=$4, theme=$5, welcome_message=$6, use_docker_sandbox=$7, \
          top_p=$8, response_style=$9, max_iterations=$10, thinking_level=$11, \
-         working_directory=$12, updated_at=NOW() WHERE id=1 \
+         working_directory=$12, force_model=$13, updated_at=NOW() WHERE id=1 \
          RETURNING temperature, max_tokens, default_model, language, theme, welcome_message, \
-         use_docker_sandbox, top_p, response_style, max_iterations, thinking_level, working_directory",
+         use_docker_sandbox, top_p, response_style, max_iterations, thinking_level, working_directory, force_model",
     )
     .bind(temperature)
     .bind(max_tokens)
@@ -114,6 +120,7 @@ pub async fn update_settings(
     .bind(max_iterations)
     .bind(&thinking_level)
     .bind(&working_directory)
+    .bind(force_model.as_deref())
     .fetch_one(&state.db)
     .await
     .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
@@ -154,9 +161,9 @@ pub async fn reset_settings(
          default_model=$1, language='en', theme='dark', \
          welcome_message='', use_docker_sandbox=FALSE, \
          top_p=0.95, response_style='balanced', max_iterations=20, \
-         thinking_level='medium', working_directory='', updated_at=NOW() WHERE id=1 \
+         thinking_level='medium', working_directory='', force_model=NULL, updated_at=NOW() WHERE id=1 \
          RETURNING temperature, max_tokens, default_model, language, theme, welcome_message, \
-         use_docker_sandbox, top_p, response_style, max_iterations, thinking_level, working_directory",
+         use_docker_sandbox, top_p, response_style, max_iterations, thinking_level, working_directory, force_model",
     )
     .bind(&best_model)
     .fetch_one(&state.db)

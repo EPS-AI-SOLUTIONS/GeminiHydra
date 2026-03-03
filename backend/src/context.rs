@@ -136,15 +136,15 @@ pub async fn prepare_execution(
         String::new()
     };
 
-    let (def_model, lang, temperature, max_tokens, top_p, response_style, max_iterations, thinking_level, settings_wd) =
-        sqlx::query_as::<_, (String, String, f64, i32, f64, String, i32, String, String)>(
-            "SELECT default_model, language, temperature, max_tokens, top_p, response_style, max_iterations, thinking_level, working_directory \
+    let (force_model_setting, def_model, lang, temperature, max_tokens, top_p, response_style, max_iterations, thinking_level, settings_wd) =
+        sqlx::query_as::<_, (Option<String>, String, String, f64, i32, f64, String, i32, String, String)>(
+            "SELECT force_model, default_model, language, temperature, max_tokens, top_p, response_style, max_iterations, thinking_level, working_directory \
              FROM gh_settings WHERE id = 1",
         )
         .fetch_one(&state.db)
         .await
         .unwrap_or_else(|_| (
-            "gemini-3.1-pro-preview-customtools".to_string(), "en".to_string(), 1.0, 65536, 0.95, "balanced".to_string(), 10, "medium".to_string(), String::new()
+            None, "gemini-3.1-pro-preview-customtools".to_string(), "en".to_string(), 1.0, 65536, 0.95, "balanced".to_string(), 10, "medium".to_string(), String::new()
         ));
 
     // Session WD takes priority over global settings WD
@@ -159,9 +159,11 @@ pub async fn prepare_execution(
     let agent_thinking = matched_agent.and_then(|a| a.thinking_level.clone());
     let effective_thinking = agent_thinking.unwrap_or(thinking_level);
 
-    // Model priority: 1) user request override → 2) per-agent DB override → 3) auto-tier → 4) global default
+    // Model priority: 0) global force_model → 1) user request override → 2) per-agent DB override → 3) auto-tier → 4) global default
     let agent_model = matched_agent.and_then(|a| a.model_override.clone());
-    let model = if let Some(ov) = model_override {
+    let model = if let Some(fm) = force_model_setting {
+        fm
+    } else if let Some(ov) = model_override {
         ov
     } else if let Some(am) = agent_model {
         am

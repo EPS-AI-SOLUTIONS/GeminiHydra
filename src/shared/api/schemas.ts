@@ -125,6 +125,8 @@ const settingsSchema = z
     max_iterations: z.number().optional().default(20),
     /** Working directory for filesystem tools (empty = absolute paths only) */
     working_directory: z.string().optional().default(''),
+    /** Force all agents to use this model (null = auto-select per agent) */
+    force_model: z.string().nullable().optional(),
   })
   .passthrough();
 
