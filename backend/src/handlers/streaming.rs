@@ -17,7 +17,9 @@ use uuid::Uuid;
 use crate::models::{WsClientMessage, WsServerMessage};
 use crate::state::AppState;
 
-use super::{build_thinking_config, build_tools_with_mcp, prepare_execution, ExecuteContext};
+use crate::context::{prepare_execution, ExecuteContext};
+use crate::prompt::build_thinking_config;
+use crate::tool_defs::build_tools_with_mcp;
 
 // ---------------------------------------------------------------------------
 // SSE Parser
@@ -1151,7 +1153,7 @@ async fn resolve_session_agent(state: &AppState, sid: &Uuid, prompt: &str) -> (S
     }
 
     let agents = state.agents.read().await;
-    let (aid, conf, reas) = super::classify_prompt(prompt, &agents);
+    let (aid, conf, reas) = crate::classify::classify_prompt(prompt, &agents);
 
     if let Err(e) = sqlx::query("UPDATE gh_sessions SET agent_id = $1 WHERE id = $2")
         .bind(&aid)

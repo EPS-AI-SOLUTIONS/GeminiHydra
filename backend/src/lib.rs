@@ -4,6 +4,11 @@ pub mod a2a;
 pub mod analysis;
 pub mod audit;
 pub mod auth;
+pub mod classify;
+pub mod context;
+pub mod error;
+pub mod prompt;
+pub mod tool_defs;
 pub mod files;
 pub mod handlers;
 pub mod logs;
@@ -24,7 +29,7 @@ pub mod watchdog;
 use axum::extract::State;
 use axum::http::HeaderValue;
 use axum::middleware;
-use axum::routing::{delete, get, patch, post};
+use axum::routing::{delete, get, post};
 use axum::Router;
 use tower_governor::{governor::GovernorConfigBuilder, GovernorLayer};
 use utoipa::OpenApi;
@@ -184,34 +189,16 @@ pub struct ApiDoc;
 /// Extracted from `main()` so integration tests can construct the app
 /// without binding to a network port.
 pub fn create_router(state: AppState) -> Router {
-    // ── Per-endpoint rate limiting ──────────────────────────────────
-    // Jaskier Shared Pattern -- rate_limit (per-endpoint)
-    //
-    // WebSocket /ws/execute: 10 connections per minute (1 per 6s, burst 10)
-    // /api/execute: 30 requests per minute (1 per 2s, burst 30)
-    // Other routes: 120 requests per minute (2 per second, burst 120)
+    create_router_inner(state, true)
+}
 
-    let ws_governor = GovernorConfigBuilder::default()
-        .per_second(6)
-        .burst_size(10)
-        .use_headers()
-        .finish()
-        .expect("WS rate-limit config is valid");
+/// Build router without rate-limiting layers (for integration tests where
+/// `ConnectInfo` is not available from a real TCP listener).
+pub fn create_test_router(state: AppState) -> Router {
+    create_router_inner(state, false)
+}
 
-    let execute_governor = GovernorConfigBuilder::default()
-        .per_second(2)
-        .burst_size(30)
-        .use_headers()
-        .finish()
-        .expect("Execute rate-limit config is valid");
-
-    let default_governor = GovernorConfigBuilder::default()
-        .per_second(2)
-        .burst_size(120)
-        .use_headers()
-        .finish()
-        .expect("Default rate-limit config is valid");
-
+fn create_router_inner(state: AppState, rate_limit: bool) -> Router {
     // ── Public routes (no auth) ──────────────────────────────────────
     let public_health = Router::new()
         .route("/api/health", get(handlers::health))
@@ -240,32 +227,47 @@ pub fn create_router(state: AppState) -> Router {
         // MCP server endpoint (public — MCP spec requires open access for tool discovery)
         .route("/mcp", post(mcp::server::mcp_handler));
 
-    // WebSocket with its own stricter rate limit (10 per minute)
-    let ws_routes = Router::new()
-        .route("/ws/execute", get(handlers::ws_execute))
-        .layer(GovernorLayer::new(ws_governor));
+    // WebSocket — rate-limited only in production (requires ConnectInfo)
+    let ws_routes = if rate_limit {
+        let ws_governor = GovernorConfigBuilder::default()
+            .per_second(6)
+            .burst_size(10)
+            .use_headers()
+            .finish()
+            .expect("WS rate-limit config is valid");
+        Router::new()
+            .route("/ws/execute", get(handlers::ws_execute))
+            .layer(GovernorLayer::new(ws_governor))
+    } else {
+        Router::new().route("/ws/execute", get(handlers::ws_execute))
+    };
 
-    // Execute endpoint with medium rate limit (30 per minute)
-    let execute_routes = Router::new()
-        .route("/api/execute", post(handlers::execute))
-        .route_layer(middleware::from_fn_with_state(state.clone(), auth::require_auth))
-        .layer(GovernorLayer::new(execute_governor));
+    // Execute endpoint — auth always, rate-limit only in production
+    let execute_routes = if rate_limit {
+        let execute_governor = GovernorConfigBuilder::default()
+            .per_second(2)
+            .burst_size(30)
+            .use_headers()
+            .finish()
+            .expect("Execute rate-limit config is valid");
+        Router::new()
+            .route("/api/execute", post(handlers::execute))
+            .route_layer(middleware::from_fn_with_state(state.clone(), auth::require_auth))
+            .layer(GovernorLayer::new(execute_governor))
+    } else {
+        Router::new()
+            .route("/api/execute", post(handlers::execute))
+            .route_layer(middleware::from_fn_with_state(state.clone(), auth::require_auth))
+    };
 
     // ── Protected routes (require auth when AUTH_SECRET is set) ──────
     let protected = Router::new()
-        .route("/api/agents", get(handlers::list_agents).post(handlers::create_agent))
-        .route("/api/agents/classify", post(handlers::classify_agent))
-        .route("/api/agents/{id}", post(handlers::update_agent).delete(handlers::delete_agent))
         .route("/api/gemini/models", get(handlers::gemini_models))
         .route("/api/models", get(model_registry::list_models))
         .route("/api/models/refresh", post(model_registry::refresh_models))
         .route("/api/models/pin", post(model_registry::pin_model))
         .route("/api/models/pin/{use_case}", delete(model_registry::unpin_model))
         .route("/api/models/pins", get(model_registry::list_pins))
-        .route("/api/files/read", post(handlers::read_file))
-        .route("/api/files/list", post(handlers::list_files))
-        .route("/api/files/browse", post(handlers::browse_directory))
-        .route("/api/system/stats", get(handlers::system_stats))
         // Logs — backend log ring buffer
         .route("/api/logs/backend", get(logs::backend_logs).delete(logs::clear_backend_logs))
         // OCR — text extraction from images and PDFs
@@ -274,8 +276,6 @@ pub fn create_router(state: AppState) -> Router {
         .route("/api/ocr/batch/stream", post(ocr::ocr_batch_stream))
         .route("/api/ocr/history", get(ocr::ocr_history))
         .route("/api/ocr/history/{id}", get(ocr::ocr_history_item).delete(ocr::ocr_history_delete))
-        // Admin — hot-reload API keys
-        .route("/api/admin/rotate-key", post(handlers::rotate_key))
         // A2A v0.3 — Agent-to-Agent protocol endpoints
         .route("/a2a/message/send", post(a2a::message_send))
         .route("/a2a/message/stream", post(a2a::message_stream))
@@ -284,13 +284,6 @@ pub fn create_router(state: AppState) -> Router {
         // Service tokens (encrypted PAT storage for Fly.io etc.)
         .route("/api/tokens", get(service_tokens::list_tokens).post(service_tokens::store_token))
         .route("/api/tokens/{service}", delete(service_tokens::delete_token))
-        // ── MCP routes ────────────────────────────────────────────
-        .route("/api/mcp/servers", get(mcp::config::mcp_server_list).post(mcp::config::mcp_server_create))
-        .route("/api/mcp/servers/{id}", patch(mcp::config::mcp_server_update).delete(mcp::config::mcp_server_delete))
-        .route("/api/mcp/servers/{id}/connect", post(mcp::config::mcp_server_connect))
-        .route("/api/mcp/servers/{id}/disconnect", post(mcp::config::mcp_server_disconnect))
-        .route("/api/mcp/servers/{id}/tools", get(mcp::config::mcp_server_tools))
-        .route("/api/mcp/tools", get(mcp::config::mcp_all_tools))
         .route_layer(middleware::from_fn_with_state(state.clone(), auth::require_auth));
 
     // ── Metrics endpoint (public, no auth) ─────────────────────────
@@ -302,11 +295,15 @@ pub fn create_router(state: AppState) -> Router {
         .route("/api/v1/health/ready", get(handlers::readiness))
         .route("/api/v1/auth/mode", get(handlers::auth_mode));
 
-    // Combine with default rate limit (120 per minute) for most routes
-    public_health
+    // Combine all route groups
+    let combined = public_health
         .merge(ws_routes)
         .merge(execute_routes)
         .merge(protected)
+        .merge(handlers::agents_router(state.clone()))
+        .merge(handlers::files_router(state.clone()))
+        .merge(handlers::system_router(state.clone()))
+        .merge(mcp::mcp_router(state.clone()))
         .merge(metrics)
         .merge(v1_public)
         // Sessions routes merged separately — they need auth too
@@ -315,9 +312,22 @@ pub fn create_router(state: AppState) -> Router {
                 .route_layer(middleware::from_fn_with_state(state.clone(), auth::require_auth)),
         )
         // Swagger UI — no auth required
-        .merge(SwaggerUi::new("/swagger-ui").url("/api-docs/openapi.json", ApiDoc::openapi()))
-        .layer(GovernorLayer::new(default_governor))
-        .with_state(state)
+        .merge(SwaggerUi::new("/swagger-ui").url("/api-docs/openapi.json", ApiDoc::openapi()));
+
+    // Apply global rate limit only in production (requires ConnectInfo from TCP listener)
+    if rate_limit {
+        let default_governor = GovernorConfigBuilder::default()
+            .per_second(2)
+            .burst_size(120)
+            .use_headers()
+            .finish()
+            .expect("Default rate-limit config is valid");
+        combined
+            .layer(GovernorLayer::new(default_governor))
+            .with_state(state)
+    } else {
+        combined.with_state(state)
+    }
 }
 
 // ── Prometheus-compatible metrics endpoint ───────────────────────────────────

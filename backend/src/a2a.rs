@@ -327,7 +327,7 @@ async fn execute_a2a_task(
         .execute(&state.db)
         .await;
 
-    let mut ctx = crate::handlers::prepare_execution(state, prompt, None, agent_override, "").await;
+    let mut ctx = crate::context::prepare_execution(state, prompt, None, agent_override, "").await;
     ctx.call_depth = call_depth;
     let agent_id = ctx.agent_id.clone();
 
@@ -344,13 +344,13 @@ async fn execute_a2a_task(
 
     state.gemini_circuit.check().await?;
 
-    let tools = crate::handlers::build_tools_with_mcp(state).await;
+    let tools = crate::tool_defs::build_tools_with_mcp(state).await;
     let mut gen_config = json!({
         "temperature": ctx.temperature,
         "topP": ctx.top_p,
         "maxOutputTokens": ctx.max_tokens
     });
-    if let Some(tc) = crate::handlers::build_thinking_config(&ctx.model, &ctx.thinking_level) {
+    if let Some(tc) = crate::prompt::build_thinking_config(&ctx.model, &ctx.thinking_level) {
         gen_config["thinkingConfig"] = tc;
     }
 

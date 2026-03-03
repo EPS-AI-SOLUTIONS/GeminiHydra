@@ -5,7 +5,7 @@ use serde_json::Value;
 use sqlx::PgPool;
 use tower::ServiceExt;
 
-use geminihydra_backend::state::AppState;
+use geminihydra_backend::state::{AppState, LogRingBuffer};
 
 /// Helper: build a fresh AppState backed by a test Postgres database.
 /// Returns None when DATABASE_URL is not set (CI without DB).
@@ -22,7 +22,8 @@ async fn try_test_state() -> Option<AppState> {
         .run(&pool)
         .await
         .expect("Failed to run migrations");
-    Some(AppState::new(pool).await)
+    let log_buffer = std::sync::Arc::new(LogRingBuffer::new(1000));
+    Some(AppState::new(pool, log_buffer).await)
 }
 
 /// Convenience macro: skip the test when DATABASE_URL is absent.
@@ -39,8 +40,11 @@ macro_rules! require_db {
 }
 
 /// Helper: build a router from a test state.
+/// Uses `create_test_router` (no GovernorLayer) + `MockConnectInfo` for handler extractors.
 fn app(state: AppState) -> axum::Router {
-    geminihydra_backend::create_router(state)
+    use axum::extract::connect_info::MockConnectInfo;
+    geminihydra_backend::create_test_router(state)
+        .layer(MockConnectInfo(std::net::SocketAddr::from(([127, 0, 0, 1], 3000))))
 }
 
 /// Helper: collect a response body into a serde_json::Value.

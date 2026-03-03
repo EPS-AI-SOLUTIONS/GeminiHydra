@@ -136,6 +136,7 @@ pub fn list_available_tools() -> Vec<ToolInfo> {
         ToolInfo { name: "read_file", category: "filesystem" },
         ToolInfo { name: "write_file", category: "filesystem" },
         ToolInfo { name: "edit_file", category: "filesystem" },
+        ToolInfo { name: "delete_file", category: "filesystem" },
         ToolInfo { name: "list_directory", category: "filesystem" },
         ToolInfo { name: "search_files", category: "filesystem" },
         ToolInfo { name: "get_code_structure", category: "filesystem" },
@@ -228,6 +229,13 @@ pub async fn execute_tool(name: &str, args: &Value, state: &AppState, working_di
                 .as_str()
                 .ok_or("Missing required argument: new_text")?;
             tool_edit_file(&resolved, old_text, new_text).await.map(ToolOutput::text)
+        }
+        "delete_file" => {
+            let path = args["path"]
+                .as_str()
+                .ok_or("Missing required argument: path")?;
+            let resolved = resolve_path(path, working_directory);
+            tool_delete_file(&resolved).await.map(ToolOutput::text)
         }
         "list_directory" => {
             let path = args["path"]
@@ -622,7 +630,7 @@ async fn tool_edit_file(path: &str, old_text: &str, new_text: &str) -> Result<St
             }
         }
         return Err(format!(
-            "old_text not found in {}. Copy text VERBATIM from read_file output — every space, tab, newline must match exactly. Use read_file_section to get exact text first.",
+            "old_text not found in {}. RECOVERY: (1) call read_file_section to get current content, (2) copy old_text VERBATIM from output, (3) retry edit_file. File may have changed since last read.",
             path
         ));
     }
@@ -641,6 +649,32 @@ async fn tool_edit_file(path: &str, old_text: &str, new_text: &str) -> Result<St
         "Successfully edited {} ({} bytes -> {} bytes)",
         path, content.len(), new_content.len()
     ))
+}
+
+// ---------------------------------------------------------------------------
+// delete_file
+// ---------------------------------------------------------------------------
+
+/// Delete a file or empty directory with safety checks.
+async fn tool_delete_file(path: &str) -> Result<String, String> {
+    if let Err(e) = crate::files::validate_write_path(path) {
+        return Err(format!("Path rejected: {}", e.reason));
+    }
+
+    let p = std::path::Path::new(path);
+    if !p.exists() {
+        return Err(format!("Not found: {}", path));
+    }
+
+    if p.is_dir() {
+        tokio::fs::remove_dir(p).await
+            .map_err(|e| format!("Failed to remove directory (must be empty): {}", e))?;
+    } else {
+        tokio::fs::remove_file(p).await
+            .map_err(|e| format!("Failed to delete file: {}", e))?;
+    }
+
+    Ok(format!("Deleted {}", path))
 }
 
 // ---------------------------------------------------------------------------

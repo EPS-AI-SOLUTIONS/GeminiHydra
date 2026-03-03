@@ -2,7 +2,7 @@
 // handlers/tests.rs — Unit tests for classification, keyword matching, helpers
 // ---------------------------------------------------------------------------
 
-use super::*;
+use crate::classify::{classify_agent_score, classify_prompt, keyword_match, strip_diacritics};
 use crate::models::WitcherAgent;
 
 /// Build a minimal set of test agents with keywords matching the DB seed.

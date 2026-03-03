@@ -12,7 +12,9 @@ use crate::models::{
 };
 use crate::state::AppState;
 
-use super::{build_providers, ApiError};
+use crate::error::ApiError;
+
+use super::build_providers;
 
 // ---------------------------------------------------------------------------
 // Health Endpoints

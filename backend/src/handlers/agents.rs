@@ -10,7 +10,7 @@ use serde_json::{json, Value};
 use crate::models::{ClassifyRequest, ClassifyResponse, WitcherAgent};
 use crate::state::AppState;
 
-use super::classify_prompt;
+use crate::classify::classify_prompt;
 
 // ---------------------------------------------------------------------------
 // Agent List & Classification

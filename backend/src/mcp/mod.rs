@@ -15,3 +15,17 @@
 pub mod client;
 pub mod config;
 pub mod server;
+
+use axum::{routing::{get, patch, post}, middleware, Router};
+use crate::{auth, state::AppState};
+
+pub fn mcp_router(state: AppState) -> Router<AppState> {
+    Router::new()
+        .route("/api/mcp/servers", get(config::mcp_server_list).post(config::mcp_server_create))
+        .route("/api/mcp/servers/{id}", patch(config::mcp_server_update).delete(config::mcp_server_delete))
+        .route("/api/mcp/servers/{id}/connect", post(config::mcp_server_connect))
+        .route("/api/mcp/servers/{id}/disconnect", post(config::mcp_server_disconnect))
+        .route("/api/mcp/servers/{id}/tools", get(config::mcp_server_tools))
+        .route("/api/mcp/tools", get(config::mcp_all_tools))
+        .route_layer(middleware::from_fn_with_state(state.clone(), auth::require_auth))
+}

@@ -13,7 +13,11 @@ use uuid::Uuid;
 use crate::models::{ExecutePlan, ExecuteRequest, ExecuteResponse};
 use crate::state::AppState;
 
-use super::{build_thinking_config, gemini_diagnose, prepare_execution, ApiError};
+use crate::context::prepare_execution;
+use crate::error::ApiError;
+use crate::prompt::build_thinking_config;
+
+use super::gemini_diagnose;
 
 // ---------------------------------------------------------------------------
 // ADK Internal Tool Bridge
