@@ -462,6 +462,11 @@ pub enum WsClientMessage {
     },
     Cancel,
     Ping,
+    /// Response from the user to an `ask_user` tool call.
+    ToolResponse {
+        tool_name: String,
+        response: String,
+    },
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

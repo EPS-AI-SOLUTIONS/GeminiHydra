@@ -214,6 +214,11 @@ pub fn build_tools(state: &crate::state::AppState) -> Value {
                 "parameters": { "type": "object", "properties": { "command": { "type": "string", "description": "Shell command to execute (Windows cmd.exe). Do NOT include 'cd' — use working_directory instead." }, "working_directory": { "type": "string", "description": "Absolute path to set as the working directory before executing the command. REQUIRED for cargo/npm/git commands. Example: C:\\Users\\BIURODOM\\Desktop\\GeminiHydra-v15\\backend" } }, "required": ["command"] }
             },
             {
+                "name": "ask_user",
+                "description": "Ask the user a question to gather preferences, clarify requirements, or make decisions. Use this ONLY if a wrong decision would cause significant re-work, the request is fundamentally ambiguous, or the user explicitly asks you to confirm. Execution will pause until the user responds.",
+                "parameters": { "type": "object", "properties": { "question": { "type": "string", "description": "The question to ask the user" }, "options": { "type": "array", "items": { "type": "string" }, "description": "Optional array of choices" } }, "required": ["question"] }
+            },
+            {
                 "name": "list_mcp_tools",
                 "description": "List all available MCP tools from connected external servers. Returns tool names, descriptions, and which server provides each tool.",
                 "parameters": { "type": "object", "properties": {}, "required": [] }

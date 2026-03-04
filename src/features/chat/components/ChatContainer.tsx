@@ -33,7 +33,7 @@ import { useOnlineStatus } from '@/shared/hooks/useOnlineStatus';
 import { useViewTheme } from '@/shared/hooks/useViewTheme';
 import { cn } from '@/shared/utils/cn';
 import { type Message, useViewStore } from '@/stores/viewStore';
-
+import { useAgentStream } from '../hooks/useAgentStream';
 import { useFileReadMutation } from '../hooks/useFiles';
 import type { OrchestrationState } from '../hooks/useOrchestration';
 import { usePromptHistory } from '../hooks/usePromptHistory';
@@ -98,10 +98,21 @@ export const ChatContainer = memo<ChatContainerProps>(
     const chatHistory = useViewStore((s) => s.chatHistory);
     const currentSession = useViewStore((s) => s.sessions.find((sess) => sess.id === s.currentSessionId));
     const setSessionWorkingDirectory = useViewStore((s) => s.setSessionWorkingDirectory);
+    const appendAgentToolAction = useViewStore((s) => s.appendAgentToolAction);
     const messages = useMemo<Message[]>(
       () => (currentSessionId ? (chatHistory[currentSessionId] ?? []) : []),
       [currentSessionId, chatHistory],
     );
+
+    // Live agent SSE stream integration
+    const { messages: streamMessages } = useAgentStream();
+    useEffect(() => {
+      if (!currentSessionId) return;
+      const latestMsg = streamMessages[streamMessages.length - 1];
+      if (latestMsg) {
+        appendAgentToolAction(currentSessionId, latestMsg.agent_id, latestMsg.content);
+      }
+    }, [streamMessages, currentSessionId, appendAgentToolAction]);
 
     // File read mutation
     const fileReadMutation = useFileReadMutation();

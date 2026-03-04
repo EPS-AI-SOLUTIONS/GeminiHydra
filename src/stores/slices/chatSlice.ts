@@ -74,6 +74,8 @@ export interface ChatSlice {
   addMessageToSession: (sessionId: string, msg: Message) => void;
   /** Append content to the last message of a specific session. */
   updateLastMessageInSession: (sessionId: string, content: string) => void;
+  /** Add or update agent/tool execution messages in the chat stream. */
+  appendAgentToolAction: (sessionId: string, agentId: string, content: string) => void;
 }
 
 // ── Slice ───────────────────────────────────────────────────────────────────
@@ -198,5 +200,26 @@ export const createChatSlice: StateCreator<ViewStoreState, [], [], ChatSlice> = 
     set((state) => {
       const updated = appendToLastMessage(state.chatHistory, sessionId, content);
       return updated ? { chatHistory: updated } : state;
+    }),
+
+  appendAgentToolAction: (sessionId, agentId, content) =>
+    set((state) => {
+      const messages = state.chatHistory[sessionId] || [];
+      if (messages.length === 0) return state; // Only append if there's an active conversation
+
+      const lastMsg = messages[messages.length - 1];
+      if (!lastMsg) return state;
+
+      const newMessages = [...messages];
+      newMessages[newMessages.length - 1] = {
+        ...lastMsg,
+        role: lastMsg.role,
+        content: sanitizeContent(
+          lastMsg.content + `\n\n> **[Agent: ${agentId}]** Tool action executed:\n> ${content}\n`,
+          MAX_CONTENT_LENGTH,
+        ),
+      } as Message;
+
+      return { chatHistory: { ...state.chatHistory, [sessionId]: newMessages } };
     }),
 });
