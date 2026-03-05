@@ -16,6 +16,7 @@ import { AnimatePresence, motion } from 'motion/react';
 import {
   type ChangeEvent,
   type ClipboardEvent,
+  type DragEvent,
   type KeyboardEvent,
   memo,
   useCallback,
@@ -74,7 +75,7 @@ interface ChatInputProps {
 // CONSTANTS
 // ============================================================================
 
-const MAX_CHARS = 4000;
+const MAX_CHARS = 100000;
 const MAX_ROWS = 12;
 const MIN_ROWS = 1;
 
@@ -263,6 +264,23 @@ export const ChatInput = memo<ChatInputProps>(
       [handleSubmit, value, adjustHeight, promptHistory, historyIndex],
     );
 
+    // ----- Drop handling (large text) -----------------------------------
+
+    const handleDrop = useCallback(
+      (e: DragEvent<HTMLTextAreaElement>) => {
+        const text = e.dataTransfer.getData('text/plain');
+        if (text && e.dataTransfer.files.length === 0) {
+          const lines = text.split('\n');
+          if (lines.length > 10) {
+            e.preventDefault();
+            e.stopPropagation();
+            onPasteFile?.(text.substring(0, 50000), `Zrzut $($lines.length) linii.txt`);
+          }
+        }
+      },
+      [onPasteFile],
+    );
+
     // ----- Paste handling -----------------------------------------------
 
     const handlePaste = useCallback(
@@ -394,6 +412,7 @@ export const ChatInput = memo<ChatInputProps>(
               onChange={handleChange}
               onKeyDown={handleKeyDown}
               onPaste={handlePaste}
+              onDrop={handleDrop}
               disabled={isStreaming}
               rows={MIN_ROWS}
               placeholder={pendingImage ? t('chat.describeVisualContext') : t('chat.typeMessage')}
