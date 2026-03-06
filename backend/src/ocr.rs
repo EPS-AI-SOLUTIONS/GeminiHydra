@@ -83,7 +83,7 @@ Return ONLY a valid JSON object with these fields (omit fields not found):\n\
 Return ONLY the JSON, no explanation or markdown fences.";
 
 const GEMINI_API_BASE: &str = "https://generativelanguage.googleapis.com/v1beta/models";
-const OCR_MODEL: &str = "gemini-3-flash-preview";
+const OCR_MODEL: &str = "gemini-3.1-flash-preview";
 const MAX_INPUT_SIZE: usize = 30_000_000; // ~22 MB decoded
 const MAX_BATCH_ITEMS: usize = 10;
 
