@@ -225,6 +225,7 @@ export const CodeBlock = memo(function CodeBlock({
           </AnimatePresence>
         </button>
       </div>
+      </div>
 
       {/* Code content — auto-collapse for large blocks (#44) */}
       {isLong && !expanded ? (

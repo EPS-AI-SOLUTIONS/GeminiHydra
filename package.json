@@ -71,11 +71,11 @@
   },
   "lint-staged": {
     "*.{ts,tsx}": [
-      "biome check --write",
-      "biome format --write"
+      "npx biome check --write",
+      "npx biome format --write"
     ],
     "*.css": [
-      "biome format --write"
+      "npx biome format --write"
     ]
   },
   "pnpm": {

@@ -281,7 +281,13 @@ fn create_router_inner(state: AppState, rate_limit: bool) -> Router {
             post(oauth_vercel::vercel_auth_logout),
         )
         // MCP server endpoint (public — MCP spec requires open access for tool discovery)
-        .route("/mcp", post(mcp::server::mcp_handler));
+        .route("/mcp", post(mcp::server::mcp_handler))
+        // Browser proxy management (public — no auth, proxy handles its own state)
+        .route("/api/browser-proxy/status", get(browser_proxy::proxy_status))
+        .route("/api/browser-proxy/login", post(browser_proxy::proxy_login))
+        .route("/api/browser-proxy/login/status", get(browser_proxy::proxy_login_status))
+        .route("/api/browser-proxy/reinit", post(browser_proxy::proxy_reinit))
+        .route("/api/browser-proxy/logout", delete(browser_proxy::proxy_logout));
 
     // WebSocket — rate-limited only in production (requires ConnectInfo)
     let ws_routes = if rate_limit {

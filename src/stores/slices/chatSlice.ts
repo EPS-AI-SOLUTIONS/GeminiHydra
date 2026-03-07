@@ -2,6 +2,7 @@ import type { StateCreator } from 'zustand';
 import type { ChatTab, Message } from '../types';
 import { MAX_MESSAGES_PER_SESSION, MAX_TITLE_LENGTH, sanitizeContent, sanitizeTitle } from '../utils';
 import type { ViewStoreState } from '../viewStore';
+import { useViewStore } from '../viewStore';
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -19,7 +20,7 @@ function appendMessage(history: Record<string, Message[]>, sessionId: string, ms
     const messagesToCompact = updated.slice(0, cutIndex).filter(m => m.role !== 'system');
     
     // If we haven't already started compacting these messages
-    if (messagesToCompact.length > 0 && !updated[0].content.includes('Compacting history')) {
+    if (messagesToCompact.length > 0 && !updated[0]?.content.includes('Compacting history')) {
       const compactedMessageId = crypto.randomUUID();
       const compactedMessage: Message = {
         id: compactedMessageId,
@@ -32,7 +33,7 @@ function appendMessage(history: Record<string, Message[]>, sessionId: string, ms
       updated = [compactedMessage, ...updated.slice(cutIndex)];
       
       // Fire off background summarization (fire-and-forget)
-      const summaryContext = messagesToCompact.map(m => $($m.role.toUpperCase()): $($m.content)).join('\n\n');
+      const summaryContext = messagesToCompact.map(m => `${m.role.toUpperCase()}: ${m.content}`).join('\n\n');
       
       // Use standard JS fetch to call our API to summarize without blocking the UI
       fetch('/api/chat', {
@@ -55,9 +56,9 @@ function appendMessage(history: Record<string, Message[]>, sessionId: string, ms
           const summary = data.result;
           const store = useViewStore.getState();
           const currentSessionMsgs = store.chatHistory[sessionId] ?? [];
-          const newMsgs = currentSessionMsgs.map(m => 
-            m.id === compactedMessageId 
-              ? { ...m, content: **[System: Compacted History]**\n\n$($summary) }
+          const newMsgs = currentSessionMsgs.map((m: Message) =>
+            m.id === compactedMessageId
+              ? { ...m, content: `**[System: Compacted History]**\n\n${summary}` }
               : m
           );
           store.chatHistory[sessionId] = newMsgs;
@@ -68,8 +69,8 @@ function appendMessage(history: Record<string, Message[]>, sessionId: string, ms
         console.error('Failed to compact history:', err);
         const store = useViewStore.getState();
         const currentSessionMsgs = store.chatHistory[sessionId] ?? [];
-        const newMsgs = currentSessionMsgs.map(m => 
-          m.id === compactedMessageId 
+        const newMsgs = currentSessionMsgs.map((m: Message) =>
+          m.id === compactedMessageId
             ? { ...m, content: '_[System] History automatically compacted to save tokens. Older messages archived._' }
             : m
         );
