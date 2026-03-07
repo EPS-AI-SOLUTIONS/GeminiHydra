@@ -121,18 +121,163 @@ pub async fn generate_image(
     unreachable!()
 }
 
-/// Check if the browser proxy is healthy and ready.
-pub async fn health_check(client: &reqwest::Client) -> bool {
+/// Cached browser proxy health status, updated by watchdog every 30s.
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize, utoipa::ToSchema)]
+pub struct BrowserProxyStatus {
+    pub configured: bool,
+    pub reachable: bool,
+    pub ready: bool,
+    pub workers_ready: u32,
+    pub workers_busy: u32,
+    pub pool_size: u32,
+    pub queue_length: u32,
+    pub total_requests: u64,
+    pub total_errors: u64,
+    pub proxy_uptime_seconds: u64,
+    pub last_check_epoch: u64,
+    pub last_error: Option<String>,
+    /// Number of consecutive health check failures (reset on success).
+    pub consecutive_failures: u32,
+    /// Epoch of last auto-restart attempt.
+    pub last_restart_epoch: u64,
+    /// Total number of auto-restarts since backend start.
+    pub total_restarts: u32,
+    /// Current backoff level for exponential restart cooldown (0=120s, 1=240s, 2=480s, max=900s).
+    #[serde(default)]
+    pub backoff_level: u32,
+    /// Number of consecutive successful health checks (for backoff reset).
+    #[serde(default)]
+    pub consecutive_successes: u32,
+    /// PID of the last spawned proxy process (for zombie cleanup).
+    #[serde(skip)]
+    pub last_pid: Option<u32>,
+}
+
+impl Default for BrowserProxyStatus {
+    fn default() -> Self {
+        Self {
+            configured: is_enabled(),
+            reachable: false,
+            ready: false,
+            workers_ready: 0,
+            workers_busy: 0,
+            pool_size: 0,
+            queue_length: 0,
+            total_requests: 0,
+            total_errors: 0,
+            proxy_uptime_seconds: 0,
+            last_check_epoch: 0,
+            last_error: None,
+            consecutive_failures: 0,
+            last_restart_epoch: 0,
+            total_restarts: 0,
+            backoff_level: 0,
+            consecutive_successes: 0,
+            last_pid: None,
+        }
+    }
+}
+
+/// Directory where gemini-browser-proxy is installed.
+/// Auto-restart is disabled if not set.
+pub fn proxy_dir() -> Option<String> {
+    std::env::var("BROWSER_PROXY_DIR").ok().filter(|s| !s.is_empty())
+}
+
+// ── Proxy Health History Ring Buffer ─────────────────────────────────────────
+/// A single status change event recorded in the proxy health history.
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize, utoipa::ToSchema)]
+pub struct ProxyHealthEvent {
+    pub timestamp: String,
+    pub event_type: String,
+    pub workers_ready: u32,
+    pub pool_size: u32,
+    pub error: Option<String>,
+    pub consecutive_failures: u32,
+    pub total_restarts: u32,
+}
+
+/// Ring buffer storing the last N proxy health status change events.
+/// Uses `std::sync::Mutex` (not tokio) — same pattern as `LogRingBuffer` in `state.rs`.
+pub struct ProxyHealthHistory {
+    events: std::sync::Mutex<std::collections::VecDeque<ProxyHealthEvent>>,
+    capacity: usize,
+}
+
+impl ProxyHealthHistory {
+    pub fn new(capacity: usize) -> Self {
+        Self {
+            events: std::sync::Mutex::new(std::collections::VecDeque::with_capacity(capacity)),
+            capacity,
+        }
+    }
+
+    /// Push a new event into the ring buffer, evicting the oldest if at capacity.
+    pub fn push(&self, event: ProxyHealthEvent) {
+        let mut buf = self.events.lock().unwrap_or_else(|p| p.into_inner());
+        if buf.len() >= self.capacity {
+            buf.pop_front();
+        }
+        buf.push_back(event);
+    }
+
+    /// Return the most recent `limit` events (newest first).
+    pub fn recent(&self, limit: usize) -> Vec<ProxyHealthEvent> {
+        let buf = self.events.lock().unwrap_or_else(|p| p.into_inner());
+        buf.iter().rev().take(limit).cloned().collect()
+    }
+}
+
+/// Detailed health check — returns full status from proxy `/health` endpoint.
+/// Called by watchdog every 30s to keep `AppState::browser_proxy_status` current.
+pub(crate) async fn detailed_health_check(client: &reqwest::Client) -> BrowserProxyStatus {
+    if !is_enabled() {
+        return BrowserProxyStatus::default();
+    }
+
+    let now = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_secs();
+
     let url = format!("{}/health", proxy_base_url());
     match client.get(&url).timeout(Duration::from_secs(5)).send().await {
         Ok(resp) => {
             if let Ok(json) = resp.json::<serde_json::Value>().await {
-                json["ready"].as_bool().unwrap_or(false)
+                BrowserProxyStatus {
+                    configured: true,
+                    reachable: true,
+                    ready: json["ready"].as_bool().unwrap_or(false),
+                    workers_ready: json["workers_ready"].as_u64().unwrap_or(0) as u32,
+                    workers_busy: json["workers_busy"].as_u64().unwrap_or(0) as u32,
+                    pool_size: json["pool_size"].as_u64().unwrap_or(0) as u32,
+                    queue_length: json["queue_length"].as_u64().unwrap_or(0) as u32,
+                    total_requests: json["total_requests"].as_u64().unwrap_or(0),
+                    total_errors: json["total_errors"].as_u64().unwrap_or(0),
+                    proxy_uptime_seconds: json["uptime_seconds"].as_u64().unwrap_or(0),
+                    last_check_epoch: now,
+                    last_error: None,
+                    ..Default::default()
+                }
             } else {
-                false
+                BrowserProxyStatus {
+                    configured: true,
+                    reachable: true,
+                    ready: false,
+                    last_check_epoch: now,
+                    last_error: Some("Invalid JSON from proxy /health".to_string()),
+                    ..Default::default()
+                }
             }
         }
-        Err(_) => false,
+        Err(e) => BrowserProxyStatus {
+            configured: true,
+            reachable: false,
+            ready: false,
+            last_check_epoch: now,
+            last_error: Some(format!("{}", e)),
+            ..Default::default()
+        },
     }
 }
 
@@ -181,6 +326,15 @@ pub async fn proxy_status(
     };
 
     let mut result = json!({ "configured": true, "proxy_url": base });
+
+    {
+        let cached = state.browser_proxy_status.read().await;
+        result["watchdog"] = json!({
+            "consecutive_failures": cached.consecutive_failures,
+            "total_restarts": cached.total_restarts,
+            "backoff_level": cached.backoff_level,
+        });
+    }
 
     if let Some(h) = health {
         result["health"] = h;

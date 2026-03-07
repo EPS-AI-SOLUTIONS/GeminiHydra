@@ -66,7 +66,8 @@ pub use execute::{execute, internal_tool_execute};
 pub use files_handlers::{browse_directory, list_files, read_file};
 pub use streaming::ws_execute;
 pub use system::{
-    auth_mode, gemini_models, health, health_detailed, readiness, rotate_key, system_stats,
+    auth_mode, browser_proxy_history, gemini_models, health, health_detailed, readiness,
+    rotate_key, system_stats, ProxyHistoryResponse,
 };
 
 // ── utoipa __path_* re-exports ───────────────────────────────────────────────
@@ -77,8 +78,8 @@ pub use agents::{
 pub use execute::__path_execute;
 pub use files_handlers::{__path_list_files, __path_read_file};
 pub use system::{
-    __path_auth_mode, __path_gemini_models, __path_health, __path_health_detailed,
-    __path_readiness, __path_system_stats,
+    __path_auth_mode, __path_browser_proxy_history, __path_gemini_models, __path_health,
+    __path_health_detailed, __path_readiness, __path_system_stats,
 };
 
 pub use crate::error::{ApiError, ApiErrorWithDetails, StructuredApiError};

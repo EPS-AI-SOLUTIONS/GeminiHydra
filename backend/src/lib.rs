@@ -83,6 +83,7 @@ pub async fn request_id_middleware(
         handlers::health_detailed,
         handlers::auth_mode,
         handlers::system_stats,
+        handlers::browser_proxy_history,
         // Agents
         handlers::list_agents,
         handlers::classify_agent,
@@ -170,6 +171,10 @@ pub async fn request_id_middleware(
         model_registry::PinModelRequest,
         // Prompt history
         models::AddPromptRequest,
+        // Browser proxy
+        browser_proxy::BrowserProxyStatus,
+        browser_proxy::ProxyHealthEvent,
+        handlers::ProxyHistoryResponse,
     )),
     tags(
         (name = "health", description = "Health & readiness endpoints"),
@@ -287,7 +292,8 @@ fn create_router_inner(state: AppState, rate_limit: bool) -> Router {
         .route("/api/browser-proxy/login", post(browser_proxy::proxy_login))
         .route("/api/browser-proxy/login/status", get(browser_proxy::proxy_login_status))
         .route("/api/browser-proxy/reinit", post(browser_proxy::proxy_reinit))
-        .route("/api/browser-proxy/logout", delete(browser_proxy::proxy_logout));
+        .route("/api/browser-proxy/logout", delete(browser_proxy::proxy_logout))
+        .route("/api/browser-proxy/history", get(handlers::browser_proxy_history));
 
     // WebSocket — rate-limited only in production (requires ConnectInfo)
     let ws_routes = if rate_limit {

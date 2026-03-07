@@ -285,6 +285,10 @@ pub struct AppState {
     pub knowledge_auth_secret: Option<String>,
     /// Swarm SSE multi-agent broadcasting channel.
     pub swarm_tx: broadcast::Sender<crate::handlers::streaming::AgentMessage>,
+    /// Cached browser proxy health status, updated by watchdog every 30s.
+    pub browser_proxy_status: Arc<RwLock<crate::browser_proxy::BrowserProxyStatus>>,
+    /// Ring buffer of proxy health status change events (last 50).
+    pub browser_proxy_history: Arc<crate::browser_proxy::ProxyHealthHistory>,
 }
 
 // ── Shared: readiness helpers ───────────────────────────────────────────────
@@ -422,6 +426,8 @@ impl AppState {
             knowledge_api_url,
             knowledge_auth_secret,
             swarm_tx: tokio::sync::broadcast::channel(100).0,
+            browser_proxy_status: Arc::new(RwLock::new(crate::browser_proxy::BrowserProxyStatus::default())),
+            browser_proxy_history: Arc::new(crate::browser_proxy::ProxyHealthHistory::new(50)),
         }
     }
 

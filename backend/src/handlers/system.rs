@@ -28,12 +28,20 @@ pub async fn health(State(state): State<AppState>) -> Json<HealthResponse> {
     let cache = state.model_cache.read().await;
     let google = cache.models.get("google").cloned().unwrap_or_default();
     drop(cache);
+
+    let browser_proxy = if crate::browser_proxy::is_enabled() {
+        Some(state.browser_proxy_status.read().await.clone())
+    } else {
+        None
+    };
+
     Json(HealthResponse {
         status: if state.is_ready() { "ok" } else { "starting" }.to_string(),
         version: "15.0.0".to_string(),
         app: "GeminiHydra".to_string(),
         uptime_seconds: state.start_time.elapsed().as_secs(),
         providers: build_providers(&rt.api_keys, &google),
+        browser_proxy,
     })
 }
 
@@ -101,6 +109,46 @@ pub async fn system_stats(State(state): State<AppState>) -> Json<SystemStats> {
         memory_total_mb: snap.memory_total_mb,
         platform: snap.platform.clone(),
     })
+}
+
+// ---------------------------------------------------------------------------
+// Browser Proxy History
+// ---------------------------------------------------------------------------
+
+/// Query parameters for the browser proxy history endpoint.
+#[derive(Debug, serde::Deserialize)]
+pub struct ProxyHistoryParams {
+    /// Maximum number of events to return (default 50, max 50).
+    pub limit: Option<usize>,
+}
+
+/// Response wrapper for browser proxy history events.
+#[derive(Debug, serde::Serialize, utoipa::ToSchema)]
+pub struct ProxyHistoryResponse {
+    pub events: Vec<crate::browser_proxy::ProxyHealthEvent>,
+    pub total: usize,
+}
+
+/// Returns the most recent browser proxy status change events.
+#[utoipa::path(
+    get,
+    path = "/api/browser-proxy/history",
+    tag = "health",
+    params(
+        ("limit" = Option<usize>, Query, description = "Max events to return (default 50, max 50)")
+    ),
+    responses(
+        (status = 200, description = "Proxy health history events", body = ProxyHistoryResponse)
+    )
+)]
+pub async fn browser_proxy_history(
+    State(state): State<AppState>,
+    axum::extract::Query(params): axum::extract::Query<ProxyHistoryParams>,
+) -> Json<ProxyHistoryResponse> {
+    let limit = params.limit.unwrap_or(50).min(50);
+    let events = state.browser_proxy_history.recent(limit);
+    let total = events.len();
+    Json(ProxyHistoryResponse { events, total })
 }
 
 // ---------------------------------------------------------------------------

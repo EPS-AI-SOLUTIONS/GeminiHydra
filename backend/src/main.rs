@@ -205,6 +205,18 @@ async fn main() -> anyhow::Result<()> {
 
     let (app, state) = build_app(log_buffer).await;
 
+    // ── Browser proxy mode logging ──
+    if geminihydra_backend::browser_proxy::is_enabled() {
+        let proxy_url = std::env::var("BROWSER_PROXY_URL")
+            .unwrap_or_else(|_| "http://localhost:3001".to_string());
+        let auto_restart = geminihydra_backend::browser_proxy::proxy_dir().is_some();
+        tracing::info!(
+            "BROWSER PROXY ENABLED — routing through {} (auto-restart: {})",
+            proxy_url,
+            if auto_restart { "ON" } else { "OFF — set BROWSER_PROXY_DIR to enable" }
+        );
+    }
+
     // ── Non-blocking startup: model sync in background with retry ──
     let startup_state = state.clone();
     tokio::spawn(async move {
