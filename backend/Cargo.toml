@@ -43,7 +43,7 @@ dirs = "6"
 aes-gcm = "0.10"
 hex = "0.4"
 pdf-extract = "0.10"
-scraper = "0.22"
+scraper = "0.25"
 zip = { version = "2", default-features = false, features = ["deflate"] }
 ego-tree = "0.10"
 utoipa = { version = "5", features = ["axum_extras", "uuid", "chrono"] }
