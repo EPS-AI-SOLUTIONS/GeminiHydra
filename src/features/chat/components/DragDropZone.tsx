@@ -16,6 +16,8 @@ export const DragDropZone = memo<DragDropZoneProps>(({ children, onImageDrop, on
   const [isDragActive, setIsDragActive] = useState(false);
 
   const handleDrag = useCallback((e: DragEvent) => {
+    if (!e.dataTransfer?.types.includes('Files')) return;
+
     e.preventDefault();
     e.stopPropagation();
     if (e.type === 'dragenter' || e.type === 'dragover') {
@@ -27,6 +29,8 @@ export const DragDropZone = memo<DragDropZoneProps>(({ children, onImageDrop, on
 
   const handleDrop = useCallback(
     (e: DragEvent) => {
+      if (!e.dataTransfer?.types.includes('Files')) return;
+
       e.preventDefault();
       e.stopPropagation();
       setIsDragActive(false);

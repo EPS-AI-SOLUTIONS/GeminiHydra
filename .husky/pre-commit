@@ -4,6 +4,9 @@
 # Frontend: lint-staged (biome check + format) + TypeScript check
 # Backend: cargo check (only if .rs files staged)
 
+# Ensure node_modules/.bin is in PATH for biome/lint-staged
+export PATH="./node_modules/.bin:$PATH"
+
 # Run lint-staged on staged frontend files
 npx lint-staged
 if [ $? -ne 0 ]; then

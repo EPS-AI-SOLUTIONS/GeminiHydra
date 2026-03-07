@@ -243,6 +243,10 @@ async fn handle_ws(socket: WebSocket, state: AppState) {
                             WsClientMessage::Orchestrate { prompt, pattern, agents, session_id } => {
                                 execute_orchestrated(&mut sender, &state, &prompt, &pattern, agents.as_deref(), session_id, cancel.child_token()).await;
                             }
+                            WsClientMessage::ToolResponse { tool_name, response } => {
+                                tracing::info!("Received ToolResponse from client for {}: {}", tool_name, response);
+                                // Here we would pass the response back via a channel to the paused execution context
+                            }
                         }
                     }
                     Some(Ok(WsMessage::Ping(data))) => {
@@ -1585,8 +1589,7 @@ async fn store_messages(
 // ── Agent Swarm SSE Integration ──────────────────────────────────────
 
 use axum::response::sse::{Event, Sse};
-use std::{convert::Infallible, sync::Arc};
-use tokio::sync::broadcast;
+use std::convert::Infallible;
 use futures_util::stream::Stream;
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]

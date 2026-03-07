@@ -14,6 +14,8 @@ import { Cloud, Cpu, Zap } from 'lucide-react';
 import { memo, useEffect, useState } from 'react';
 import { StatusIndicator } from '@/components/molecules/StatusIndicator';
 import { useTheme } from '@/contexts/ThemeContext';
+import type { BrowserProxyStatus } from '@/features/settings/hooks/useBrowserProxy';
+import { useBrowserProxyStatus } from '@/features/settings/hooks/useBrowserProxy';
 import { cn } from '@/shared/utils/cn';
 
 // ============================================================================
@@ -35,6 +37,59 @@ export interface StatusFooterProps {
   tagline?: string;
   /** Whether stats are loaded (from backend) */
   statsLoaded?: boolean;
+}
+
+// ============================================================================
+// BROWSER PROXY BADGE
+// ============================================================================
+
+type ProxyState = 'ready' | 'starting' | 'offline';
+
+function getProxyState(status: BrowserProxyStatus): ProxyState {
+  if (status.health?.ready) return 'ready';
+  if (status.reachable) return 'starting';
+  return 'offline';
+}
+
+const proxyDotColor: Record<ProxyState, string> = {
+  ready: 'bg-emerald-500',
+  starting: 'bg-amber-500',
+  offline: 'bg-red-500',
+};
+
+const proxyLabel: Record<ProxyState, string> = {
+  ready: 'Proxy',
+  starting: 'Proxy starting',
+  offline: 'Proxy offline',
+};
+
+function BrowserProxyBadge({ status }: { status: BrowserProxyStatus }) {
+  const state = getProxyState(status);
+  const h = status.health;
+  const shouldPulse = state === 'ready' && (h?.workers_busy ?? 0) > 0;
+
+  const tooltipLines = h
+    ? [
+        `Workers: ${String(h.workers_ready)}/${String(h.pool_size)} ready`,
+        `Busy: ${String(h.workers_busy)}`,
+        `Queue: ${String(h.queue_length)}`,
+        `Requests: ${String(h.total_requests)}`,
+        `Errors: ${String(h.total_errors)}`,
+        ...(status.error ? [`Error: ${status.error}`] : []),
+      ]
+    : [`Status: ${state}`, ...(status.error ? [`Error: ${status.error}`] : [])];
+
+  return (
+    <div className="inline-flex items-center gap-1.5 cursor-default" title={tooltipLines.join('\n')}>
+      <span className="relative flex items-center justify-center">
+        <span className={cn('h-1.5 w-1.5 rounded-full flex-shrink-0', proxyDotColor[state])} />
+        {shouldPulse && (
+          <span className={cn('absolute h-1.5 w-1.5 rounded-full animate-ping opacity-75', proxyDotColor[state])} />
+        )}
+      </span>
+      <span className="text-[10px] font-mono leading-none text-inherit opacity-70">{proxyLabel[state]}</span>
+    </div>
+  );
 }
 
 // ============================================================================
@@ -94,6 +149,7 @@ const StatusFooterComponent = ({
 }: StatusFooterProps) => {
   const { resolvedTheme } = useTheme();
   const isLight = resolvedTheme === 'light';
+  const { data: proxyStatus } = useBrowserProxyStatus(true);
 
   const [currentTime, setCurrentTime] = useState(() => new Date().toLocaleTimeString(navigator.language, TIME_FORMAT));
 
@@ -119,7 +175,7 @@ const StatusFooterComponent = ({
         isLight ? 'border-slate-200/30 bg-white/40 text-slate-600' : 'border-white/10 bg-black/20 text-slate-400',
       )}
     >
-      {/* Left: Version + Connection + CPU + RAM */}
+      {/* Left: Version + Connection + CPU + RAM + Proxy */}
       <div className="flex items-center gap-4">
         {/* Version */}
         <span className={isLight ? 'text-emerald-600' : 'text-white'}>v15.0.0</span>
@@ -141,6 +197,14 @@ const StatusFooterComponent = ({
             <span className={cn('font-semibold', ramColor)} title={`RAM: ${ramUsage}%`}>
               RAM {ramUsage}%
             </span>
+          </>
+        )}
+
+        {/* Browser Proxy status — only shown when configured */}
+        {proxyStatus?.configured && (
+          <>
+            <span className={dividerCls}>|</span>
+            <BrowserProxyBadge status={proxyStatus} />
           </>
         )}
       </div>

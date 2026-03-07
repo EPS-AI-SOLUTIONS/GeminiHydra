@@ -485,7 +485,7 @@ pub async fn get_model_id(state: &AppState, use_case: &str) -> String {
         "chat" => (resolved.chat, "gemini-3.1-pro-preview-customtools"),
         "thinking" => (resolved.thinking, "gemini-3.1-pro-preview-customtools"),
         "image" => (resolved.image, "gemini-3-pro-image-preview"),
-        "flash" => (resolved.flash, "gemini-3-flash-preview"),
+        "flash" => (resolved.flash, "gemini-3.1-flash-preview"),
         _ => (resolved.chat, "gemini-3.1-pro-preview-customtools"),
     };
 
@@ -814,12 +814,12 @@ mod tests {
     fn select_best_must_contain_filter() {
         let models = vec![
             model("gemini-3.1-pro-preview", "google"),
-            model("gemini-3-flash-preview", "google"),
+            model("gemini-3.1-flash-preview", "google"),
             model("gemini-2.5-flash", "google"),
         ];
 
         let best = select_best(&models, &["flash"], &[]);
-        assert_eq!(best.unwrap().id, "gemini-3-flash-preview");
+        assert_eq!(best.unwrap().id, "gemini-3.1-flash-preview");
     }
 
     #[test]
@@ -921,7 +921,7 @@ mod tests {
     fn select_best_falls_back_to_standard_pro_when_no_customtools() {
         let models = vec![
             model("gemini-3.1-pro-preview", "google"),
-            model("gemini-3-flash-preview", "google"),
+            model("gemini-3.1-flash-preview", "google"),
         ];
 
         // customtools filter matches nothing

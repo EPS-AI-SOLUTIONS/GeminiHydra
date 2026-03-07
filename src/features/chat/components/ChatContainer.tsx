@@ -33,7 +33,7 @@ import { useOnlineStatus } from '@/shared/hooks/useOnlineStatus';
 import { useViewTheme } from '@/shared/hooks/useViewTheme';
 import { cn } from '@/shared/utils/cn';
 import { type Message, useViewStore } from '@/stores/viewStore';
-
+import { useAgentStream } from '../hooks/useAgentStream';
 import { useFileReadMutation } from '../hooks/useFiles';
 import type { OrchestrationState } from '../hooks/useOrchestration';
 import { usePromptHistory } from '../hooks/usePromptHistory';
@@ -47,6 +47,7 @@ import { NewMessagesButton } from './NewMessagesButton';
 import { OfflineBanner } from './OfflineBanner';
 import { SearchOverlay } from './SearchOverlay';
 import { StreamingIndicator } from './StreamingIndicator';
+import { ArtifactPanel } from './ArtifactPanel';
 
 // Lazy-loaded panels — only downloaded when agent activity or orchestration is active
 const AgentActivityPanel = lazy(() => import('./AgentActivityPanel').then((m) => ({ default: m.AgentActivityPanel })));
@@ -98,10 +99,21 @@ export const ChatContainer = memo<ChatContainerProps>(
     const chatHistory = useViewStore((s) => s.chatHistory);
     const currentSession = useViewStore((s) => s.sessions.find((sess) => sess.id === s.currentSessionId));
     const setSessionWorkingDirectory = useViewStore((s) => s.setSessionWorkingDirectory);
+    const appendAgentToolAction = useViewStore((s) => s.appendAgentToolAction);
     const messages = useMemo<Message[]>(
       () => (currentSessionId ? (chatHistory[currentSessionId] ?? []) : []),
       [currentSessionId, chatHistory],
     );
+
+    // Live agent SSE stream integration
+    const { messages: streamMessages } = useAgentStream();
+    useEffect(() => {
+      if (!currentSessionId) return;
+      const latestMsg = streamMessages[streamMessages.length - 1];
+      if (latestMsg) {
+        appendAgentToolAction(currentSessionId, latestMsg.agent_id, latestMsg.content);
+      }
+    }, [streamMessages, currentSessionId, appendAgentToolAction]);
 
     // File read mutation
     const fileReadMutation = useFileReadMutation();
@@ -355,6 +367,9 @@ export const ChatContainer = memo<ChatContainerProps>(
           {/* Offline banner (#25) */}
           <OfflineBanner />
 
+          {/* Messages panel + Artifact panel wrapper */}
+          <div className="flex-1 min-h-0 flex relative overflow-hidden gap-2">
+          
           {/* Messages panel */}
           <div className={cn('flex-1 min-h-0 flex flex-col overflow-hidden rounded-xl relative', theme.glassPanel)}>
             {/* Search overlay (#19) */}
@@ -462,6 +477,11 @@ export const ChatContainer = memo<ChatContainerProps>(
             />
           </div>
 
+          <AnimatePresence>
+            {useViewStore((s) => s.activeArtifact) && <ArtifactPanel />}
+          </AnimatePresence>
+          </div>
+
           {/* Context menu */}
           {contextMenu && (
             <ChatContextMenu
@@ -547,3 +567,4 @@ export const ChatContainer = memo<ChatContainerProps>(
 ChatContainer.displayName = 'ChatContainer';
 
 export default ChatContainer;
+
