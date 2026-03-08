@@ -61,7 +61,7 @@ function TaskRow({
             ? 'border-amber-500/30 bg-amber-500/5'
             : 'border-[var(--matrix-border)] bg-[var(--matrix-bg-secondary)]',
         'hover:bg-[var(--matrix-bg-tertiary)]',
-        isChild && 'ml-6 border-l-2 border-l-[var(--matrix-accent)]',
+        (task.call_depth > 0 || isChild) && 'ml-6 border-l-2 border-l-[var(--matrix-accent)]',
       )}
       onClick={() => setExpanded(!expanded)}
     >
@@ -83,6 +83,7 @@ function TaskRow({
             {task.duration_ms < 1000 ? `${task.duration_ms}ms` : `${(task.duration_ms / 1000).toFixed(1)}s`}
           </span>
         )}
+        {task.call_depth > 0 && <span className="text-xs text-[var(--matrix-text-secondary)]">d{task.call_depth}</span>}
       </div>
 
       <p className={cn('text-xs mt-1.5 truncate', theme.textMuted)}>{task.task_prompt}</p>

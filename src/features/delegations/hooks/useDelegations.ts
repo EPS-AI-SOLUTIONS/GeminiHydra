@@ -14,6 +14,7 @@ export interface DelegationTask {
   is_error: boolean;
   error_message: string | null;
   duration_ms: number | null;
+  call_depth: number;
   created_at: string;
   completed_at: string | null;
 }

@@ -149,6 +149,7 @@ type AgentRow = (
     Option<i32>,                   // duration_ms
     chrono::DateTime<chrono::Utc>, // created_at
     chrono::DateTime<chrono::Utc>, // updated_at
+    i32,                           // call_depth
 );
 
 #[utoipa::path(get, path = "/api/agents/delegations", tag = "agents",
@@ -159,7 +160,7 @@ pub async fn list_delegations(
 ) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
     let rows: Vec<AgentRow> = sqlx::query_as(
         "SELECT id, agent_id, caller_agent_id, status, prompt, result, error_message, \
-         duration_ms, created_at, updated_at \
+         duration_ms, created_at, updated_at, call_depth \
          FROM gh_a2a_tasks ORDER BY created_at DESC LIMIT 50",
     )
     .fetch_all(&state.db)
@@ -199,6 +200,7 @@ pub async fn list_delegations(
             "duration_ms": r.7,
             "created_at": r.8.to_rfc3339(),
             "completed_at": if r.3 == "completed" || r.6.is_some() { Some(r.9.to_rfc3339()) } else { None },
+            "call_depth": r.10,
         })
     }).collect();
 
