@@ -46,6 +46,7 @@ pub fn agents_router(state: AppState) -> Router<AppState> {
 pub fn system_router(state: AppState) -> Router<AppState> {
     Router::new()
         .route("/api/system/stats", get(system::system_stats))
+        .route("/api/system/audit", get(system::system_audit))
         .route("/api/admin/rotate-key", post(system::rotate_key))
         .route_layer(middleware::from_fn_with_state(
             state.clone(),
@@ -72,7 +73,7 @@ pub use files_handlers::{browse_directory, list_files, read_file};
 pub use streaming::ws_execute;
 pub use system::{
     ProxyHistoryResponse, auth_mode, browser_proxy_history, gemini_models, health, health_detailed,
-    readiness, rotate_key, system_stats,
+    readiness, rotate_key, system_audit, system_stats,
 };
 
 // ── utoipa __path_* re-exports ───────────────────────────────────────────────

@@ -112,6 +112,31 @@ pub async fn system_stats(State(state): State<AppState>) -> Json<SystemStats> {
 }
 
 // ---------------------------------------------------------------------------
+// Cargo Audit
+// ---------------------------------------------------------------------------
+
+pub async fn system_audit() -> Json<Value> {
+    let output = std::process::Command::new("cargo")
+        .arg("audit")
+        .arg("--json")
+        .output();
+
+    match output {
+        Ok(out) => {
+            let stdout_str = String::from_utf8_lossy(&out.stdout);
+            match serde_json::from_str::<Value>(&stdout_str) {
+                Ok(json) => Json(json),
+                Err(_) => Json(json!({
+                    "error": "Failed to parse cargo audit JSON",
+                    "stdout": stdout_str.into_owned()
+                })),
+            }
+        }
+        Err(e) => Json(json!({ "error": e.to_string() })),
+    }
+}
+
+// ---------------------------------------------------------------------------
 // Browser Proxy History
 // ---------------------------------------------------------------------------
 

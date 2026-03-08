@@ -3,6 +3,8 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect } from 'react';
 import { apiGet, apiPost } from '@/shared/api/client';
+import { useViewStore } from '@/stores/viewStore';
+import { toast } from 'sonner';
 
 export interface DelegationTask {
   id: string;
@@ -71,8 +73,19 @@ export function useDelegations(autoRefresh: boolean) {
       eventSource.onmessage = (event) => {
         try {
           const data = JSON.parse(event.data);
+          
+          const oldData = queryClient.getQueryData<DelegationsResponse>(['delegations']);
+          if (oldData && oldData.tasks) {
+            const newTasks = data.tasks.filter((t: DelegationTask) => !oldData.tasks.find(ot => ot.id === t.id));
+            if (newTasks.length > 0) {
+              toast.info(`Received ${newTasks.length} new A2A delegation(s)`);
+            }
+          }
+
           // Directly update the React Query cache
           queryClient.setQueryData(['delegations'], data);
+          // Update Zustand state
+          useViewStore.getState().setDelegations(data);
         } catch (e) {
           console.error('Failed to parse SSE delegation event', e);
         }
