@@ -149,7 +149,7 @@ pub async fn message_send(
     // Record task as submitted
     let task_start = std::time::Instant::now();
     if let Err(e) = sqlx::query(
-        "INSERT INTO gh_a2a_tasks (id, agent_id, status, prompt) VALUES ($1, $2, 'submitted', $3)",
+        "INSERT INTO gh_a2a_tasks (id, agent_id, status, prompt, call_depth) VALUES ($1, $2, 'submitted', $3, 0)",
     )
     .bind(&task_id)
     .bind(
@@ -217,7 +217,7 @@ pub async fn message_stream(
 
     // Record task
     let _ = sqlx::query(
-        "INSERT INTO gh_a2a_tasks (id, agent_id, status, prompt) VALUES ($1, $2, 'submitted', $3)",
+        "INSERT INTO gh_a2a_tasks (id, agent_id, status, prompt, call_depth) VALUES ($1, $2, 'submitted', $3, 0)",
     )
     .bind(&task_id)
     .bind(
@@ -604,13 +604,14 @@ pub(crate) async fn execute_agent_call(
 
     // Record A2A task
     let _ = sqlx::query(
-        "INSERT INTO gh_a2a_tasks (id, agent_id, caller_agent_id, status, prompt) \
-         VALUES ($1, $2, $3, 'working', $4)",
+        "INSERT INTO gh_a2a_tasks (id, agent_id, caller_agent_id, status, prompt, call_depth) \
+         VALUES ($1, $2, $3, 'working', $4, $5)",
     )
     .bind(&task_id)
     .bind(agent_id)
     .bind("parent") // caller context
     .bind(task_prompt)
+    .bind(depth as i32)
     .execute(&state.db)
     .await;
 
