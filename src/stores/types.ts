@@ -5,7 +5,7 @@ import type {
   MessageRole as SharedMessageRole,
 } from '@/shared/types/store';
 
-export type View = 'home' | 'login' | 'chat' | 'agents' | 'brain' | 'settings' | 'logs';
+export type View = 'home' | 'login' | 'chat' | 'agents' | 'brain' | 'settings' | 'logs' | 'delegations';
 
 export type ViewId = View;
 

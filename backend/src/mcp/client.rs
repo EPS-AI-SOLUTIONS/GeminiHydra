@@ -444,7 +444,7 @@ impl McpClientManager {
             .post(url)
             .header("Content-Type", "application/json")
             // Streamable HTTP (MCP 2025-03-26): request JSON response, not SSE stream
-            .header("Accept", "application/json")
+            .header("Accept", "application/json, text/event-stream")
             .timeout(timeout)
             .json(&body);
 
@@ -538,7 +538,12 @@ impl McpClientManager {
         use tokio::io::{AsyncWriteExt, BufReader};
         use tokio::process::Command;
 
-        let mut cmd = Command::new(command);
+        #[cfg(target_os = "windows")]
+        let actual_command = if command == "npx" { "npx.cmd" } else { command };
+        #[cfg(not(target_os = "windows"))]
+        let actual_command = command;
+
+        let mut cmd = Command::new(actual_command);
         cmd.args(args)
             .envs(env_vars)
             .stdin(std::process::Stdio::piped())
@@ -765,10 +770,12 @@ impl McpClientManager {
             .map(|t| {
                 let desc = t.description.as_deref().unwrap_or("External MCP tool");
                 let full_desc = format!("[PREFERRED — MCP: {}] {}", t.server_name, desc);
+                let mut schema = t.input_schema.clone();
+                strip_unsupported_json_schema(&mut schema);
                 json!({
                     "name": t.prefixed_name,
                     "description": full_desc,
-                    "parameters": t.input_schema,
+                    "parameters": schema,
                 })
             })
             .collect()
@@ -914,6 +921,58 @@ fn truncate_str(s: &str, max_len: usize) -> String {
             .map(|(i, c)| i + c.len_utf8())
             .unwrap_or(max_len);
         format!("{}...", &s[..boundary])
+    }
+}
+
+/// Recursively removes unsupported properties from JSON Schema for Gemini.
+/// Gemini only supports: type, description, properties, required, items, enum, format, nullable, minimum, maximum, minItems, maxItems.
+fn strip_unsupported_json_schema(schema: &mut Value) {
+    if let Value::Object(map) = schema {
+        // Remove all JSON Schema keywords that Gemini doesn't understand
+        const UNSUPPORTED: &[&str] = &[
+            "$schema",
+            "$id",
+            "$ref",
+            "$defs",
+            "definitions",
+            "additionalProperties",
+            "multipleOf",
+            "patternProperties",
+            "allOf",
+            "anyOf",
+            "oneOf",
+            "not",
+            "if",
+            "then",
+            "else",
+            "title",
+            "default",
+            "examples",
+            "const",
+            "exclusiveMinimum",
+            "exclusiveMaximum",
+            "minLength",
+            "maxLength",
+            "pattern",
+            "uniqueItems",
+            "minProperties",
+            "maxProperties",
+            "contentMediaType",
+            "contentEncoding",
+            "deprecated",
+            "readOnly",
+            "writeOnly",
+        ];
+        for key in UNSUPPORTED {
+            map.remove(*key);
+        }
+        for (_, v) in map.iter_mut() {
+            strip_unsupported_json_schema(v);
+        }
+    } else if let Value::Array(arr) = schema {
+        for v in arr.iter_mut() {
+            strip_unsupported_json_schema(v);
+        }
     }
 }
 

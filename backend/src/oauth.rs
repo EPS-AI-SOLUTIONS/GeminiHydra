@@ -661,7 +661,9 @@ async fn refresh_google_token(state: &AppState, row: &GoogleAuthRow) -> Option<S
         .ok()?;
 
     if !resp.status().is_success() {
-        tracing::error!("Google OAuth token refresh failed: {}", resp.status());
+        let status = resp.status();
+        let body = resp.text().await.unwrap_or_default();
+        tracing::error!("Google OAuth token refresh failed: {} — {}", status, body);
         return None;
     }
 

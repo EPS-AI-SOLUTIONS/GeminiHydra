@@ -13,6 +13,7 @@ import { CompletionSoundSection } from './CompletionSoundSection';
 import { MaxIterationsSection } from './MaxIterationsSection';
 import { McpServersSection } from './McpServersSection';
 import { OAuthSection } from './OAuthSection';
+import { WatchdogHistory } from './WatchdogHistory';
 
 export const SettingsView = memo(() => {
   const { t } = useTranslation();
@@ -59,6 +60,13 @@ export const SettingsView = memo(() => {
         <Card>
           <div className="p-6">
             <BrowserProxySection />
+          </div>
+        </Card>
+
+        {/* Watchdog History */}
+        <Card>
+          <div className="p-6">
+            <WatchdogHistory />
           </div>
         </Card>
 

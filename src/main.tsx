@@ -35,6 +35,7 @@ const LazyAgentsView = lazy(() => import('@/features/agents/components/AgentsVie
 const LazyKnowledgeGraphView = lazy(() => import('@/features/memory/components/KnowledgeGraphView'));
 const LazySettingsView = lazy(() => import('@/features/settings/components/SettingsView'));
 const LazyLogsView = lazy(() => import('@/features/logs/components/LogsView'));
+const LazyDelegationsView = lazy(() => import('@/features/delegations/components/DelegationsView'));
 const LazyLoginView = lazy(() => import('@/features/auth/components/LoginView'));
 
 // ============================================================================
@@ -75,6 +76,14 @@ function ViewRouter() {
         return (
           <ErrorBoundary fallback={<FeatureErrorFallback feature="Logs" onRetry={() => window.location.reload()} />}>
             <LazyLogsView />
+          </ErrorBoundary>
+        );
+      case 'delegations':
+        return (
+          <ErrorBoundary
+            fallback={<FeatureErrorFallback feature="Delegations" onRetry={() => window.location.reload()} />}
+          >
+            <LazyDelegationsView />
           </ErrorBoundary>
         );
       default:

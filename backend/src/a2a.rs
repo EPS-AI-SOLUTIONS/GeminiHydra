@@ -147,6 +147,7 @@ pub async fn message_send(
         .map(|id| (id, 0.99_f64, "A2A explicit agent_id".to_string()));
 
     // Record task as submitted
+    let task_start = std::time::Instant::now();
     if let Err(e) = sqlx::query(
         "INSERT INTO gh_a2a_tasks (id, agent_id, status, prompt) VALUES ($1, $2, 'submitted', $3)",
     )
@@ -171,14 +172,26 @@ pub async fn message_send(
             save_message(&state, &task_id, "user", &prompt, None).await;
             save_message(&state, &task_id, "agent", &result, Some(&agent_id)).await;
 
+            // Update duration
+            let duration_ms = task_start.elapsed().as_millis() as i32;
+            let _ = sqlx::query(
+                "UPDATE gh_a2a_tasks SET duration_ms = $1 WHERE id = $2",
+            )
+            .bind(duration_ms)
+            .bind(&task_id)
+            .execute(&state.db)
+            .await;
+
             let task = build_task_response(&state, &task_id).await;
             Json(json!({ "task": task }))
         }
         Err(e) => {
+            let duration_ms = task_start.elapsed().as_millis() as i32;
             let _ = sqlx::query(
-                "UPDATE gh_a2a_tasks SET status = 'failed', error_message = $1, updated_at = NOW() WHERE id = $2",
+                "UPDATE gh_a2a_tasks SET status = 'failed', error_message = $1, duration_ms = $2, updated_at = NOW() WHERE id = $3",
             )
             .bind(&e)
+            .bind(duration_ms)
             .bind(&task_id)
             .execute(&state.db)
             .await;
@@ -331,7 +344,8 @@ async fn execute_a2a_task(
     agent_override: Option<(String, f64, String)>,
     call_depth: u32,
 ) -> Result<(String, String), String> {
-    // Update status to working
+    // Update status to working; start timing
+    let task_start = std::time::Instant::now();
     let _ =
         sqlx::query("UPDATE gh_a2a_tasks SET status = 'working', updated_at = NOW() WHERE id = $1")
             .bind(task_id)
@@ -428,10 +442,12 @@ async fn execute_a2a_task(
 
         // No tool calls — agent is done
         if function_calls.is_empty() {
+            let duration_ms = task_start.elapsed().as_millis() as i32;
             let _ = sqlx::query(
-                "UPDATE gh_a2a_tasks SET status = 'completed', result = $1, updated_at = NOW() WHERE id = $2",
+                "UPDATE gh_a2a_tasks SET status = 'completed', result = $1, duration_ms = $2, updated_at = NOW() WHERE id = $3",
             )
             .bind(&text_result)
+            .bind(duration_ms)
             .bind(task_id)
             .execute(&state.db)
             .await;
@@ -529,9 +545,11 @@ async fn execute_a2a_task(
     }
 
     // Reached max iterations
+    let duration_ms = task_start.elapsed().as_millis() as i32;
     let _ = sqlx::query(
-        "UPDATE gh_a2a_tasks SET status = 'completed', result = 'Max iterations reached', updated_at = NOW() WHERE id = $1",
+        "UPDATE gh_a2a_tasks SET status = 'completed', result = 'Max iterations reached', duration_ms = $1, updated_at = NOW() WHERE id = $2",
     )
+    .bind(duration_ms)
     .bind(task_id)
     .execute(&state.db)
     .await;

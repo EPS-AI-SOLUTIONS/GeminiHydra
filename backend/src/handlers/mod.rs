@@ -28,6 +28,7 @@ pub fn agents_router(state: AppState) -> Router<AppState> {
             get(agents::list_agents).post(agents::create_agent),
         )
         .route("/api/agents/classify", post(agents::classify_agent))
+        .route("/api/agents/delegations", get(agents::list_delegations))
         .route(
             "/api/agents/{id}",
             post(agents::update_agent).delete(agents::delete_agent),

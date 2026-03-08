@@ -3,6 +3,7 @@
     "home": "Home",
     "chat": "Chat",
     "logs": "Logs",
+    "delegations": "Delegations",
     "settings": "Settings"
   },
   "sidebar": {
@@ -154,6 +155,11 @@
       "toggle": "Toggle completion sound",
       "volume": "Volume"
     },
+    "watchdog": {
+      "title": "Watchdog History",
+      "description": "Browser proxy monitoring events (last 50).",
+      "noEvents": "No events"
+    },
     "browserProxy": {
       "title": "Browser Proxy",
       "description": "Gemini image generation via browser automation (gemini-browser-proxy).",
@@ -188,6 +194,14 @@
       "hoursAgo": "{{count}}h ago",
       "daysAgo": "{{count}}d ago"
     }
+  },
+  "delegations": {
+    "title": "Agent Delegations",
+    "total": "Total",
+    "completed": "Completed",
+    "errors": "Errors",
+    "avgDuration": "Avg Duration",
+    "empty": "No delegations yet. Agents will delegate subtasks automatically during complex conversations."
   },
   "mcp": {
     "title": "MCP Servers",
