@@ -1,4 +1,4 @@
-use serde::{Deserialize, Serialize};
+﻿use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 
 // ---------------------------------------------------------------------------
@@ -66,6 +66,23 @@ pub struct KnowledgeEdgeRow {
 }
 
 // ---------------------------------------------------------------------------
+// Agent Profiles
+// ---------------------------------------------------------------------------
+
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
+pub struct CreateAgentProfile {
+    pub name: String,
+    pub system_prompt: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow, ToSchema)]
+pub struct AgentProfile {
+    pub id: uuid::Uuid,
+    pub name: String,
+    pub system_prompt: String,
+    pub created_at: Option<chrono::DateTime<chrono::Utc>>,
+}
+// ---------------------------------------------------------------------------
 // Witcher Agents
 // ---------------------------------------------------------------------------
 
@@ -81,7 +98,7 @@ pub struct WitcherAgent {
     pub system_prompt: Option<String>,
     #[serde(default)]
     pub keywords: Vec<String>,
-    /// #48 — Per-agent temperature override (NULL = use global setting)
+    /// #48 â€” Per-agent temperature override (NULL = use global setting)
     #[serde(default)]
     #[sqlx(default)]
     pub temperature: Option<f64>,
@@ -97,7 +114,7 @@ pub struct WitcherAgent {
     #[serde(default)]
     #[sqlx(default)]
     pub model_b: Option<String>,
-    /// A/B testing: probability of using model_b (0.0–1.0, NULL = no split)
+    /// A/B testing: probability of using model_b (0.0â€“1.0, NULL = no split)
     #[serde(default)]
     #[sqlx(default)]
     pub ab_split: Option<f64>,
@@ -209,11 +226,11 @@ pub struct AppSettings {
     pub theme: String,
     pub welcome_message: String,
     pub use_docker_sandbox: bool,
-    /// #46 — topP for Gemini generationConfig
+    /// #46 â€” topP for Gemini generationConfig
     pub top_p: f64,
-    /// #47 — Response style: 'concise', 'balanced', 'detailed', 'technical'
+    /// #47 â€” Response style: 'concise', 'balanced', 'detailed', 'technical'
     pub response_style: String,
-    /// #49 — Max tool call iterations per request
+    /// #49 â€” Max tool call iterations per request
     pub max_iterations: i32,
     /// Gemini 3 thinking level: 'none', 'minimal', 'low', 'medium', 'high'
     pub thinking_level: String,
@@ -524,7 +541,7 @@ pub enum WsServerMessage {
     },
     Pong,
     Heartbeat,
-    // ── ADK Orchestration messages ──────────────────────────────────
+    // â”€â”€ ADK Orchestration messages â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     /// Orchestration pipeline started
     OrchestrationStart {
         pattern: String,
@@ -563,3 +580,4 @@ pub struct ParallelAgentStatus {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub output_preview: Option<String>,
 }
+

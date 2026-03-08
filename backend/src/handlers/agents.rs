@@ -1,5 +1,5 @@
-// ---------------------------------------------------------------------------
-// handlers/agents.rs — Agent CRUD + classification endpoints
+﻿// ---------------------------------------------------------------------------
+// handlers/agents.rs â€” Agent CRUD + classification endpoints
 // ---------------------------------------------------------------------------
 
 use axum::Json;
@@ -8,7 +8,7 @@ use axum::http::StatusCode;
 use axum::response::IntoResponse;
 use serde_json::{Value, json};
 
-use crate::models::{ClassifyRequest, ClassifyResponse, WitcherAgent};
+use crate::models::{ClassifyRequest, ClassifyResponse, WitcherAgent, CreateAgentProfile, AgentProfile};
 use crate::state::AppState;
 
 use crate::classify::classify_prompt;
@@ -22,7 +22,7 @@ use crate::classify::classify_prompt;
 )]
 pub async fn list_agents(State(state): State<AppState>) -> impl IntoResponse {
     let agents = state.agents.read().await;
-    // #6 — Cache agent list for 60 seconds
+    // #6 â€” Cache agent list for 60 seconds
     (
         [(axum::http::header::CACHE_CONTROL, "public, max-age=60")],
         Json(json!({ "agents": *agents })),
@@ -135,7 +135,7 @@ pub async fn delete_agent(
 }
 
 // ---------------------------------------------------------------------------
-// GET /api/agents/delegations — A2A delegation monitoring
+// GET /api/agents/delegations â€” A2A delegation monitoring
 // ---------------------------------------------------------------------------
 
 #[derive(sqlx::FromRow)]
@@ -219,7 +219,8 @@ pub async fn list_delegations(
     }).collect();
 
     // Stats summary
-    let stats_row: Option<(i64, i64, i64, Option<f64>, Option<i64>)> = sqlx::query_as(
+    type StatsRow = (i64, i64, i64, Option<f64>, Option<i64>);
+    let stats_row: Option<StatsRow> = sqlx::query_as(
         "SELECT COUNT(*), \
          COUNT(*) FILTER (WHERE status = 'completed'), \
          COUNT(*) FILTER (WHERE error_message IS NOT NULL), \
@@ -283,4 +284,37 @@ pub async fn stream_delegations(
             .interval(std::time::Duration::from_secs(15))
             .text("heartbeat"),
     )
+}
+
+// ---------------------------------------------------------------------------
+// Agent Profiles CRUD
+// ---------------------------------------------------------------------------
+
+#[utoipa::path(get, path = "/api/agents/profiles", tag = "agents",
+    responses((status = 200, description = "List of agent profiles", body = Value))
+)]
+pub async fn list_profiles(State(state): State<AppState>) -> Json<Value> {
+    let profiles = sqlx::query_as::<_, AgentProfile>("SELECT id, name, system_prompt, created_at FROM agent_profiles ORDER BY created_at DESC")
+        .fetch_all(&state.db)
+        .await
+        .unwrap_or_default();
+    Json(json!({ "profiles": profiles }))
+}
+
+#[utoipa::path(post, path = "/api/agents/profiles", tag = "agents",
+    request_body = CreateAgentProfile,
+    responses((status = 200, description = "Agent profile created", body = Value))
+)]
+pub async fn create_profile(
+    State(state): State<AppState>,
+    Json(payload): Json<CreateAgentProfile>,
+) -> Json<Value> {
+    let id = uuid::Uuid::new_v4();
+    let _ = sqlx::query("INSERT INTO agent_profiles (id, name, system_prompt) VALUES ($1, $2, $3)")
+        .bind(id)
+        .bind(&payload.name)
+        .bind(&payload.system_prompt)
+        .execute(&state.db)
+        .await;
+    Json(json!({ "success": true, "id": id }))
 }

@@ -1,5 +1,5 @@
-// ---------------------------------------------------------------------------
-// handlers/ — HTTP request handlers
+﻿// ---------------------------------------------------------------------------
+// handlers/ â€” HTTP request handlers
 // Sub-modules for logical grouping; mod.rs re-exports all public items
 // so that `crate::handlers::*` paths remain unchanged.
 // ---------------------------------------------------------------------------
@@ -19,13 +19,17 @@ pub(crate) mod system;
 #[cfg(test)]
 mod tests;
 
-// ── Router Factories ────────────────────────────────────────────────────────
+// â”€â”€ Router Factories â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 pub fn agents_router(state: AppState) -> Router<AppState> {
     Router::new()
         .route(
             "/api/agents",
             get(agents::list_agents).post(agents::create_agent),
+        )
+        .route(
+            "/api/agents/profiles",
+            get(agents::list_profiles).post(agents::create_profile),
         )
         .route("/api/agents/classify", post(agents::classify_agent))
         .route("/api/agents/delegations", get(agents::list_delegations))
@@ -65,9 +69,9 @@ pub fn files_router(state: AppState) -> Router<AppState> {
         ))
 }
 
-// ── Re-exports (backward-compatible) ─────────────────────────────────────────
+// â”€â”€ Re-exports (backward-compatible) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-pub use agents::{classify_agent, create_agent, delete_agent, list_agents, update_agent};
+pub use agents::{classify_agent, create_agent, delete_agent, list_agents, update_agent, list_profiles, create_profile};
 pub use execute::{execute, internal_tool_execute};
 pub use files_handlers::{browse_directory, list_files, read_file};
 pub use streaming::ws_execute;
@@ -76,10 +80,10 @@ pub use system::{
     readiness, rotate_key, system_audit, system_stats,
 };
 
-// ── utoipa __path_* re-exports ───────────────────────────────────────────────
+// â”€â”€ utoipa __path_* re-exports â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 pub use agents::{
     __path_classify_agent, __path_create_agent, __path_delete_agent, __path_list_agents,
-    __path_update_agent,
+    __path_update_agent, __path_list_profiles, __path_create_profile,
 };
 pub use execute::__path_execute;
 pub use files_handlers::{__path_list_files, __path_read_file};
@@ -161,3 +165,4 @@ pub(crate) fn build_providers(
 
     providers
 }
+

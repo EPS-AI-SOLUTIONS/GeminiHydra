@@ -1,4 +1,4 @@
-#![recursion_limit = "512"]
+﻿#![recursion_limit = "512"]
 
 pub mod a2a;
 pub mod analysis;
@@ -58,7 +58,7 @@ pub async fn request_id_middleware(
 
     let mut response = next.run(request).await;
 
-    // Attach as response header — infallible for valid UUID strings.
+    // Attach as response header â€” infallible for valid UUID strings.
     if let Ok(val) = HeaderValue::from_str(&request_id) {
         response.headers_mut().insert("x-request-id", val);
     }
@@ -66,14 +66,14 @@ pub async fn request_id_middleware(
     response
 }
 
-// ── OpenAPI documentation ────────────────────────────────────────────────────
+// â”€â”€ OpenAPI documentation â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 #[derive(OpenApi)]
 #[openapi(
     info(
         title = "GeminiHydra v15 API",
         version = "15.0.0",
-        description = "Multi-Agent AI Swarm — Backend API",
+        description = "Multi-Agent AI Swarm â€” Backend API",
         license(name = "MIT")
     ),
     paths(
@@ -90,6 +90,8 @@ pub async fn request_id_middleware(
         handlers::create_agent,
         handlers::update_agent,
         handlers::delete_agent,
+        handlers::list_profiles,
+        handlers::create_profile,
         // Execute / Chat
         handlers::execute,
         handlers::gemini_models,
@@ -142,6 +144,8 @@ pub async fn request_id_middleware(
         models::WitcherAgent,
         models::ClassifyRequest,
         models::ClassifyResponse,
+        models::CreateAgentProfile,
+        models::AgentProfile,
         // Execute
         models::ExecuteRequest,
         models::ExecuteResponse,
@@ -206,7 +210,7 @@ pub fn create_test_router(state: AppState) -> Router {
 }
 
 fn create_router_inner(state: AppState, rate_limit: bool) -> Router {
-    // ── Per-endpoint rate limiting — Jaskier Shared Pattern ──────
+    // â”€â”€ Per-endpoint rate limiting â€” Jaskier Shared Pattern â”€â”€â”€â”€â”€â”€
     let rl_ws = GovernorConfigBuilder::default()
         .per_second(6)
         .burst_size(10)
@@ -228,7 +232,7 @@ fn create_router_inner(state: AppState, rate_limit: bool) -> Router {
         .finish()
         .expect("rate limiter config: default");
 
-    // ── Public routes (no auth) ──────────────────────────────────────
+    // â”€â”€ Public routes (no auth) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     let public_health = Router::new()
         .route("/api/health", get(handlers::health))
         .route("/api/health/ready", get(handlers::readiness))
@@ -262,11 +266,11 @@ fn create_router_inner(state: AppState, rate_limit: bool) -> Router {
             "/api/auth/google/apikey",
             post(oauth_google::google_save_api_key).delete(oauth_google::google_delete_api_key),
         )
-        // A2A v0.3 — Agent Card discovery (public, no auth)
+        // A2A v0.3 â€” Agent Card discovery (public, no auth)
         .route("/.well-known/agent-card.json", get(a2a::agent_card))
         // ADK sidecar internal tool bridge (localhost only, no auth)
         .route("/api/internal/tool", post(handlers::internal_tool_execute))
-        // GitHub OAuth (public — must be accessible to complete the auth flow)
+        // GitHub OAuth (public â€” must be accessible to complete the auth flow)
         .route(
             "/api/auth/github/status",
             get(oauth_github::github_auth_status),
@@ -283,7 +287,7 @@ fn create_router_inner(state: AppState, rate_limit: bool) -> Router {
             "/api/auth/github/logout",
             post(oauth_github::github_auth_logout),
         )
-        // Vercel OAuth (public — must be accessible to complete the auth flow)
+        // Vercel OAuth (public â€” must be accessible to complete the auth flow)
         .route(
             "/api/auth/vercel/status",
             get(oauth_vercel::vercel_auth_status),
@@ -300,9 +304,9 @@ fn create_router_inner(state: AppState, rate_limit: bool) -> Router {
             "/api/auth/vercel/logout",
             post(oauth_vercel::vercel_auth_logout),
         )
-        // MCP server endpoint (public — MCP spec requires open access for tool discovery)
+        // MCP server endpoint (public â€” MCP spec requires open access for tool discovery)
         .route("/mcp", post(mcp::server::mcp_handler))
-        // Browser proxy management (public — no auth, proxy handles its own state)
+        // Browser proxy management (public â€” no auth, proxy handles its own state)
         .route(
             "/api/browser-proxy/status",
             get(browser_proxy::proxy_status),
@@ -325,7 +329,7 @@ fn create_router_inner(state: AppState, rate_limit: bool) -> Router {
             get(handlers::browser_proxy_history),
         );
 
-    // WebSocket — rate-limited only in production (requires ConnectInfo)
+    // WebSocket â€” rate-limited only in production (requires ConnectInfo)
     let ws_routes = if rate_limit {
         Router::new()
             .route("/ws/execute", get(handlers::ws_execute))
@@ -334,7 +338,7 @@ fn create_router_inner(state: AppState, rate_limit: bool) -> Router {
         Router::new().route("/ws/execute", get(handlers::ws_execute))
     };
 
-    // Execute endpoint — auth always, rate-limit only in production
+    // Execute endpoint â€” auth always, rate-limit only in production
     let execute_routes = if rate_limit {
         Router::new()
             .route("/api/execute", post(handlers::execute))
@@ -360,7 +364,7 @@ fn create_router_inner(state: AppState, rate_limit: bool) -> Router {
             ))
     };
 
-    // ── Protected routes (require auth when AUTH_SECRET is set) ──────
+    // â”€â”€ Protected routes (require auth when AUTH_SECRET is set) â”€â”€â”€â”€â”€â”€
     let protected = Router::new()
         .route("/api/gemini/models", get(handlers::gemini_models))
         .route("/api/models", get(model_registry::list_models))
@@ -371,12 +375,12 @@ fn create_router_inner(state: AppState, rate_limit: bool) -> Router {
             delete(model_registry::unpin_model),
         )
         .route("/api/models/pins", get(model_registry::list_pins))
-        // Logs — backend log ring buffer
+        // Logs â€” backend log ring buffer
         .route(
             "/api/logs/backend",
             get(logs::backend_logs).delete(logs::clear_backend_logs),
         )
-        // OCR — text extraction from images and PDFs
+        // OCR â€” text extraction from images and PDFs
         .route("/api/ocr", post(ocr::ocr))
         .route("/api/ocr/stream", post(ocr::ocr_stream))
         .route("/api/ocr/batch/stream", post(ocr::ocr_batch_stream))
@@ -385,7 +389,7 @@ fn create_router_inner(state: AppState, rate_limit: bool) -> Router {
             "/api/ocr/history/{id}",
             get(ocr::ocr_history_item).delete(ocr::ocr_history_delete),
         )
-        // A2A v0.3 — Agent-to-Agent protocol endpoints
+        // A2A v0.3 â€” Agent-to-Agent protocol endpoints
         .route("/a2a/message/send", post(a2a::message_send))
         .route("/a2a/message/stream", post(a2a::message_stream))
         .route("/a2a/tasks/{id}", get(a2a::tasks_get))
@@ -404,10 +408,10 @@ fn create_router_inner(state: AppState, rate_limit: bool) -> Router {
             auth::require_auth,
         ));
 
-    // ── Metrics endpoint (public, no auth) ─────────────────────────
+    // â”€â”€ Metrics endpoint (public, no auth) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     let metrics = Router::new().route("/api/metrics", get(metrics_handler));
 
-    // ── API v1 prefix alias (mirrors /api routes for forward compat) ─
+    // â”€â”€ API v1 prefix alias (mirrors /api routes for forward compat) â”€
     let v1_public = Router::new()
         .route("/api/v1/health", get(handlers::health))
         .route("/api/v1/health/ready", get(handlers::readiness))
@@ -424,14 +428,14 @@ fn create_router_inner(state: AppState, rate_limit: bool) -> Router {
         .merge(mcp::mcp_router(state.clone()))
         .merge(metrics)
         .merge(v1_public)
-        // Sessions routes merged separately — they need auth too
+        // Sessions routes merged separately â€” they need auth too
         .merge(
             sessions::session_routes().route_layer(middleware::from_fn_with_state(
                 state.clone(),
                 auth::require_auth,
             )),
         )
-        // Swagger UI — no auth required
+        // Swagger UI â€” no auth required
         .merge(SwaggerUi::new("/swagger-ui").url("/api-docs/openapi.json", ApiDoc::openapi()));
 
     // Apply global rate limit only in production (requires ConnectInfo from TCP listener)
@@ -444,7 +448,7 @@ fn create_router_inner(state: AppState, rate_limit: bool) -> Router {
     }
 }
 
-// ── Prometheus-compatible metrics endpoint ───────────────────────────────────
+// â”€â”€ Prometheus-compatible metrics endpoint â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 async fn metrics_handler(State(state): State<AppState>) -> String {
     let snapshot = state.system_monitor.read().await;
@@ -527,3 +531,4 @@ async fn metrics_handler(State(state): State<AppState>) -> String {
         agent_lines,
     )
 }
+
