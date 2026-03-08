@@ -1,0 +1,4 @@
+-- Add tokens to A2A tasks
+ALTER TABLE gh_a2a_tasks ADD COLUMN IF NOT EXISTS prompt_tokens INTEGER DEFAULT 0;
+ALTER TABLE gh_a2a_tasks ADD COLUMN IF NOT EXISTS completion_tokens INTEGER DEFAULT 0;
+ALTER TABLE gh_a2a_tasks ADD COLUMN IF NOT EXISTS total_tokens INTEGER DEFAULT 0;

@@ -355,11 +355,14 @@ async fn execute_a2a_task(
     let agent_id = ctx.agent_id.clone();
 
     // Update task with resolved agent
-    let _ = sqlx::query("UPDATE gh_a2a_tasks SET agent_id = $1, updated_at = NOW() WHERE id = $2")
-        .bind(&agent_id)
-        .bind(task_id)
-        .execute(&state.db)
-        .await;
+    let _ = sqlx::query(
+        "UPDATE gh_a2a_tasks SET agent_id = $1, model_used = $2, updated_at = NOW() WHERE id = $3",
+    )
+    .bind(&agent_id)
+    .bind(&ctx.model)
+    .bind(task_id)
+    .execute(&state.db)
+    .await;
 
     if ctx.api_key.is_empty() {
         return Err("No API key configured".to_string());
@@ -381,6 +384,8 @@ async fn execute_a2a_task(
     let max_iter = 5.min(ctx.max_iterations as usize);
 
     let mut cumulative_tool_errors = 0usize;
+    let mut total_prompt_tokens = 0i64;
+    let mut total_completion_tokens = 0i64;
     const MAX_CUMULATIVE_ERRORS: usize = 10;
     const MAX_TOOL_ERRORS: usize = 5;
 
@@ -422,6 +427,11 @@ async fn execute_a2a_task(
             .await
             .map_err(|e| format!("JSON parse error: {}", e))?;
 
+        if let Some(usage) = json_resp.get("usageMetadata") {
+            total_prompt_tokens += usage["promptTokenCount"].as_i64().unwrap_or(0);
+            total_completion_tokens += usage["candidatesTokenCount"].as_i64().unwrap_or(0);
+        }
+
         let parts = json_resp["candidates"][0]["content"]["parts"]
             .as_array()
             .ok_or_else(|| "No content parts in Gemini response".to_string())?;
@@ -442,10 +452,13 @@ async fn execute_a2a_task(
         if function_calls.is_empty() {
             let duration_ms = task_start.elapsed().as_millis() as i32;
             let _ = sqlx::query(
-                "UPDATE gh_a2a_tasks SET status = 'completed', result = $1, duration_ms = $2, updated_at = NOW() WHERE id = $3",
+                "UPDATE gh_a2a_tasks SET status = 'completed', result = $1, duration_ms = $2, prompt_tokens = $3, completion_tokens = $4, total_tokens = $5, updated_at = NOW() WHERE id = $6",
             )
             .bind(&text_result)
             .bind(duration_ms)
+            .bind(total_prompt_tokens)
+            .bind(total_completion_tokens)
+            .bind(total_prompt_tokens + total_completion_tokens)
             .bind(task_id)
             .execute(&state.db)
             .await;
@@ -545,9 +558,12 @@ async fn execute_a2a_task(
     // Reached max iterations
     let duration_ms = task_start.elapsed().as_millis() as i32;
     let _ = sqlx::query(
-        "UPDATE gh_a2a_tasks SET status = 'completed', result = 'Max iterations reached', duration_ms = $1, updated_at = NOW() WHERE id = $2",
+        "UPDATE gh_a2a_tasks SET status = 'completed', result = 'Max iterations reached', duration_ms = $1, prompt_tokens = $2, completion_tokens = $3, total_tokens = $4, updated_at = NOW() WHERE id = $5",
     )
     .bind(duration_ms)
+    .bind(total_prompt_tokens)
+    .bind(total_completion_tokens)
+    .bind(total_prompt_tokens + total_completion_tokens)
     .bind(task_id)
     .execute(&state.db)
     .await;

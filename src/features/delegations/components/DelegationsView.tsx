@@ -1,13 +1,24 @@
 // src/features/delegations/components/DelegationsView.tsx
 
-import { Activity, AlertTriangle, CheckCircle2, Clock, Loader2, Network, RefreshCw, Users } from 'lucide-react';
+import {
+  Activity,
+  AlertTriangle,
+  CheckCircle2,
+  Clock,
+  Loader2,
+  Network,
+  RefreshCw,
+  Users,
+  XCircle,
+  Zap,
+} from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import { memo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { useViewTheme } from '@/shared/hooks/useViewTheme';
 import { cn } from '@/shared/utils/cn';
-import { type DelegationTask, useDelegations } from '../hooks/useDelegations';
+import { type DelegationTask, useCancelDelegation, useDelegations } from '../hooks/useDelegations';
 
 const TIER_COLORS: Record<string, string> = {
   commander: 'text-purple-400 bg-purple-500/10 border-purple-500/30',
@@ -37,10 +48,12 @@ function TaskRow({
   task,
   theme,
   isChild,
+  onCancel,
 }: {
   task: DelegationTask;
   theme: ReturnType<typeof useViewTheme>;
   isChild?: boolean;
+  onCancel?: (id: string) => void;
 }) {
   const [expanded, setExpanded] = useState(false);
   const tierClass = TIER_COLORS[task.agent_tier] || TIER_COLORS.executor;
@@ -84,6 +97,19 @@ function TaskRow({
           </span>
         )}
         {task.call_depth > 0 && <span className="text-xs text-[var(--matrix-text-secondary)]">d{task.call_depth}</span>}
+        {isWorking && onCancel && (
+          <button
+            type="button"
+            className="ml-2 p-1 text-[var(--matrix-text-secondary)] hover:text-red-400 hover:bg-red-500/10 rounded transition-colors"
+            onClick={(e) => {
+              e.stopPropagation();
+              onCancel(task.id);
+            }}
+            title="Cancel Task"
+          >
+            <XCircle size={14} />
+          </button>
+        )}
       </div>
 
       <p className={cn('text-xs mt-1.5 truncate', theme.textMuted)}>{task.task_prompt}</p>
@@ -101,8 +127,17 @@ function TaskRow({
                 <strong>Agent ID:</strong> {task.agent_id}
               </p>
               <p>
+                <strong>Model:</strong> {task.model_used}
+              </p>
+              <p>
                 <strong>Status:</strong> {task.status}
               </p>
+              {(task.total_tokens ?? 0) > 0 && (
+                <p>
+                  <strong>Tokens:</strong> {task.prompt_tokens} prompt + {task.completion_tokens} completion ={' '}
+                  {task.total_tokens}
+                </p>
+              )}
               {task.caller_agent_id && (
                 <p>
                   <strong>Caller:</strong> {task.caller_agent_id}
@@ -139,9 +174,10 @@ function DelegationsView() {
   const [tierFilter, setTierFilter] = useState<string>('all');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const { data, isLoading, isError, refetch } = useDelegations(autoRefresh);
+  const cancelMutation = useCancelDelegation();
 
   const allTasks = data?.tasks ?? [];
-  const stats = data?.stats ?? { total: 0, completed: 0, errors: 0, avg_duration_ms: null };
+  const stats = data?.stats ?? { total: 0, completed: 0, errors: 0, avg_duration_ms: null, total_tokens: 0 };
 
   const tasks = allTasks.filter((task) => {
     if (tierFilter !== 'all' && task.agent_tier !== tierFilter) return false;
@@ -210,7 +246,7 @@ function DelegationsView() {
       </div>
 
       {/* Stats cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
         {[
           { label: t('delegations.total', 'Total'), value: stats.total, icon: Users, color: 'text-blue-400' },
           {
@@ -225,6 +261,12 @@ function DelegationsView() {
             value: stats.avg_duration_ms != null ? `${(stats.avg_duration_ms / 1000).toFixed(1)}s` : '-',
             icon: Clock,
             color: 'text-amber-400',
+          },
+          {
+            label: t('delegations.totalTokens', 'Total Tokens'),
+            value: stats.total_tokens.toLocaleString(),
+            icon: Zap,
+            color: 'text-purple-400',
           },
         ].map((stat) => {
           const Icon = stat.icon;
@@ -268,7 +310,13 @@ function DelegationsView() {
       {!isLoading && !isError && tasks.length > 0 && (
         <div className="space-y-2">
           {tasks.map((task) => (
-            <TaskRow key={task.id} task={task} theme={theme} isChild={!!task.caller_agent_id} />
+            <TaskRow
+              key={task.id}
+              task={task}
+              theme={theme}
+              isChild={!!task.caller_agent_id}
+              onCancel={(id) => cancelMutation.mutate(id)}
+            />
           ))}
         </div>
       )}

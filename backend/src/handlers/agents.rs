@@ -150,6 +150,10 @@ type AgentRow = (
     chrono::DateTime<chrono::Utc>, // created_at
     chrono::DateTime<chrono::Utc>, // updated_at
     i32,                           // call_depth
+    Option<String>,                // model_used
+    Option<i32>,                   // prompt_tokens
+    Option<i32>,                   // completion_tokens
+    Option<i32>,                   // total_tokens
 );
 
 #[utoipa::path(get, path = "/api/agents/delegations", tag = "agents",
@@ -160,7 +164,8 @@ pub async fn list_delegations(
 ) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
     let rows: Vec<AgentRow> = sqlx::query_as(
         "SELECT id, agent_id, caller_agent_id, status, prompt, result, error_message, \
-         duration_ms, created_at, updated_at, call_depth \
+         duration_ms, created_at, updated_at, call_depth, model_used, \
+         prompt_tokens, completion_tokens, total_tokens \
          FROM gh_a2a_tasks ORDER BY created_at DESC LIMIT 50",
     )
     .fetch_all(&state.db)
@@ -201,15 +206,20 @@ pub async fn list_delegations(
             "created_at": r.8.to_rfc3339(),
             "completed_at": if r.3 == "completed" || r.6.is_some() { Some(r.9.to_rfc3339()) } else { None },
             "call_depth": r.10,
+            "model_used": r.11.clone().unwrap_or_else(|| "gemini-2.5-flash".to_string()),
+            "prompt_tokens": r.12.unwrap_or(0),
+            "completion_tokens": r.13.unwrap_or(0),
+            "total_tokens": r.14.unwrap_or(0),
         })
     }).collect();
 
     // Stats summary
-    let stats_row: Option<(i64, i64, i64, Option<f64>)> = sqlx::query_as(
+    let stats_row: Option<(i64, i64, i64, Option<f64>, Option<i64>)> = sqlx::query_as(
         "SELECT COUNT(*), \
          COUNT(*) FILTER (WHERE status = 'completed'), \
          COUNT(*) FILTER (WHERE error_message IS NOT NULL), \
-         AVG(duration_ms)::float8 \
+         AVG(duration_ms)::float8, \
+         SUM(total_tokens) \
          FROM gh_a2a_tasks",
     )
     .fetch_optional(&state.db)
@@ -217,7 +227,8 @@ pub async fn list_delegations(
     .ok()
     .flatten();
 
-    let (total, completed, errors, avg_ms) = stats_row.unwrap_or((0, 0, 0, None));
+    let (total, completed, errors, avg_ms, total_tokens) =
+        stats_row.unwrap_or((0, 0, 0, None, None));
 
     Ok(Json(json!({
         "tasks": tasks,
@@ -226,6 +237,7 @@ pub async fn list_delegations(
             "completed": completed,
             "errors": errors,
             "avg_duration_ms": avg_ms.map(|v| v as i64),
+            "total_tokens": total_tokens.unwrap_or(0),
         }
     })))
 }
