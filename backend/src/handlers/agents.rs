@@ -241,3 +241,43 @@ pub async fn list_delegations(
         }
     })))
 }
+
+use axum::response::sse::{Event, Sse};
+use futures_util::StreamExt;
+use std::convert::Infallible;
+use tokio_stream::wrappers::BroadcastStream;
+
+#[utoipa::path(get, path = "/api/agents/delegations/stream", tag = "agents",
+    responses((status = 200, description = "SSE stream for agent-to-agent delegations"))
+)]
+pub async fn stream_delegations(
+    State(state): State<AppState>,
+) -> Sse<impl futures_util::Stream<Item = Result<Event, Infallible>>> {
+    let mut rx = state.a2a_task_tx.subscribe();
+    let state_clone = state.clone();
+
+    let stream = async_stream::stream! {
+        // Send initial state immediately
+        if let Ok(Json(data)) = list_delegations(State(state_clone.clone())).await {
+            yield Ok(Event::default().json_data(data).unwrap_or_default());
+        }
+
+        loop {
+            match rx.recv().await {
+                Ok(_) => {
+                    if let Ok(Json(data)) = list_delegations(State(state_clone.clone())).await {
+                        yield Ok(Event::default().json_data(data).unwrap_or_default());
+                    }
+                }
+                Err(tokio::sync::broadcast::error::RecvError::Closed) => break,
+                Err(tokio::sync::broadcast::error::RecvError::Lagged(_)) => continue,
+            }
+        }
+    };
+
+    Sse::new(stream).keep_alive(
+        axum::response::sse::KeepAlive::new()
+            .interval(std::time::Duration::from_secs(15))
+            .text("heartbeat"),
+    )
+}

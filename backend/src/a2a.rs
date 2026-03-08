@@ -164,6 +164,7 @@ pub async fn message_send(
     {
         tracing::error!("a2a: failed to create task: {}", e);
     }
+    let _ = state.a2a_task_tx.send(());
 
     // Execute
     match execute_a2a_task(&state, &task_id, &prompt, agent_override, 0).await {
@@ -179,6 +180,7 @@ pub async fn message_send(
                 .bind(&task_id)
                 .execute(&state.db)
                 .await;
+            let _ = state.a2a_task_tx.send(());
 
             let task = build_task_response(&state, &task_id).await;
             Json(json!({ "task": task }))
@@ -193,6 +195,7 @@ pub async fn message_send(
             .bind(&task_id)
             .execute(&state.db)
             .await;
+            let _ = state.a2a_task_tx.send(());
 
             Json(json!({ "error": e, "task_id": task_id }))
         }
@@ -229,6 +232,7 @@ pub async fn message_stream(
     .bind(&prompt)
     .execute(&state.db)
     .await;
+    let _ = state.a2a_task_tx.send(());
 
     tokio::spawn(async move {
         // Status: working
@@ -324,6 +328,7 @@ pub async fn tasks_cancel(State(state): State<AppState>, Path(id): Path<String>)
             if let Some(token) = tokens.get(&id) {
                 token.cancel();
             }
+            let _ = state.a2a_task_tx.send(());
             Json(json!({ "task_id": id, "status": "canceled" }))
         }
         Ok(None) => Json(json!({ "error": "Task not found or not cancelable" })),
@@ -349,6 +354,7 @@ async fn execute_a2a_task(
             .bind(task_id)
             .execute(&state.db)
             .await;
+    let _ = state.a2a_task_tx.send(());
 
     let mut ctx = crate::context::prepare_execution(state, prompt, None, agent_override, "").await;
     ctx.call_depth = call_depth;
@@ -363,6 +369,7 @@ async fn execute_a2a_task(
     .bind(task_id)
     .execute(&state.db)
     .await;
+    let _ = state.a2a_task_tx.send(());
 
     if ctx.api_key.is_empty() {
         return Err("No API key configured".to_string());
@@ -462,6 +469,7 @@ async fn execute_a2a_task(
             .bind(task_id)
             .execute(&state.db)
             .await;
+            let _ = state.a2a_task_tx.send(());
             return Ok((agent_id, text_result));
         }
 
@@ -567,6 +575,7 @@ async fn execute_a2a_task(
     .bind(task_id)
     .execute(&state.db)
     .await;
+    let _ = state.a2a_task_tx.send(());
 
     Ok((
         agent_id,
@@ -630,6 +639,7 @@ pub(crate) async fn execute_agent_call(
     .bind(depth as i32)
     .execute(&state.db)
     .await;
+    let _ = state.a2a_task_tx.send(());
 
     let override_tuple = Some((
         agent_id.to_string(),
