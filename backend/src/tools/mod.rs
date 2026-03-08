@@ -1125,7 +1125,8 @@ async fn tool_search_files(
                             let ctx_start = match_line.saturating_sub(2);
                             let ctx_end = (match_line + 3).min(lines.len());
                             let mut snippet = String::new();
-                            for (i, line) in lines.iter().enumerate().take(ctx_end).skip(ctx_start) {
+                            for (i, line) in lines.iter().enumerate().take(ctx_end).skip(ctx_start)
+                            {
                                 snippet.push_str(&format!("  {:>4} | {}\n", i + 1, line));
                             }
                             let result_str = format!(
@@ -1302,7 +1303,12 @@ async fn tool_read_file_section(
 
     let actual_end = end_line.min(total_lines);
     let mut out = String::new();
-    for (i, line) in lines.iter().enumerate().take(actual_end).skip(start_line - 1) {
+    for (i, line) in lines
+        .iter()
+        .enumerate()
+        .take(actual_end)
+        .skip(start_line - 1)
+    {
         out.push_str(&format!("{:>5} | {}\n", i + 1, line));
     }
 

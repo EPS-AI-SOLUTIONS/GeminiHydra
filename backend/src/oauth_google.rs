@@ -323,9 +323,10 @@ pub async fn get_google_credential(state: &AppState) -> Option<(String, bool)> {
 fn try_db_api_key(row: &GoogleAuthRow) -> Option<(String, bool)> {
     if !row.api_key_encrypted.is_empty()
         && let Ok(key) = decrypt_token(&row.api_key_encrypted)
-            && !key.is_empty() {
-                return Some((key, false));
-            }
+        && !key.is_empty()
+    {
+        return Some((key, false));
+    }
     None
 }
 

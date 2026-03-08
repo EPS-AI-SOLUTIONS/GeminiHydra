@@ -241,7 +241,10 @@ impl ProxyHealthHistory {
     }
 
     pub fn is_empty(&self) -> bool {
-        self.events.lock().unwrap_or_else(|p| p.into_inner()).is_empty()
+        self.events
+            .lock()
+            .unwrap_or_else(|p| p.into_inner())
+            .is_empty()
     }
 }
 
