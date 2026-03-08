@@ -239,6 +239,10 @@ impl ProxyHealthHistory {
     pub fn len(&self) -> usize {
         self.events.lock().unwrap_or_else(|p| p.into_inner()).len()
     }
+
+    pub fn is_empty(&self) -> bool {
+        self.events.lock().unwrap_or_else(|p| p.into_inner()).is_empty()
+    }
 }
 
 /// Detailed health check — returns full status from proxy `/health` endpoint.
