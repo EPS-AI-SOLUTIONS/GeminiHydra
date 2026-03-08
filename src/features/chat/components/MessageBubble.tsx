@@ -1,6 +1,6 @@
 import { memo, useMemo, type MouseEvent } from 'react';
 import { useTranslation } from 'react-i18next';
-import { BaseMessageBubble } from '@jaskier/ui';
+import { BaseMessageBubble, AgentAvatar } from '@jaskier/ui';
 import { useViewTheme } from '@/shared/hooks/useViewTheme';
 import { cn } from '@/shared/utils/cn';
 import { type Message, useCurrentSessionId } from '@/stores/viewStore';
@@ -54,6 +54,8 @@ export const MessageBubble = memo<MessageBubbleProps>(({ message, isLast, isStre
   const textContent = segments.filter(s => s.type === 'text').map(s => s.content).join('\n');
   const toolSegments = segments.filter(s => s.type === 'tool');
 
+  let status: 'idle' | 'typing' | 'thinking' | 'error' = 'idle'; if (isStreaming && isLast) { status = message.content ? 'typing' : 'thinking'; }
+
   return (
     <div onContextMenu={(e) => onContextMenu?.(e, message)}>
       <BaseMessageBubble
@@ -76,6 +78,7 @@ export const MessageBubble = memo<MessageBubbleProps>(({ message, isLast, isStre
           accentBg: theme.accentBg,
           textMuted: theme.textMuted,
         }}
+        avatar={message.role === 'assistant' ? <AgentAvatar state={status} /> : undefined}
         copyText={t('chat.copyMessage', 'Copy message')}
         copiedText={t('common.copied', 'Copied')}
         modelBadge={message.model}
