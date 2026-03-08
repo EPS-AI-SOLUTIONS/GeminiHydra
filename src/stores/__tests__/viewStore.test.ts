@@ -507,22 +507,22 @@ describe('viewStore - auto-titling', () => {
 });
 
 // ============================================================================
-// MESSAGE COUNT LIMIT
+// MESSAGE AUTO-COMPACTION
 // ============================================================================
 
-describe('viewStore - MAX_MESSAGES_PER_SESSION (500)', () => {
-  it('should cap messages at 500, keeping the most recent', () => {
+describe('viewStore - message auto-compaction', () => {
+  it('should auto-compact history after 25 messages', () => {
     getState().createSession();
     const id = getState().currentSessionId as string;
 
-    for (let i = 0; i < 510; i++) {
+    for (let i = 0; i < 30; i++) {
       getState().addMessage(makeMsg('user', `Message ${i}`));
     }
 
     const messages = getState().chatHistory[id] as Message[];
-    expect(messages).toHaveLength(500);
-    // Oldest should be trimmed, most recent kept
-    expect(messages[messages.length - 1]?.content).toBe('Message 509');
-    expect(messages[0]?.content).toBe('Message 10');
+    // Compaction triggers at > 25, leaving 1 system message + recent messages
+    expect(messages.length).toBeLessThanOrEqual(25);
+    expect(messages[0]?.role).toBe('system');
+    expect(messages[0]?.content).toContain('Compacting');
   });
 });

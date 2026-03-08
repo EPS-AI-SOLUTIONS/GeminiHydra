@@ -35,50 +35,61 @@ function appendMessage(history: Record<string, Message[]>, sessionId: string, ms
       // Fire off background summarization (fire-and-forget)
       const summaryContext = messagesToCompact.map((m) => `${m.role.toUpperCase()}: ${m.content}`).join('\n\n');
 
-      // Use standard JS fetch to call our API to summarize without blocking the UI
-      fetch('/api/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          messages: [
-            {
-              role: 'system',
-              content:
-                'You are a summarization assistant. Summarize the following chat history into a dense, token-efficient paragraph of facts and context. Do not use conversational filler.',
-            },
-            { role: 'user', content: summaryContext },
-          ],
-          model: 'gemini-2.5-flash',
-          temperature: 0.1,
-          max_tokens: 500,
-          stream: false,
-        }),
-      })
-        .then((res) => res.json())
-        .then((data) => {
-          if (data.result) {
-            const summary = data.result;
-            const store = useViewStore.getState();
-            const currentSessionMsgs = store.chatHistory[sessionId] ?? [];
-            const newMsgs = currentSessionMsgs.map((m: Message) =>
-              m.id === compactedMessageId ? { ...m, content: `**[System: Compacted History]**\n\n${summary}` } : m,
-            );
-            store.chatHistory[sessionId] = newMsgs;
-            useViewStore.setState({ chatHistory: { ...store.chatHistory } });
-          }
+      const fallbackCompaction = () => {
+        const store = useViewStore.getState();
+        const currentSessionMsgs = store.chatHistory[sessionId] ?? [];
+        const newMsgs = currentSessionMsgs.map((m: Message) =>
+          m.id === compactedMessageId
+            ? { ...m, content: '_[System] History automatically compacted to save tokens. Older messages archived._' }
+            : m,
+        );
+        store.chatHistory[sessionId] = newMsgs;
+        useViewStore.setState({ chatHistory: { ...store.chatHistory } });
+      };
+
+      try {
+        // Use standard JS fetch to call our API to summarize without blocking the UI
+        fetch('/api/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            messages: [
+              {
+                role: 'system',
+                content:
+                  'You are a summarization assistant. Summarize the following chat history into a dense, token-efficient paragraph of facts and context. Do not use conversational filler.',
+              },
+              { role: 'user', content: summaryContext },
+            ],
+            model: 'gemini-2.5-flash',
+            temperature: 0.1,
+            max_tokens: 500,
+            stream: false,
+          }),
         })
-        .catch((err) => {
-          console.error('Failed to compact history:', err);
-          const store = useViewStore.getState();
-          const currentSessionMsgs = store.chatHistory[sessionId] ?? [];
-          const newMsgs = currentSessionMsgs.map((m: Message) =>
-            m.id === compactedMessageId
-              ? { ...m, content: '_[System] History automatically compacted to save tokens. Older messages archived._' }
-              : m,
-          );
-          store.chatHistory[sessionId] = newMsgs;
-          useViewStore.setState({ chatHistory: { ...store.chatHistory } });
-        });
+          .then((res) => res.json())
+          .then((data) => {
+            if (data.result) {
+              const summary = data.result;
+              const store = useViewStore.getState();
+              const currentSessionMsgs = store.chatHistory[sessionId] ?? [];
+              const newMsgs = currentSessionMsgs.map((m: Message) =>
+                m.id === compactedMessageId ? { ...m, content: `**[System: Compacted History]**\n\n${summary}` } : m,
+              );
+              store.chatHistory[sessionId] = newMsgs;
+              useViewStore.setState({ chatHistory: { ...store.chatHistory } });
+            } else {
+              fallbackCompaction();
+            }
+          })
+          .catch((err) => {
+            console.error('Failed to compact history:', err);
+            fallbackCompaction();
+          });
+      } catch (err) {
+        console.error('Fetch threw synchronously:', err);
+        fallbackCompaction();
+      }
     }
   } else if (updated.length > MAX_MESSAGES_PER_SESSION) {
     updated = updated.slice(-MAX_MESSAGES_PER_SESSION);
