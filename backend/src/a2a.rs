@@ -360,12 +360,13 @@ async fn execute_a2a_task(
     ctx.call_depth = call_depth;
     let agent_id = ctx.agent_id.clone();
 
-    // Update task with resolved agent
+    // Update task with resolved agent and estimated steps
     let _ = sqlx::query(
-        "UPDATE gh_a2a_tasks SET agent_id = $1, model_used = $2, updated_at = NOW() WHERE id = $3",
+        "UPDATE gh_a2a_tasks SET agent_id = $1, model_used = $2, estimated_steps = $3, updated_at = NOW() WHERE id = $4",
     )
     .bind(&agent_id)
     .bind(&ctx.model)
+    .bind(ctx.max_iterations as i32)
     .bind(task_id)
     .execute(&state.db)
     .await;
@@ -397,6 +398,13 @@ async fn execute_a2a_task(
     const MAX_TOOL_ERRORS: usize = 5;
 
     for _iter in 0..max_iter {
+        let _ = sqlx::query("UPDATE gh_a2a_tasks SET completed_steps = $1 WHERE id = $2")
+            .bind(_iter as i32)
+            .bind(task_id)
+            .execute(&state.db)
+            .await;
+        let _ = state.a2a_task_tx.send(());
+
         let body = json!({
             "systemInstruction": { "parts": [{ "text": ctx.system_prompt }] },
             "contents": contents,
@@ -532,6 +540,11 @@ async fn execute_a2a_task(
                         "A2A: too many tool errors ({}) — aborting task",
                         tool_error_count
                     );
+                    let _ = state.swarm_tx.send(crate::handlers::streaming::AgentMessage {
+                        agent_id: "System".to_string(),
+                        content: format!("🚨 CRITICAL: Agent `{}` exceeded maximum tool error threshold ({} failures in a row). Task aborted.", agent_id, MAX_TOOL_ERRORS),
+                        is_final: false,
+                    });
                     result_parts.push(json!({
                         "functionResponse": {
                             "name": name,

@@ -138,23 +138,26 @@ pub async fn delete_agent(
 // GET /api/agents/delegations — A2A delegation monitoring
 // ---------------------------------------------------------------------------
 
-type AgentRow = (
-    String,                        // id
-    String,                        // agent_id
-    Option<String>,                // caller_agent_id
-    String,                        // status
-    String,                        // prompt
-    Option<String>,                // result
-    Option<String>,                // error_message
-    Option<i32>,                   // duration_ms
-    chrono::DateTime<chrono::Utc>, // created_at
-    chrono::DateTime<chrono::Utc>, // updated_at
-    i32,                           // call_depth
-    Option<String>,                // model_used
-    Option<i32>,                   // prompt_tokens
-    Option<i32>,                   // completion_tokens
-    Option<i32>,                   // total_tokens
-);
+#[derive(sqlx::FromRow)]
+struct AgentRow {
+    id: String,
+    agent_id: String,
+    caller_agent_id: Option<String>,
+    status: String,
+    prompt: String,
+    result: Option<String>,
+    error_message: Option<String>,
+    duration_ms: Option<i32>,
+    created_at: chrono::DateTime<chrono::Utc>,
+    updated_at: chrono::DateTime<chrono::Utc>,
+    call_depth: i32,
+    model_used: Option<String>,
+    prompt_tokens: Option<i32>,
+    completion_tokens: Option<i32>,
+    total_tokens: Option<i32>,
+    completed_steps: Option<i32>,
+    estimated_steps: Option<i32>,
+}
 
 #[utoipa::path(get, path = "/api/agents/delegations", tag = "agents",
     responses((status = 200, description = "Recent agent-to-agent delegations"))
@@ -165,7 +168,7 @@ pub async fn list_delegations(
     let rows: Vec<AgentRow> = sqlx::query_as(
         "SELECT id, agent_id, caller_agent_id, status, prompt, result, error_message, \
          duration_ms, created_at, updated_at, call_depth, model_used, \
-         prompt_tokens, completion_tokens, total_tokens \
+         prompt_tokens, completion_tokens, total_tokens, completed_steps, estimated_steps \
          FROM gh_a2a_tasks ORDER BY created_at DESC LIMIT 50",
     )
     .fetch_all(&state.db)
@@ -180,36 +183,38 @@ pub async fn list_delegations(
     let agents = state.agents.read().await;
     let tasks: Vec<Value> = rows.iter().map(|r| {
         let agent_name = agents.iter()
-            .find(|a| a.id == r.1)
+            .find(|a| a.id == r.agent_id)
             .map(|a| a.name.clone())
-            .unwrap_or_else(|| r.1.clone());
+            .unwrap_or_else(|| r.agent_id.clone());
         let agent_tier = agents.iter()
-            .find(|a| a.id == r.1)
+            .find(|a| a.id == r.agent_id)
             .map(|a| a.tier.clone())
             .unwrap_or_else(|| "executor".to_string());
 
         json!({
-            "id": r.0,
+            "id": r.id,
             "agent_name": agent_name,
             "agent_tier": agent_tier,
-            "agent_id": r.1,
-            "caller_agent_id": r.2,
-            "status": r.3,
-            "task_prompt": r.4,
-            "result_preview": r.5.as_ref().map(|s| {
+            "agent_id": r.agent_id,
+            "caller_agent_id": r.caller_agent_id,
+            "status": r.status,
+            "task_prompt": r.prompt,
+            "result_preview": r.result.as_ref().map(|s| {
                 let chars: String = s.chars().take(200).collect();
                 chars
             }),
-            "is_error": r.6.is_some(),
-            "error_message": r.6,
-            "duration_ms": r.7,
-            "created_at": r.8.to_rfc3339(),
-            "completed_at": if r.3 == "completed" || r.6.is_some() { Some(r.9.to_rfc3339()) } else { None },
-            "call_depth": r.10,
-            "model_used": r.11.clone().unwrap_or_else(|| "gemini-2.5-flash".to_string()),
-            "prompt_tokens": r.12.unwrap_or(0),
-            "completion_tokens": r.13.unwrap_or(0),
-            "total_tokens": r.14.unwrap_or(0),
+            "is_error": r.error_message.is_some(),
+            "error_message": r.error_message,
+            "duration_ms": r.duration_ms,
+            "created_at": r.created_at.to_rfc3339(),
+            "completed_at": if r.status == "completed" || r.error_message.is_some() { Some(r.updated_at.to_rfc3339()) } else { None },
+            "call_depth": r.call_depth,
+            "model_used": r.model_used.clone().unwrap_or_else(|| "gemini-2.5-flash".to_string()),
+            "prompt_tokens": r.prompt_tokens.unwrap_or(0),
+            "completion_tokens": r.completion_tokens.unwrap_or(0),
+            "total_tokens": r.total_tokens.unwrap_or(0),
+            "completed_steps": r.completed_steps.unwrap_or(0),
+            "estimated_steps": r.estimated_steps.unwrap_or(5),
         })
     }).collect();
 
@@ -243,9 +248,7 @@ pub async fn list_delegations(
 }
 
 use axum::response::sse::{Event, Sse};
-use futures_util::StreamExt;
 use std::convert::Infallible;
-use tokio_stream::wrappers::BroadcastStream;
 
 #[utoipa::path(get, path = "/api/agents/delegations/stream", tag = "agents",
     responses((status = 200, description = "SSE stream for agent-to-agent delegations"))

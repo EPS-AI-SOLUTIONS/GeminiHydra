@@ -97,6 +97,24 @@ function TaskRow({
           </span>
         )}
         {task.call_depth > 0 && <span className="text-xs text-[var(--matrix-text-secondary)]">d{task.call_depth}</span>}
+
+        {isWorking && task.estimated_steps > 0 && (
+          <div className="flex items-center gap-1.5 ml-2">
+            <span className="text-[10px] text-[var(--matrix-text-secondary)]">
+              {Math.round((task.completed_steps / task.estimated_steps) * 100)}%
+            </span>
+            <div className="w-16 h-1.5 bg-[var(--matrix-bg-tertiary)] rounded-full overflow-hidden">
+              <div
+                className="h-full bg-[var(--matrix-accent)] transition-all duration-300"
+                style={{ width: `${Math.min(100, (task.completed_steps / task.estimated_steps) * 100)}%` }}
+              />
+            </div>
+            <span className="text-[10px] text-[var(--matrix-text-secondary)]">
+              {task.completed_steps}/{task.estimated_steps}
+            </span>
+          </div>
+        )}
+
         {isWorking && onCancel && (
           <button
             type="button"

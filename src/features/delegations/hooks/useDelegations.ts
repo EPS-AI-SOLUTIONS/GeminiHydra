@@ -1,6 +1,7 @@
 // src/features/delegations/hooks/useDelegations.ts
-import { useEffect } from 'react';
+
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useEffect } from 'react';
 import { apiGet, apiPost } from '@/shared/api/client';
 
 export interface DelegationTask {
@@ -20,6 +21,8 @@ export interface DelegationTask {
   completion_tokens: number;
   total_tokens: number;
   call_depth: number;
+  completed_steps: number;
+  estimated_steps: number;
   created_at: string;
   completed_at: string | null;
 }
@@ -53,7 +56,7 @@ export function useDelegations(autoRefresh: boolean) {
 
     let eventSource: EventSource | null = null;
     let reconnectTimeout: NodeJS.Timeout;
-    
+
     // We get the base URL to construct a full SSE path
     const connect = () => {
       // Create EventSource directly to the backend
@@ -62,7 +65,7 @@ export function useDelegations(autoRefresh: boolean) {
         (import.meta.env.PROD && window.location.hostname !== 'localhost'
           ? 'https://geminihydra-v15-backend.fly.dev'
           : '');
-      
+
       eventSource = new EventSource(`${backendUrl}/api/agents/delegations/stream`);
 
       eventSource.onmessage = (event) => {
