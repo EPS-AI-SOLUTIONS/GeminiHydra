@@ -1,7 +1,7 @@
 import { render, screen } from '@testing-library/react';
 import { Search } from 'lucide-react';
 import { describe, expect, it } from 'vitest';
-import { Input } from '@/components/atoms/Input';
+import { Input  } from '@jaskier/ui';
 
 describe('Input', () => {
   it('renders an input element', () => {

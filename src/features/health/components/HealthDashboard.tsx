@@ -12,7 +12,7 @@ import { Activity, Bot, Clock, Cpu, Database, Radio, RefreshCw, Shield, Wifi } f
 import { memo, type ReactNode, useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
-import { Card } from '@/components/atoms/Card';
+import { Card  } from '@jaskier/ui';
 import { QueryError } from '@/components/molecules/QueryError';
 import { useViewTheme } from '@/shared/hooks/useViewTheme';
 import { cn } from '@/shared/utils/cn';

@@ -1,8 +1,8 @@
 import { HelpCircle } from 'lucide-react';
 import { motion } from 'motion/react';
 import { useState } from 'react';
-import { Button } from '@/components/atoms/Button';
-import { Input } from '@/components/atoms/Input';
+import { Button  } from '@jaskier/ui';
+import { Input  } from '@jaskier/ui';
 
 interface AskUserDialogProps {
   question: string;

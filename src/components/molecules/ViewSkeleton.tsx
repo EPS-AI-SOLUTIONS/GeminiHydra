@@ -7,7 +7,7 @@
  */
 
 import { useTranslation } from 'react-i18next';
-import { Skeleton } from '@/components/atoms/Skeleton';
+import { Skeleton  } from '@jaskier/ui';
 
 export function ViewSkeleton() {
   const { t } = useTranslation();
