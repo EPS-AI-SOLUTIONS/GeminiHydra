@@ -21,7 +21,9 @@ import {
   Plus,
   Shield,
   Sword,
+  Terminal,
   Trash2,
+  RefreshCw,
   Wand2,
   Zap,
 } from 'lucide-react';
@@ -39,6 +41,7 @@ import {
   useDeleteAgentMutation,
   useUpdateAgentMutation,
 } from '@/features/agents/hooks/useAgents';
+import { type BackendLogEntry, useBackendLogs } from '@/features/logs/hooks/useLogs';
 import type { Agent } from '@/shared/api/schemas';
 import { useViewTheme } from '@/shared/hooks/useViewTheme';
 import { cn } from '@/shared/utils/cn';
@@ -264,6 +267,69 @@ const AgentCard = memo(function AgentCard({
   );
 });
 
+function formatTimestamp(ts: string): string {
+  try {
+    const d = new Date(ts);
+    return d.toLocaleTimeString(undefined, {
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: false,
+    });
+  } catch {
+    return ts;
+  }
+}
+
+function LevelBadge({ level }: { level: string }) {
+  const upper = level.toUpperCase();
+  const variant =
+    upper === 'ERROR'
+      ? 'bg-red-500/20 text-red-400'
+      : upper === 'WARN' || upper === 'WARNING'
+        ? 'bg-amber-500/20 text-amber-400'
+        : upper === 'INFO'
+          ? 'bg-blue-500/20 text-blue-400'
+          : 'bg-slate-500/20 text-slate-400';
+
+  return (
+    <span className={cn('px-1.5 py-0.5 rounded text-[10px] font-bold', variant)}>
+      {upper}
+    </span>
+  );
+}
+
+function TerminalLogs() {
+  const t = useViewTheme();
+  const { data, isLoading } = useBackendLogs({ limit: 100 }, true);
+  const logs = data?.logs ?? [];
+
+  return (
+    <div className={cn("flex flex-col h-full rounded-lg border overflow-hidden", t.isLight ? "bg-slate-900 border-slate-800" : "bg-black border-white/10")}>
+      <div className="flex items-center justify-between px-4 py-2 border-b border-white/10 bg-white/5">
+        <div className="flex items-center gap-2">
+          <Terminal size={14} className="text-emerald-400" />
+          <span className="text-xs font-mono font-semibold text-emerald-400">Terminal Logs</span>
+        </div>
+        {isLoading && <RefreshCw size={12} className="text-emerald-400/50 animate-spin" />}
+      </div>
+      <div className="flex-1 overflow-y-auto p-4 space-y-1 font-mono text-[11px]">
+        {logs.length === 0 && !isLoading && (
+          <div className="text-white/30 italic">Waiting for logs...</div>
+        )}
+        {logs.map((log: BackendLogEntry, idx: number) => (
+          <div key={`${log.timestamp}-${idx}`} className="flex items-start gap-2 text-white/70 hover:bg-white/5 px-1 rounded transition-colors">
+            <span className="text-white/40 flex-shrink-0">{formatTimestamp(log.timestamp)}</span>
+            <LevelBadge level={log.level} />
+            <span className="text-white/50 flex-shrink-0 max-w-[100px] truncate" title={log.target}>{log.target}</span>
+            <span className="text-white/90 break-all">{log.message}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 // ============================================================================
 // MAIN COMPONENT
 // ============================================================================
@@ -370,36 +436,44 @@ export function AgentsView(): ReactNode {
         </div>
       </div>
 
-      {/* Grid */}
-      <div className={cn('flex-1 overflow-y-auto p-6', t.scrollbar)}>
-        {filteredAgents.length === 0 ? (
-          <EmptyState
-            icon={Bot}
-            title={tr('agents.empty', 'No agents configured')}
-            description={tr('agents.emptyDesc', 'Create your first agent to start building the swarm.')}
-            action={
-              <Button
-                onClick={() => {
-                  setEditingAgent(null);
-                  setEditorOpen(true);
-                }}
-                size="sm"
-              >
-                <Plus size={16} className="mr-2" />
-                New Agent
-              </Button>
-            }
-            className="h-full"
-          />
-        ) : (
-          <AnimatePresence mode="popLayout">
-            <motion.div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4" layout>
-              {filteredAgents.map((agent) => (
-                <AgentCard key={agent.id} agent={agent} onEdit={handleEdit} onDelete={handleDelete} />
-              ))}
-            </motion.div>
-          </AnimatePresence>
-        )}
+      {/* Content Split */}
+      <div className="flex flex-1 overflow-hidden">
+        {/* Left Side: Agents Grid */}
+        <div className={cn('flex-1 overflow-y-auto p-6 border-r', t.border, t.scrollbar)}>
+          {filteredAgents.length === 0 ? (
+            <EmptyState
+              icon={Bot}
+              title={tr('agents.empty', 'No agents configured')}
+              description={tr('agents.emptyDesc', 'Create your first agent to start building the swarm.')}
+              action={
+                <Button
+                  onClick={() => {
+                    setEditingAgent(null);
+                    setEditorOpen(true);
+                  }}
+                  size="sm"
+                >
+                  <Plus size={16} className="mr-2" />
+                  New Agent
+                </Button>
+              }
+              className="h-full"
+            />
+          ) : (
+            <AnimatePresence mode="popLayout">
+              <motion.div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4" layout>
+                {filteredAgents.map((agent) => (
+                  <AgentCard key={agent.id} agent={agent} onEdit={handleEdit} onDelete={handleDelete} />
+                ))}
+              </motion.div>
+            </AnimatePresence>
+          )}
+        </div>
+
+        {/* Right Side: Terminal Logs */}
+        <div className={cn('w-[400px] xl:w-[500px] p-4 flex-shrink-0 flex flex-col', t.isLight ? 'bg-slate-50' : 'bg-black/20')}>
+          <TerminalLogs />
+        </div>
       </div>
 
       <AgentEditor isOpen={editorOpen} agent={editingAgent} onClose={() => setEditorOpen(false)} onSave={handleSave} />
