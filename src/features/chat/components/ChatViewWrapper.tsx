@@ -151,7 +151,7 @@ export function ChatViewWrapper() {
       },
       onToolCall: (msg) => {
         if (msg.name === 'ask_user') {
-          const args = msg.args as any;
+          const args = msg.args as { question?: string; options?: string[] };
           setPendingAskUser({
             question: args?.question || 'Proszę o decyzję...',
             options: args?.options,
@@ -262,13 +262,24 @@ export function ChatViewWrapper() {
     ],
   );
 
-  const { status, streamingSessionId, connectionGaveUp, sendExecute, sendOrchestrate, sendToolResponse, cancelStream, manualReconnect } =
-    useWebSocketChat(wsCallbacks);
+  const {
+    status,
+    streamingSessionId,
+    connectionGaveUp,
+    sendExecute,
+    sendOrchestrate,
+    sendToolResponse,
+    cancelStream,
+    manualReconnect,
+  } = useWebSocketChat(wsCallbacks);
 
-  const handleAskUserSubmit = useCallback((response: string) => {
-    sendToolResponse('ask_user', response);
-    setPendingAskUser(null);
-  }, [sendToolResponse]);
+  const handleAskUserSubmit = useCallback(
+    (response: string) => {
+      sendToolResponse('ask_user', response);
+      setPendingAskUser(null);
+    },
+    [sendToolResponse],
+  );
 
   // Fallback: if WS never reaches 'connected' within 5s, switch to HTTP.
   // Only clear fallback when WS actually connects (not on reconnect attempts).
@@ -458,4 +469,3 @@ export function ChatViewWrapper() {
 }
 
 export default ChatViewWrapper;
-

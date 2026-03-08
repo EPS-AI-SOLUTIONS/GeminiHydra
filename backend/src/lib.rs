@@ -213,17 +213,17 @@ fn create_router_inner(state: AppState, rate_limit: bool) -> Router {
         .use_headers()
         .finish()
         .expect("rate limiter config: ws");
-        
+
     let rl_execute = GovernorConfigBuilder::default()
         .per_second(2)
         .burst_size(30)
         .use_headers()
         .finish()
         .expect("rate limiter config: execute");
-        
+
     let rl_default = GovernorConfigBuilder::default()
         .per_millisecond(100) // Much faster limit
-        .burst_size(500)      // Massive burst
+        .burst_size(500) // Massive burst
         .use_headers()
         .finish()
         .expect("rate limiter config: default");
@@ -242,11 +242,26 @@ fn create_router_inner(state: AppState, rate_limit: bool) -> Router {
         )
         .route("/api/auth/mode", get(handlers::auth_mode))
         // Google OAuth
-        .route("/api/auth/google/status", get(oauth_google::google_auth_status))
-        .route("/api/auth/google/login", post(oauth_google::google_auth_login))
-        .route("/api/auth/google/redirect", get(oauth_google::google_redirect))
-        .route("/api/auth/google/logout", post(oauth_google::google_auth_logout))
-        .route("/api/auth/google/apikey", post(oauth_google::google_save_api_key).delete(oauth_google::google_delete_api_key))
+        .route(
+            "/api/auth/google/status",
+            get(oauth_google::google_auth_status),
+        )
+        .route(
+            "/api/auth/google/login",
+            post(oauth_google::google_auth_login),
+        )
+        .route(
+            "/api/auth/google/redirect",
+            get(oauth_google::google_redirect),
+        )
+        .route(
+            "/api/auth/google/logout",
+            post(oauth_google::google_auth_logout),
+        )
+        .route(
+            "/api/auth/google/apikey",
+            post(oauth_google::google_save_api_key).delete(oauth_google::google_delete_api_key),
+        )
         // A2A v0.3 — Agent Card discovery (public, no auth)
         .route("/.well-known/agent-card.json", get(a2a::agent_card))
         // ADK sidecar internal tool bridge (localhost only, no auth)
@@ -288,12 +303,27 @@ fn create_router_inner(state: AppState, rate_limit: bool) -> Router {
         // MCP server endpoint (public — MCP spec requires open access for tool discovery)
         .route("/mcp", post(mcp::server::mcp_handler))
         // Browser proxy management (public — no auth, proxy handles its own state)
-        .route("/api/browser-proxy/status", get(browser_proxy::proxy_status))
+        .route(
+            "/api/browser-proxy/status",
+            get(browser_proxy::proxy_status),
+        )
         .route("/api/browser-proxy/login", post(browser_proxy::proxy_login))
-        .route("/api/browser-proxy/login/status", get(browser_proxy::proxy_login_status))
-        .route("/api/browser-proxy/reinit", post(browser_proxy::proxy_reinit))
-        .route("/api/browser-proxy/logout", delete(browser_proxy::proxy_logout))
-        .route("/api/browser-proxy/history", get(handlers::browser_proxy_history));
+        .route(
+            "/api/browser-proxy/login/status",
+            get(browser_proxy::proxy_login_status),
+        )
+        .route(
+            "/api/browser-proxy/reinit",
+            post(browser_proxy::proxy_reinit),
+        )
+        .route(
+            "/api/browser-proxy/logout",
+            delete(browser_proxy::proxy_logout),
+        )
+        .route(
+            "/api/browser-proxy/history",
+            get(handlers::browser_proxy_history),
+        );
 
     // WebSocket — rate-limited only in production (requires ConnectInfo)
     let ws_routes = if rate_limit {
@@ -308,7 +338,10 @@ fn create_router_inner(state: AppState, rate_limit: bool) -> Router {
     let execute_routes = if rate_limit {
         Router::new()
             .route("/api/execute", post(handlers::execute))
-            .route("/api/v1/swarm/stream", get(handlers::streaming::swarm_sse_handler))
+            .route(
+                "/api/v1/swarm/stream",
+                get(handlers::streaming::swarm_sse_handler),
+            )
             .route_layer(middleware::from_fn_with_state(
                 state.clone(),
                 auth::require_auth,
@@ -317,7 +350,10 @@ fn create_router_inner(state: AppState, rate_limit: bool) -> Router {
     } else {
         Router::new()
             .route("/api/execute", post(handlers::execute))
-            .route("/api/v1/swarm/stream", get(handlers::streaming::swarm_sse_handler))
+            .route(
+                "/api/v1/swarm/stream",
+                get(handlers::streaming::swarm_sse_handler),
+            )
             .route_layer(middleware::from_fn_with_state(
                 state.clone(),
                 auth::require_auth,
@@ -420,21 +456,20 @@ async fn metrics_handler(State(state): State<AppState>) -> String {
          COUNT(*) FILTER (WHERE status = 'completed'), \
          COUNT(*) FILTER (WHERE error_message IS NOT NULL), \
          AVG(duration_ms)::float8 \
-         FROM gh_a2a_tasks"
+         FROM gh_a2a_tasks",
     )
     .fetch_optional(&state.db)
     .await
     .ok()
     .flatten();
 
-    let (a2a_total, a2a_completed, a2a_errors, a2a_avg_ms) =
-        a2a_stats.unwrap_or((0, 0, 0, None));
+    let (a2a_total, a2a_completed, a2a_errors, a2a_avg_ms) = a2a_stats.unwrap_or((0, 0, 0, None));
 
     // Per-agent duration metrics
     let per_agent: Vec<(String, f64, i64)> = sqlx::query_as(
         "SELECT agent_id, AVG(duration_ms)::float8, COUNT(*) \
          FROM gh_a2a_tasks WHERE duration_ms IS NOT NULL \
-         GROUP BY agent_id ORDER BY agent_id"
+         GROUP BY agent_id ORDER BY agent_id",
     )
     .fetch_all(&state.db)
     .await
@@ -444,7 +479,7 @@ async fn metrics_handler(State(state): State<AppState>) -> String {
     if !per_agent.is_empty() {
         agent_lines.push_str(
             "# HELP a2a_delegation_duration_by_agent Average delegation duration per agent in ms\n\
-             # TYPE a2a_delegation_duration_by_agent gauge\n"
+             # TYPE a2a_delegation_duration_by_agent gauge\n",
         );
         for (agent, avg_ms, count) in &per_agent {
             agent_lines.push_str(&format!(

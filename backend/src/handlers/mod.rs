@@ -67,8 +67,8 @@ pub use execute::{execute, internal_tool_execute};
 pub use files_handlers::{browse_directory, list_files, read_file};
 pub use streaming::ws_execute;
 pub use system::{
-    auth_mode, browser_proxy_history, gemini_models, health, health_detailed, readiness,
-    rotate_key, system_stats, ProxyHistoryResponse,
+    ProxyHistoryResponse, auth_mode, browser_proxy_history, gemini_models, health, health_detailed,
+    readiness, rotate_key, system_stats,
 };
 
 // ── utoipa __path_* re-exports ───────────────────────────────────────────────

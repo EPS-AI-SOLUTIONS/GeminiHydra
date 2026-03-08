@@ -16,8 +16,7 @@ pub fn is_enabled() -> bool {
 }
 
 fn proxy_base_url() -> String {
-    std::env::var("BROWSER_PROXY_URL")
-        .unwrap_or_else(|_| "http://localhost:3001".to_string())
+    std::env::var("BROWSER_PROXY_URL").unwrap_or_else(|_| "http://localhost:3001".to_string())
 }
 
 /// Call the browser proxy to generate/edit an image.
@@ -62,7 +61,9 @@ pub async fn generate_image(
                 if attempt < 2 {
                     tracing::warn!(
                         "browser_proxy[{}]: attempt {} failed ({}), retrying in 5s",
-                        context, attempt, e
+                        context,
+                        attempt,
+                        e
                     );
                     tokio::time::sleep(Duration::from_secs(5)).await;
                     continue;
@@ -81,7 +82,9 @@ pub async fn generate_image(
         if (status.as_u16() == 502 || status.as_u16() == 503) && attempt < 2 {
             tracing::warn!(
                 "browser_proxy[{}]: HTTP {} on attempt {}, retrying in 5s",
-                context, status.as_u16(), attempt
+                context,
+                status.as_u16(),
+                attempt
             );
             tokio::time::sleep(Duration::from_secs(5)).await;
             continue;
@@ -127,6 +130,9 @@ pub struct BrowserProxyStatus {
     pub configured: bool,
     pub reachable: bool,
     pub ready: bool,
+    /// "pool" for in-process Rust browser pool, "proxy" for Node.js HTTP proxy
+    #[serde(default)]
+    pub mode: String,
     pub workers_ready: u32,
     pub workers_busy: u32,
     pub pool_size: u32,
@@ -159,6 +165,7 @@ impl Default for BrowserProxyStatus {
             configured: is_enabled(),
             reachable: false,
             ready: false,
+            mode: String::new(),
             workers_ready: 0,
             workers_busy: 0,
             pool_size: 0,
@@ -181,7 +188,9 @@ impl Default for BrowserProxyStatus {
 /// Directory where gemini-browser-proxy is installed.
 /// Auto-restart is disabled if not set.
 pub fn proxy_dir() -> Option<String> {
-    std::env::var("BROWSER_PROXY_DIR").ok().filter(|s| !s.is_empty())
+    std::env::var("BROWSER_PROXY_DIR")
+        .ok()
+        .filter(|s| !s.is_empty())
 }
 
 // ── Proxy Health History Ring Buffer ─────────────────────────────────────────
@@ -245,13 +254,19 @@ pub(crate) async fn detailed_health_check(client: &reqwest::Client) -> BrowserPr
         .as_secs();
 
     let url = format!("{}/health", proxy_base_url());
-    match client.get(&url).timeout(Duration::from_secs(5)).send().await {
+    match client
+        .get(&url)
+        .timeout(Duration::from_secs(5))
+        .send()
+        .await
+    {
         Ok(resp) => {
             if let Ok(json) = resp.json::<serde_json::Value>().await {
                 BrowserProxyStatus {
                     configured: true,
                     reachable: true,
                     ready: json["ready"].as_bool().unwrap_or(false),
+                    mode: "proxy".to_string(),
                     workers_ready: json["workers_ready"].as_u64().unwrap_or(0) as u32,
                     workers_busy: json["workers_busy"].as_u64().unwrap_or(0) as u32,
                     pool_size: json["pool_size"].as_u64().unwrap_or(0) as u32,
@@ -287,14 +302,12 @@ pub(crate) async fn detailed_health_check(client: &reqwest::Client) -> BrowserPr
 
 // ── HTTP handlers for browser proxy management ───────────────────────────
 
-use axum::extract::State;
 use axum::Json;
+use axum::extract::State;
 use axum::http::StatusCode;
 
 /// GET /api/browser-proxy/status — combined health + login status
-pub async fn proxy_status(
-    State(state): State<crate::state::AppState>,
-) -> Json<serde_json::Value> {
+pub async fn proxy_status(State(state): State<crate::state::AppState>) -> Json<serde_json::Value> {
     if !is_enabled() {
         return Json(json!({
             "configured": false,
@@ -375,7 +388,10 @@ pub async fn proxy_login(
         })?;
 
     let status = resp.status();
-    let body: serde_json::Value = resp.json::<serde_json::Value>().await.unwrap_or(json!({"error": "invalid response"}));
+    let body: serde_json::Value = resp
+        .json::<serde_json::Value>()
+        .await
+        .unwrap_or(json!({"error": "invalid response"}));
 
     if status.is_success() || status.as_u16() == 202 || status.as_u16() == 409 {
         Ok(Json(body))
@@ -405,7 +421,10 @@ pub async fn proxy_login_status(
             StatusCode::BAD_GATEWAY
         })?;
 
-    let body: serde_json::Value = resp.json::<serde_json::Value>().await.unwrap_or(json!({"error": "invalid response"}));
+    let body: serde_json::Value = resp
+        .json::<serde_json::Value>()
+        .await
+        .unwrap_or(json!({"error": "invalid response"}));
     Ok(Json(body))
 }
 
@@ -429,7 +448,10 @@ pub async fn proxy_reinit(
             StatusCode::BAD_GATEWAY
         })?;
 
-    let body: serde_json::Value = resp.json::<serde_json::Value>().await.unwrap_or(json!({"error": "invalid response"}));
+    let body: serde_json::Value = resp
+        .json::<serde_json::Value>()
+        .await
+        .unwrap_or(json!({"error": "invalid response"}));
     Ok(Json(body))
 }
 
@@ -453,6 +475,9 @@ pub async fn proxy_logout(
             StatusCode::BAD_GATEWAY
         })?;
 
-    let body: serde_json::Value = resp.json::<serde_json::Value>().await.unwrap_or(json!({"error": "invalid response"}));
+    let body: serde_json::Value = resp
+        .json::<serde_json::Value>()
+        .await
+        .unwrap_or(json!({"error": "invalid response"}));
     Ok(Json(body))
 }

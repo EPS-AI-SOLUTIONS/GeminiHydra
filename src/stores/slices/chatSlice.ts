@@ -13,12 +13,12 @@ function appendMessage(history: Record<string, Message[]>, sessionId: string, ms
   const current = history[sessionId] || [];
   const sanitizedMsg: Message = { ...msg, content: sanitizeContent(msg.content, MAX_CONTENT_LENGTH) };
   let updated = [...current, sanitizedMsg];
-  
+
   // Auto-compaction triggers at >25 messages
   if (updated.length > 25) {
     const cutIndex = updated.length - 15;
-    const messagesToCompact = updated.slice(0, cutIndex).filter(m => m.role !== 'system');
-    
+    const messagesToCompact = updated.slice(0, cutIndex).filter((m) => m.role !== 'system');
+
     // If we haven't already started compacting these messages
     if (messagesToCompact.length > 0 && !updated[0]?.content.includes('Compacting history')) {
       const compactedMessageId = crypto.randomUUID();
@@ -26,57 +26,59 @@ function appendMessage(history: Record<string, Message[]>, sessionId: string, ms
         id: compactedMessageId,
         role: 'system',
         content: '_[System] Compacting history to save tokens..._',
-        timestamp: Date.now()
+        timestamp: Date.now(),
       };
-      
+
       // Keep the new system message + the latest 15 messages
       updated = [compactedMessage, ...updated.slice(cutIndex)];
-      
+
       // Fire off background summarization (fire-and-forget)
-      const summaryContext = messagesToCompact.map(m => `${m.role.toUpperCase()}: ${m.content}`).join('\n\n');
-      
+      const summaryContext = messagesToCompact.map((m) => `${m.role.toUpperCase()}: ${m.content}`).join('\n\n');
+
       // Use standard JS fetch to call our API to summarize without blocking the UI
       fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           messages: [
-            { role: 'system', content: 'You are a summarization assistant. Summarize the following chat history into a dense, token-efficient paragraph of facts and context. Do not use conversational filler.' },
-            { role: 'user', content: summaryContext }
+            {
+              role: 'system',
+              content:
+                'You are a summarization assistant. Summarize the following chat history into a dense, token-efficient paragraph of facts and context. Do not use conversational filler.',
+            },
+            { role: 'user', content: summaryContext },
           ],
           model: 'gemini-2.5-flash',
           temperature: 0.1,
           max_tokens: 500,
-          stream: false
-        })
+          stream: false,
+        }),
       })
-      .then(res => res.json())
-      .then(data => {
-        if (data.result) {
-          const summary = data.result;
+        .then((res) => res.json())
+        .then((data) => {
+          if (data.result) {
+            const summary = data.result;
+            const store = useViewStore.getState();
+            const currentSessionMsgs = store.chatHistory[sessionId] ?? [];
+            const newMsgs = currentSessionMsgs.map((m: Message) =>
+              m.id === compactedMessageId ? { ...m, content: `**[System: Compacted History]**\n\n${summary}` } : m,
+            );
+            store.chatHistory[sessionId] = newMsgs;
+            useViewStore.setState({ chatHistory: { ...store.chatHistory } });
+          }
+        })
+        .catch((err) => {
+          console.error('Failed to compact history:', err);
           const store = useViewStore.getState();
           const currentSessionMsgs = store.chatHistory[sessionId] ?? [];
           const newMsgs = currentSessionMsgs.map((m: Message) =>
             m.id === compactedMessageId
-              ? { ...m, content: `**[System: Compacted History]**\n\n${summary}` }
-              : m
+              ? { ...m, content: '_[System] History automatically compacted to save tokens. Older messages archived._' }
+              : m,
           );
           store.chatHistory[sessionId] = newMsgs;
           useViewStore.setState({ chatHistory: { ...store.chatHistory } });
-        }
-      })
-      .catch(err => {
-        console.error('Failed to compact history:', err);
-        const store = useViewStore.getState();
-        const currentSessionMsgs = store.chatHistory[sessionId] ?? [];
-        const newMsgs = currentSessionMsgs.map((m: Message) =>
-          m.id === compactedMessageId
-            ? { ...m, content: '_[System] History automatically compacted to save tokens. Older messages archived._' }
-            : m
-        );
-        store.chatHistory[sessionId] = newMsgs;
-        useViewStore.setState({ chatHistory: { ...store.chatHistory } });
-      });
+        });
     }
   } else if (updated.length > MAX_MESSAGES_PER_SESSION) {
     updated = updated.slice(-MAX_MESSAGES_PER_SESSION);
@@ -281,7 +283,7 @@ export const createChatSlice: StateCreator<ViewStoreState, [], [], ChatSlice> = 
         ...lastMsg,
         role: lastMsg.role,
         content: sanitizeContent(
-          lastMsg.content + `\n\n> **[Agent: ${agentId}]** Tool action executed:\n> ${content}\n`,
+          `${lastMsg.content}\n\n> **[Agent: ${agentId}]** Tool action executed:\n> ${content}\n`,
           MAX_CONTENT_LENGTH,
         ),
       } as Message;
@@ -289,5 +291,3 @@ export const createChatSlice: StateCreator<ViewStoreState, [], [], ChatSlice> = 
       return { chatHistory: { ...state.chatHistory, [sessionId]: newMessages } };
     }),
 });
-
-

@@ -201,6 +201,7 @@ pre,
   background: transparent;
 }
 
+/* biome-ignore lint/style/noDescendingSpecificity: Global reset */
 * {
   scrollbar-width: thin;
   scrollbar-color: rgba(255, 255, 255, 0.25) transparent;
@@ -522,9 +523,12 @@ pre,
    REDUCED MOTION
    ============================================ */
 @media (prefers-reduced-motion: reduce) {
+  /* biome-ignore lint/style/noDescendingSpecificity: Global reset */
   *,
-  *::before,
-  *::after {
+  /* biome-ignore lint/style/noDescendingSpecificity: Global reset */
+    *::before,
+  /* biome-ignore lint/style/noDescendingSpecificity: Global reset */
+    *::after {
     animation-duration: 0.01ms;
     animation-iteration-count: 1;
     transition-duration: 0.01ms;

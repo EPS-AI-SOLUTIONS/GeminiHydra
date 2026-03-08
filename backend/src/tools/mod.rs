@@ -1927,11 +1927,7 @@ async fn tool_ocr_document(
 
 const GENERATE_IMAGE_EXTENSIONS: &[&str] = &["png", "jpg", "jpeg", "webp"];
 
-async fn tool_generate_image(
-    path: &str,
-    prompt: &str,
-    state: &AppState,
-) -> Result<String, String> {
+async fn tool_generate_image(path: &str, prompt: &str, state: &AppState) -> Result<String, String> {
     if !crate::browser_proxy::is_enabled() {
         return Err(
             "Browser proxy not enabled. Set BROWSER_PROXY_URL env var to use generate_image."
@@ -1978,9 +1974,14 @@ async fn tool_generate_image(
         _ => "image/jpeg",
     };
 
-    let result_b64 =
-        crate::browser_proxy::generate_image(&state.client, &image_b64, mime_type, prompt, "agent-tool")
-            .await?;
+    let result_b64 = crate::browser_proxy::generate_image(
+        &state.client,
+        &image_b64,
+        mime_type,
+        prompt,
+        "agent-tool",
+    )
+    .await?;
 
     // Save result next to the original file
     let stem = file_path

@@ -338,7 +338,12 @@ interface WsToolResponseMessage {
   response: string;
 }
 
-export type WsClientMessage = WsExecuteMessage | WsOrchestrateMessage | WsCancelMessage | WsPingMessage | WsToolResponseMessage;
+export type WsClientMessage =
+  | WsExecuteMessage
+  | WsOrchestrateMessage
+  | WsCancelMessage
+  | WsPingMessage
+  | WsToolResponseMessage;
 
 // ============================================================================
 // SESSIONS

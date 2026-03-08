@@ -213,7 +213,11 @@ async fn main() -> anyhow::Result<()> {
         tracing::info!(
             "BROWSER PROXY ENABLED — routing through {} (auto-restart: {})",
             proxy_url,
-            if auto_restart { "ON" } else { "OFF — set BROWSER_PROXY_DIR to enable" }
+            if auto_restart {
+                "ON"
+            } else {
+                "OFF — set BROWSER_PROXY_DIR to enable"
+            }
         );
     }
 

@@ -174,13 +174,11 @@ pub async fn message_send(
 
             // Update duration
             let duration_ms = task_start.elapsed().as_millis() as i32;
-            let _ = sqlx::query(
-                "UPDATE gh_a2a_tasks SET duration_ms = $1 WHERE id = $2",
-            )
-            .bind(duration_ms)
-            .bind(&task_id)
-            .execute(&state.db)
-            .await;
+            let _ = sqlx::query("UPDATE gh_a2a_tasks SET duration_ms = $1 WHERE id = $2")
+                .bind(duration_ms)
+                .bind(&task_id)
+                .execute(&state.db)
+                .await;
 
             let task = build_task_response(&state, &task_id).await;
             Json(json!({ "task": task }))

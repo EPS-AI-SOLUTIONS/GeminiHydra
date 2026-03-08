@@ -1589,8 +1589,8 @@ async fn store_messages(
 // ── Agent Swarm SSE Integration ──────────────────────────────────────
 
 use axum::response::sse::{Event, Sse};
-use std::convert::Infallible;
 use futures_util::stream::Stream;
+use std::convert::Infallible;
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct AgentMessage {
@@ -1603,7 +1603,7 @@ pub async fn swarm_sse_handler(
     axum::extract::State(state): axum::extract::State<crate::state::AppState>,
 ) -> Sse<impl Stream<Item = Result<Event, Infallible>>> {
     let mut rx = state.swarm_tx.subscribe();
-    
+
     let stream = async_stream::stream! {
         while let Ok(msg) = rx.recv().await {
             let json_str = serde_json::to_string(&msg).unwrap_or_default();

@@ -47,4 +47,3 @@ export const createViewSlice: StateCreator<ViewStoreState, [], [], ViewSlice> = 
       return { sidebarCollapsed: next };
     }),
 });
-

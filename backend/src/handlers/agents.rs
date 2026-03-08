@@ -145,27 +145,29 @@ pub async fn list_delegations(
     State(state): State<AppState>,
 ) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
     let rows: Vec<(
-        String,        // id
-        String,        // agent_id
-        Option<String>,// caller_agent_id
-        String,        // status
-        String,        // prompt
-        Option<String>,// result
-        Option<String>,// error_message
-        Option<i32>,   // duration_ms
+        String,                        // id
+        String,                        // agent_id
+        Option<String>,                // caller_agent_id
+        String,                        // status
+        String,                        // prompt
+        Option<String>,                // result
+        Option<String>,                // error_message
+        Option<i32>,                   // duration_ms
         chrono::DateTime<chrono::Utc>, // created_at
         chrono::DateTime<chrono::Utc>, // updated_at
     )> = sqlx::query_as(
         "SELECT id, agent_id, caller_agent_id, status, prompt, result, error_message, \
          duration_ms, created_at, updated_at \
-         FROM gh_a2a_tasks ORDER BY created_at DESC LIMIT 50"
+         FROM gh_a2a_tasks ORDER BY created_at DESC LIMIT 50",
     )
     .fetch_all(&state.db)
     .await
-    .map_err(|e| (
-        StatusCode::INTERNAL_SERVER_ERROR,
-        Json(json!({ "error": format!("DB error: {}", e) })),
-    ))?;
+    .map_err(|e| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(json!({ "error": format!("DB error: {}", e) })),
+        )
+    })?;
 
     let agents = state.agents.read().await;
     let tasks: Vec<Value> = rows.iter().map(|r| {
@@ -204,7 +206,7 @@ pub async fn list_delegations(
          COUNT(*) FILTER (WHERE status = 'completed'), \
          COUNT(*) FILTER (WHERE error_message IS NOT NULL), \
          AVG(duration_ms)::float8 \
-         FROM gh_a2a_tasks"
+         FROM gh_a2a_tasks",
     )
     .fetch_optional(&state.db)
     .await

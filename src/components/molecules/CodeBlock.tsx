@@ -11,12 +11,12 @@
  * GeminiHydra-v15: White/neutral accent with --matrix-* CSS variables.
  */
 
-import { Check, Clipboard, Terminal, Maximize2 } from 'lucide-react';
-import { useViewStore } from '@/stores/viewStore';
+import { Check, Clipboard, Maximize2, Terminal } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
-import { memo, useCallback, useMemo, useRef, useState, useEffect } from 'react';
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { cn } from '@/shared/utils/cn';
+import { useViewStore } from '@/stores/viewStore';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -112,8 +112,22 @@ export const CodeBlock = memo(function CodeBlock({
   const lines = useMemo(() => code.split('\n'), [code]);
 
   // ----- Auto-open large artifacts -------------------------------------
-  const isArtifactLanguage = ['html', 'css', 'javascript', 'typescript', 'tsx', 'jsx', 'json', 'yaml', 'mermaid', 'svg', 'python', 'rust', 'go'].includes(lang);
-  
+  const isArtifactLanguage = [
+    'html',
+    'css',
+    'javascript',
+    'typescript',
+    'tsx',
+    'jsx',
+    'json',
+    'yaml',
+    'mermaid',
+    'svg',
+    'python',
+    'rust',
+    'go',
+  ].includes(lang);
+
   useEffect(() => {
     if (isArtifactLanguage && lines.length >= 15 && code.length > 300) {
       const artifactId = code.substring(0, 100).replace(/\s/g, '');
@@ -174,7 +188,9 @@ export const CodeBlock = memo(function CodeBlock({
           {isArtifactLanguage && lines.length >= 5 && (
             <button
               type="button"
-              onClick={() => setActiveArtifact({ id: code.substring(0, 50), code, language: lang, title: 'Code Artifact' })}
+              onClick={() =>
+                setActiveArtifact({ id: code.substring(0, 50), code, language: lang, title: 'Code Artifact' })
+              }
               className={cn(
                 'flex items-center gap-1.5 px-2 py-1 rounded-md text-xs font-mono transition-colors',
                 'text-[var(--matrix-text-dim)] hover:text-[var(--matrix-accent)] hover:bg-white/10',
@@ -186,45 +202,45 @@ export const CodeBlock = memo(function CodeBlock({
             </button>
           )}
 
-        {/* Copy button */}
-        <button
-          type="button"
-          onClick={handleCopy}
-          className={cn(
-            'flex items-center gap-1.5 px-2 py-1 rounded-md text-xs font-mono transition-colors',
-            'text-[var(--matrix-text-dim)] hover:text-[var(--matrix-accent)] hover:bg-white/10',
-          )}
-          aria-label={copied ? t('common.copied') : t('common.copyCode')}
-        >
-          <AnimatePresence mode="wait" initial={false}>
-            {copied ? (
-              <motion.span
-                key="check"
-                initial={{ scale: 0.5, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                exit={{ scale: 0.5, opacity: 0 }}
-                transition={{ duration: 0.15 }}
-                className="flex items-center gap-1 text-[var(--matrix-success)]"
-              >
-                <Check size={14} />
-                {t('common.copied')}
-              </motion.span>
-            ) : (
-              <motion.span
-                key="copy"
-                initial={{ scale: 0.5, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                exit={{ scale: 0.5, opacity: 0 }}
-                transition={{ duration: 0.15 }}
-                className="flex items-center gap-1"
-              >
-                <Clipboard size={14} />
-                {t('common.copy')}
-              </motion.span>
+          {/* Copy button */}
+          <button
+            type="button"
+            onClick={handleCopy}
+            className={cn(
+              'flex items-center gap-1.5 px-2 py-1 rounded-md text-xs font-mono transition-colors',
+              'text-[var(--matrix-text-dim)] hover:text-[var(--matrix-accent)] hover:bg-white/10',
             )}
-          </AnimatePresence>
-        </button>
-      </div>
+            aria-label={copied ? t('common.copied') : t('common.copyCode')}
+          >
+            <AnimatePresence mode="wait" initial={false}>
+              {copied ? (
+                <motion.span
+                  key="check"
+                  initial={{ scale: 0.5, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  exit={{ scale: 0.5, opacity: 0 }}
+                  transition={{ duration: 0.15 }}
+                  className="flex items-center gap-1 text-[var(--matrix-success)]"
+                >
+                  <Check size={14} />
+                  {t('common.copied')}
+                </motion.span>
+              ) : (
+                <motion.span
+                  key="copy"
+                  initial={{ scale: 0.5, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  exit={{ scale: 0.5, opacity: 0 }}
+                  transition={{ duration: 0.15 }}
+                  className="flex items-center gap-1"
+                >
+                  <Clipboard size={14} />
+                  {t('common.copy')}
+                </motion.span>
+              )}
+            </AnimatePresence>
+          </button>
+        </div>
       </div>
 
       {/* Code content — auto-collapse for large blocks (#44) */}
@@ -311,4 +327,3 @@ export const CodeBlock = memo(function CodeBlock({
     </div>
   );
 });
-

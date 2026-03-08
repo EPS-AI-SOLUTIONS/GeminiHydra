@@ -38,6 +38,7 @@ import { useFileReadMutation } from '../hooks/useFiles';
 import type { OrchestrationState } from '../hooks/useOrchestration';
 import { usePromptHistory } from '../hooks/usePromptHistory';
 import type { AgentActivity } from './AgentActivityPanel';
+import { ArtifactPanel } from './ArtifactPanel';
 import { ChatContextMenu } from './ChatContextMenu';
 import { ChatEmptyState } from './ChatEmptyState';
 import { ChatInput } from './ChatInput';
@@ -47,7 +48,6 @@ import { NewMessagesButton } from './NewMessagesButton';
 import { OfflineBanner } from './OfflineBanner';
 import { SearchOverlay } from './SearchOverlay';
 import { StreamingIndicator } from './StreamingIndicator';
-import { ArtifactPanel } from './ArtifactPanel';
 
 // Lazy-loaded panels — only downloaded when agent activity or orchestration is active
 const AgentActivityPanel = lazy(() => import('./AgentActivityPanel').then((m) => ({ default: m.AgentActivityPanel })));
@@ -369,117 +369,114 @@ export const ChatContainer = memo<ChatContainerProps>(
 
           {/* Messages panel + Artifact panel wrapper */}
           <div className="flex-1 min-h-0 flex relative overflow-hidden gap-2">
-          
-          {/* Messages panel */}
-          <div className={cn('flex-1 min-h-0 flex flex-col overflow-hidden rounded-xl relative', theme.glassPanel)}>
-            {/* Search overlay (#19) */}
-            <SearchOverlay
-              messages={messages}
-              scrollContainerRef={scrollContainerRef}
-              isOpen={searchOpen}
-              onClose={() => setSearchOpen(false)}
-            />
+            {/* Messages panel */}
+            <div className={cn('flex-1 min-h-0 flex flex-col overflow-hidden rounded-xl relative', theme.glassPanel)}>
+              {/* Search overlay (#19) */}
+              <SearchOverlay
+                messages={messages}
+                scrollContainerRef={scrollContainerRef}
+                isOpen={searchOpen}
+                onClose={() => setSearchOpen(false)}
+              />
 
-            {/* Copy session button */}
-            {messages.length > 0 && (
-              <button
-                type="button"
-                onClick={handleCopySession}
-                title={t('chat.copySession', 'Copy entire session')}
-                className={cn(
-                  'absolute top-2 z-10 p-1.5 rounded-lg transition-all',
-                  'opacity-40 hover:opacity-100',
-                  'hover:bg-[var(--matrix-accent)]/10',
-                  theme.textMuted,
-                  searchOpen ? 'right-[280px]' : 'right-3',
-                )}
-              >
-                {sessionCopied ? <Check size={16} className="text-emerald-400" /> : <ClipboardList size={16} />}
-              </button>
-            )}
-            <div
-              ref={scrollContainerRef}
-              role="log"
-              aria-live="polite"
-              aria-label={t('chat.messageHistory', 'Chat message history')}
-              className={cn('flex-1 min-h-0 overflow-y-auto', theme.scrollbar)}
-            >
-              {messages.length === 0 ? (
-                settings?.welcome_message ? (
-                  <MessageBubble
-                    message={{
-                      role: 'assistant',
-                      content: settings.welcome_message,
-                      timestamp: Date.now(),
-                    }}
-                    isLast={true}
-                    isStreaming={false}
-                    onContextMenu={() => {}}
-                  />
-                ) : (
-                  <ChatEmptyState onSuggestionSelect={handleSuggestionSelect} />
-                )
-              ) : (
-                <>
-                  {/* Virtualized message list */}
-                  <div
-                    style={{
-                      height: `${virtualizer.getTotalSize()}px`,
-                      width: '100%',
-                      position: 'relative',
-                    }}
-                  >
-                    {virtualizer.getVirtualItems().map((virtualItem) => {
-                      const message = messages[virtualItem.index];
-                      if (!message) return null;
-                      return (
-                        <div
-                          key={virtualItem.key}
-                          data-index={virtualItem.index}
-                          ref={virtualizer.measureElement}
-                          style={{
-                            position: 'absolute',
-                            top: 0,
-                            left: 0,
-                            width: '100%',
-                            transform: `translateY(${virtualItem.start}px)`,
-                          }}
-                        >
-                          <MessageBubble
-                            message={message}
-                            isLast={virtualItem.index === messages.length - 1}
-                            isStreaming={isStreaming}
-                            onContextMenu={handleContextMenu}
-                          />
-                        </div>
-                      );
-                    })}
-                  </div>
-
-                  {/* Streaming typing indicator (shown when waiting for first token) */}
-                  <AnimatePresence>
-                    {isStreaming && messages.length > 0 && messages[messages.length - 1]?.role === 'user' && (
-                      <StreamingIndicator />
-                    )}
-                  </AnimatePresence>
-
-                  {/* Scroll anchor */}
-                  <div ref={messagesEndRef} />
-                </>
+              {/* Copy session button */}
+              {messages.length > 0 && (
+                <button
+                  type="button"
+                  onClick={handleCopySession}
+                  title={t('chat.copySession', 'Copy entire session')}
+                  className={cn(
+                    'absolute top-2 z-10 p-1.5 rounded-lg transition-all',
+                    'opacity-40 hover:opacity-100',
+                    'hover:bg-[var(--matrix-accent)]/10',
+                    theme.textMuted,
+                    searchOpen ? 'right-[280px]' : 'right-3',
+                  )}
+                >
+                  {sessionCopied ? <Check size={16} className="text-emerald-400" /> : <ClipboardList size={16} />}
+                </button>
               )}
+              <div
+                ref={scrollContainerRef}
+                role="log"
+                aria-live="polite"
+                aria-label={t('chat.messageHistory', 'Chat message history')}
+                className={cn('flex-1 min-h-0 overflow-y-auto', theme.scrollbar)}
+              >
+                {messages.length === 0 ? (
+                  settings?.welcome_message ? (
+                    <MessageBubble
+                      message={{
+                        role: 'assistant',
+                        content: settings.welcome_message,
+                        timestamp: Date.now(),
+                      }}
+                      isLast={true}
+                      isStreaming={false}
+                      onContextMenu={() => {}}
+                    />
+                  ) : (
+                    <ChatEmptyState onSuggestionSelect={handleSuggestionSelect} />
+                  )
+                ) : (
+                  <>
+                    {/* Virtualized message list */}
+                    <div
+                      style={{
+                        height: `${virtualizer.getTotalSize()}px`,
+                        width: '100%',
+                        position: 'relative',
+                      }}
+                    >
+                      {virtualizer.getVirtualItems().map((virtualItem) => {
+                        const message = messages[virtualItem.index];
+                        if (!message) return null;
+                        return (
+                          <div
+                            key={virtualItem.key}
+                            data-index={virtualItem.index}
+                            ref={virtualizer.measureElement}
+                            style={{
+                              position: 'absolute',
+                              top: 0,
+                              left: 0,
+                              width: '100%',
+                              transform: `translateY(${virtualItem.start}px)`,
+                            }}
+                          >
+                            <MessageBubble
+                              message={message}
+                              isLast={virtualItem.index === messages.length - 1}
+                              isStreaming={isStreaming}
+                              onContextMenu={handleContextMenu}
+                            />
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    {/* Streaming typing indicator (shown when waiting for first token) */}
+                    <AnimatePresence>
+                      {isStreaming && messages.length > 0 && messages[messages.length - 1]?.role === 'user' && (
+                        <StreamingIndicator />
+                      )}
+                    </AnimatePresence>
+
+                    {/* Scroll anchor */}
+                    <div ref={messagesEndRef} />
+                  </>
+                )}
+              </div>
+
+              {/* New messages floating button (#20) */}
+              <NewMessagesButton
+                scrollAnchorRef={messagesEndRef}
+                scrollContainerRef={scrollContainerRef}
+                messageCount={messages.length}
+              />
             </div>
 
-            {/* New messages floating button (#20) */}
-            <NewMessagesButton
-              scrollAnchorRef={messagesEndRef}
-              scrollContainerRef={scrollContainerRef}
-              messageCount={messages.length}
-            />
-          </div>
-
-          <AnimatePresence>
-            {useViewStore((s) => s.activeArtifact) && <ArtifactPanel />}
-          </AnimatePresence>
+            <AnimatePresence>{useViewStore((s) => s.activeArtifact) && <ArtifactPanel />}</AnimatePresence>
           </div>
 
           {/* Context menu */}
@@ -567,4 +564,3 @@ export const ChatContainer = memo<ChatContainerProps>(
 ChatContainer.displayName = 'ChatContainer';
 
 export default ChatContainer;
-

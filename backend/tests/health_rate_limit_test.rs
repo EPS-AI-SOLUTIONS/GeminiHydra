@@ -10,10 +10,10 @@ use tower::ServiceExt; // for `oneshot`
 async fn health_endpoint_respects_rate_limit_grace_period() {
     // Note: Setup your mock app state/router here.
     // let app = app_router();
-    
+
     // Simulate a delayed call to avoid 429
     tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
-    
+
     // let response = app.oneshot(
     //     Request::builder()
     //         .uri("/api/health")

@@ -8,8 +8,8 @@ use std::time::Instant;
 
 use reqwest::Client;
 use sqlx::PgPool;
-use tokio::sync::broadcast;
 use tokio::sync::RwLock;
+use tokio::sync::broadcast;
 use tokio_util::sync::CancellationToken;
 
 use crate::mcp::client::McpClientManager;
@@ -426,7 +426,9 @@ impl AppState {
             knowledge_api_url,
             knowledge_auth_secret,
             swarm_tx: tokio::sync::broadcast::channel(100).0,
-            browser_proxy_status: Arc::new(RwLock::new(crate::browser_proxy::BrowserProxyStatus::default())),
+            browser_proxy_status: Arc::new(RwLock::new(
+                crate::browser_proxy::BrowserProxyStatus::default(),
+            )),
             browser_proxy_history: Arc::new(crate::browser_proxy::ProxyHealthHistory::new(50)),
         }
     }

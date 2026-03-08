@@ -160,7 +160,7 @@ pub async fn save_discovered_tools(
         .bind(server_id)
         .execute(db)
         .await?;
-        
+
     if tools.is_empty() {
         return Ok(());
     }

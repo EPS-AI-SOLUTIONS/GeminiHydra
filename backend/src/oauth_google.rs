@@ -2,12 +2,12 @@
 // Ported from ClaudeHydra-v4. Adapted for GeminiHydra-v15.
 // Table: gh_google_auth (singleton). Default port: 8081.
 
+use axum::Json;
 use axum::extract::{Query, State};
 use axum::http::StatusCode;
 use axum::response::{Html, IntoResponse};
-use axum::Json;
 use serde::Deserialize;
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 
 use crate::oauth::{decrypt_token, encrypt_token, html_escape, random_base64url, sha256_base64url};
 use crate::state::AppState;
@@ -203,7 +203,12 @@ pub async fn google_redirect(
 
     let resp = match token_resp {
         Ok(r) => r,
-        Err(e) => return Html(format!("Token Exchange Failed: {}", html_escape(&e.to_string()))),
+        Err(e) => {
+            return Html(format!(
+                "Token Exchange Failed: {}",
+                html_escape(&e.to_string())
+            ));
+        }
     };
 
     if !resp.status().is_success() {
@@ -263,7 +268,10 @@ pub async fn google_save_api_key(
 ) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
     let key = req.api_key.trim();
     if key.is_empty() {
-        return Err((StatusCode::BAD_REQUEST, Json(json!({ "error": "API key cannot be empty" }))));
+        return Err((
+            StatusCode::BAD_REQUEST,
+            Json(json!({ "error": "API key cannot be empty" })),
+        ));
     }
 
     let encrypted = encrypt_token(key);
@@ -283,7 +291,10 @@ pub async fn google_save_api_key(
 }
 
 pub async fn google_delete_api_key(State(state): State<AppState>) -> Json<Value> {
-    sqlx::query("DELETE FROM gh_google_auth WHERE id = 1").execute(&state.db).await.ok();
+    sqlx::query("DELETE FROM gh_google_auth WHERE id = 1")
+        .execute(&state.db)
+        .await
+        .ok();
     Json(json!({ "status": "ok" }))
 }
 
@@ -329,7 +340,9 @@ fn try_env_key() -> Option<(String, bool)> {
 }
 
 async fn refresh_google_token(state: &AppState, row: &GoogleAuthRow) -> Option<String> {
-    let refresh_token = decrypt_token(&row.refresh_token).ok().filter(|t| !t.is_empty())?;
+    let refresh_token = decrypt_token(&row.refresh_token)
+        .ok()
+        .filter(|t| !t.is_empty())?;
     let (client_id, client_secret) = google_oauth_credentials()?;
 
     let resp = state
@@ -367,10 +380,22 @@ async fn refresh_google_token(state: &AppState, row: &GoogleAuthRow) -> Option<S
 }
 
 async fn fetch_user_info(client: &reqwest::Client, access_token: &str) -> (String, String) {
-    match client.get(GOOGLE_USERINFO_URL).header("Authorization", format!("Bearer {}", access_token)).timeout(std::time::Duration::from_secs(10)).send().await {
+    match client
+        .get(GOOGLE_USERINFO_URL)
+        .header("Authorization", format!("Bearer {}", access_token))
+        .timeout(std::time::Duration::from_secs(10))
+        .send()
+        .await
+    {
         Ok(resp) if resp.status().is_success() => {
-            let info: GoogleUserInfo = resp.json().await.unwrap_or(GoogleUserInfo { email: None, name: None });
-            (info.email.unwrap_or_default(), info.name.unwrap_or_default())
+            let info: GoogleUserInfo = resp.json().await.unwrap_or(GoogleUserInfo {
+                email: None,
+                name: None,
+            });
+            (
+                info.email.unwrap_or_default(),
+                info.name.unwrap_or_default(),
+            )
         }
         _ => (String::new(), String::new()),
     }
