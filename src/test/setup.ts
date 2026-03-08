@@ -1,24 +1,19 @@
-import '@testing-library/jest-dom/vitest';
+﻿import '@testing-library/jest-dom/vitest';
+import { vi } from 'vitest';
 
-// Ensure localStorage is available in jsdom environment.
-// Some jsdom + Node.js combinations provide a broken localStorage
-// that the Zustand persist middleware can't use.
-if (typeof globalThis.localStorage === 'undefined' || typeof globalThis.localStorage.setItem !== 'function') {
-  const store: Record<string, string> = {};
-  globalThis.localStorage = {
-    getItem: (key: string) => store[key] ?? null,
-    setItem: (key: string, value: string) => {
-      store[key] = value;
-    },
-    removeItem: (key: string) => {
-      delete store[key];
-    },
-    clear: () => {
-      for (const key of Object.keys(store)) delete store[key];
-    },
-    get length() {
-      return Object.keys(store).length;
-    },
-    key: (index: number) => Object.keys(store)[index] ?? null,
+const localStorageMock = (function () {
+  let store: Record<string, string> = {};
+  return {
+    getItem(key: string) { return store[key] || null; },
+    setItem(key: string, value: string) { store[key] = value.toString(); },
+    clear() { store = {}; },
+    removeItem(key: string) { delete store[key]; },
   };
-}
+})();
+
+Object.defineProperty(window, 'localStorage', {
+  value: localStorageMock,
+  writable: true,
+});
+
+global.fetch = vi.fn(() => Promise.resolve(new Response(JSON.stringify({}), { status: 200 })));
