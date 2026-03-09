@@ -72,7 +72,7 @@ const LIGHT: ViewTheme = {
   title: 'text-black',
   subtitle: 'text-gray-600',
   text: 'text-black',
-  textMuted: 'text-gray-600',
+  textMuted: 'text-gray-700',
   textAccent: 'text-emerald-600',
   input:
     'bg-white/50 border border-slate-200/50 text-black placeholder:text-gray-500 focus:border-emerald-500/50 focus:bg-white/70 rounded-xl outline-none transition-all',
