@@ -63,6 +63,9 @@ if errorlevel 1 goto :abort
 :: Partner check
 call "%LIB%" :partner_check 8082 "ClaudeHydra"
 
+:: Browser proxy (needed for image generation)
+call "%LIB%" :proxy_ensure
+
 :: Start backend
 echo !CYAN![START]!RESET! Backend ^(cargo run^)...
 start "[Jaskier] GeminiHydra Backend" /min cmd /c "cd /d %~dp0backend && cargo run 2>&1"

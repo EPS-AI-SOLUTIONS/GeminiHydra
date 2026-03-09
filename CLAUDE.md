@@ -179,7 +179,7 @@
 - Full Jaskier ecosystem docs: `C:\Users\BIURODOM\Desktop\ClaudeDesktop\CLAUDE.md`
 - Covers: shared patterns, cross-project conventions, backend safety rules, OAuth details, MCP, A2A, ONNX pipeline, fly.io infra
 - This file is a project-scoped summary; workspace CLAUDE.md is the source of truth
-- Last synced: 2026-03-07 (F26 + Browser Proxy Watchdog)
+- Last synced: 2026-03-09 (Browser proxy persistent context architecture)
 
 ## Browser Proxy (gemini-browser-proxy)
 - **Watchdog**: `watchdog.rs` checks proxy health every 30s via `detailed_health_check()`, auto-restarts with exponential backoff (120s→240s→480s→900s max)
@@ -189,3 +189,12 @@
 - **Env vars**: `BROWSER_PROXY_URL` (enables proxy), `BROWSER_PROXY_DIR` (path to proxy project for auto-restart)
 - **Frontend**: `BrowserProxySection.tsx` (settings), `BrowserProxyBadge` in `StatusFooter.tsx` (green/red/yellow dot, pulse when busy)
 - **Agent tool**: `generate_image` — sends image+prompt to proxy for Gemini browser-based generation
+
+## Browser Proxy — Persistent Context Architecture
+- **Context mode**: `launchPersistentContext` (NOT `storageState`) — `storageState` alone does NOT preserve Google sessions (cookies expired/invalidated server-side)
+- **Login**: `npm run login:persistent` creates `browser-profile/` directory with full Chrome profile (cookies, localStorage, IndexedDB)
+- **Workers**: share single persistent context — 4 pages within 1 browser process (not 4 separate contexts)
+- **Profile backup**: `browser-profile/` copied to `worker-profile/` at init for crash recovery
+- **Login detection**: positive signal — chat input textarea visible on AI Studio page (NOT absence of "Sign in" button, which is unreliable)
+- **Session check**: Windows Task Scheduler `GeminiProxySessionCheck` runs every 6h to verify session validity
+- **Why persistent context**: Google sets `httpOnly` + `secure` + `SameSite` cookies that `storageState` JSON export cannot fully capture; persistent context keeps the actual Chrome cookie DB intact
