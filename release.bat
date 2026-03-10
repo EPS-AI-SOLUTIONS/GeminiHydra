@@ -6,8 +6,7 @@ set "LIB=C:\Users\BIURODOM\Desktop\ClaudeDesktop\jaskier-lib.bat"
 :: Init colors
 call "%LIB%" :init_colors
 :: Kill previous instances
-taskkill /F /FI "WINDOWTITLE eq [Jaskier] GeminiHydra*" >nul 2>&1
-powershell -NoProfile -Command "Get-Process | Where-Object { $_.Name -eq 'powershell' -and $_.CommandLine -like '*tray-minimizer.ps1*' -and $_.CommandLine -like '*GeminiHydra Release*' } | Stop-Process -Force -ErrorAction SilentlyContinue" >nul 2>&1
+taskkill /F /IM geminihydra-backend.exe >nul 2>&1
 title [Jaskier] GeminiHydra v15 Release
 echo !BOLD!!MAGENTA!=== GeminiHydra v15 Release ===!RESET!
 
@@ -70,7 +69,8 @@ call "%LIB%" :partner_check 8082 "ClaudeHydra"
 
 :: Start backend
 echo !CYAN![START]!RESET! Backend on port 8081...
-start "[Jaskier] GeminiHydra Backend" /min cmd /c "cd /d %~dp0backend && target\release\geminihydra-backend.exe 2>&1"
+call "%LIB%" :log_rotate "jaskier-geminihydra-backend"
+powershell -NoProfile -WindowStyle Hidden -Command "Start-Process cmd -ArgumentList '/c cd /d %~dp0backend && target\release\geminihydra-backend.exe > \"%TEMP%\jaskier-geminihydra-backend.log\" 2>&1' -WindowStyle Hidden"
 %SYSTEMROOT%\System32\timeout.exe /t 2 /nobreak >nul
 
 :: [#2] Health check — fatal on failure (abort if backend doesn't start)
@@ -91,7 +91,8 @@ echo !GREEN![BUILD]!RESET! Frontend built in !_fe_dur!s
 
 :: Start preview (BEFORE Chrome — so port is ready)
 echo !CYAN![PREVIEW]!RESET! Starting preview on port 4176...
-start "[Jaskier] GeminiHydra Preview" /min cmd /c "cd /d %~dp0 && npm run preview 2>&1"
+call "%LIB%" :log_rotate "jaskier-geminihydra-preview"
+powershell -NoProfile -WindowStyle Hidden -Command "Start-Process cmd -ArgumentList '/c cd /d %~dp0 && npm run preview > \"%TEMP%\jaskier-geminihydra-preview.log\" 2>&1' -WindowStyle Hidden"
 %SYSTEMROOT%\System32\timeout.exe /t 2 /nobreak >nul
 call "%LIB%" :port_validate 4176 10
 
@@ -121,21 +122,17 @@ echo !CYAN!       Total time: !_total_dur!s!RESET!
 echo.
 echo !YELLOW!To stop:!RESET! Close this window, or run:
 echo   taskkill /F /IM geminihydra-backend.exe
-echo   taskkill /F /FI "WINDOWTITLE eq GeminiHydra Preview"
 echo.
 
-:: [#8] Wait loop with cleanup on exit
-:wait_loop
-echo !YELLOW!Hiding to tray... Check the system tray icon to restore or stop.!RESET!
-powershell -NoProfile -ExecutionPolicy Bypass -File "C:\Users\BIURODOM\Desktop\ClaudeDesktop\tray-minimizer.ps1" -AppTitle "GeminiHydra Release" -IconPath "C:\Users\BIURODOM\Desktop\ClaudeDesktop\.jaskier-icons\geminihydra.ico" -KillExe "geminihydra-backend" -KillTitle "[Jaskier] GeminiHydra"
+:: [#8] Wait for user to stop
+echo !YELLOW!Press any key to stop all services...!RESET!
+pause >nul
 goto :cleanup
 
 :cleanup
 echo !YELLOW![STOP]!RESET! Shutting down services...
 taskkill /F /IM geminihydra-backend.exe >nul 2>&1
-REM Kill preview by window title
-taskkill /F /FI "WINDOWTITLE eq GeminiHydra Preview" >nul 2>&1
-REM Also kill node processes on preview port
+REM Kill preview by port
 for /f "tokens=5" %%a in ('netstat -ano 2^>nul ^| findstr ":4176 " ^| findstr LISTENING') do (
     taskkill /F /pid %%a >nul 2>&1
 )

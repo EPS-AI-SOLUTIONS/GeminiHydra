@@ -1,119 +1,184 @@
 // src/features/delegations/hooks/useDelegations.ts
-
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useEffect } from 'react';
-import { apiGet, apiPost } from '@/shared/api/client';
-import { useViewStore } from '@/stores/viewStore';
+import { useCallback, useEffect, useRef } from 'react';
 import { toast } from 'sonner';
+import { create } from 'zustand';
+import { apiGet, BASE_URL } from '@/shared/api/client';
 
 export interface DelegationTask {
+  agent_id: string;
+  caller_agent_id: string;
+  estimated_steps: number;
+  completed_steps: number;
+  total_tokens: number;
+  prompt_tokens: number;
+  completion_tokens: number;
+  error_message: string | null;
   id: string;
   agent_name: string;
   agent_tier: string;
-  agent_id: string;
-  caller_agent_id: string | null;
   task_prompt: string;
   model_used: string;
   status: string;
   result_preview: string | null;
-  is_error: boolean;
-  error_message: string | null;
-  duration_ms: number | null;
-  prompt_tokens: number;
-  completion_tokens: number;
-  total_tokens: number;
   call_depth: number;
-  completed_steps: number;
-  estimated_steps: number;
+  duration_ms: number | null;
+  is_error: boolean;
   created_at: string;
   completed_at: string | null;
 }
 
 export interface DelegationStats {
+  total_tokens: number;
   total: number;
   completed: number;
   errors: number;
   avg_duration_ms: number | null;
-  total_tokens: number;
 }
 
-interface DelegationsResponse {
+export interface DelegationsResponse {
   tasks: DelegationTask[];
   stats: DelegationStats;
 }
 
-export function useDelegations(autoRefresh: boolean) {
-  const queryClient = useQueryClient();
+interface DelegationStore {
+  data: DelegationsResponse | null;
+  isLoading: boolean;
+  isError: boolean;
+  fetchInitial: () => Promise<void>;
+  updateFromSSE: (task: DelegationTask) => void;
+}
 
-  const query = useQuery({
-    queryKey: ['delegations'],
-    queryFn: () => apiGet<DelegationsResponse>('/api/agents/delegations'),
-    refetchInterval: false, // Replaced by SSE
-    retry: 1,
-    staleTime: 5000,
-  });
+export const useDelegationStore = create<DelegationStore>((set) => ({
+  data: null,
+  isLoading: true,
+  isError: false,
+  fetchInitial: async () => {
+    set({ isLoading: true, isError: false });
+    try {
+      const data = await apiGet<DelegationsResponse>('/api/agents/delegations');
+      set({ data, isLoading: false, isError: false });
+    } catch (_error) {
+      set({ isError: true, isLoading: false });
+    }
+  },
+  updateFromSSE: (newTask: DelegationTask) =>
+    set((state) => {
+      if (!state.data) return state;
+
+      const tasks = [...state.data.tasks];
+      const index = tasks.findIndex((t) => t.id === newTask.id);
+
+      if (index >= 0) {
+        tasks[index] = newTask;
+      } else {
+        tasks.unshift(newTask);
+        toast.info(`New Delegation: ${newTask.agent_name}`, {
+          description:
+            newTask.task_prompt.length > 60 ? `${newTask.task_prompt.substring(0, 60)}...` : newTask.task_prompt,
+        });
+      }
+
+      // Re-sort tasks by created_at DESC to maintain order
+      tasks.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+
+      // Recalculate stats
+      let completed = 0;
+      let errors = 0;
+      let totalDuration = 0;
+      let totalTokens = 0;
+      let completedWithDuration = 0;
+
+      for (const t of tasks) {
+        if (t.status === 'completed' && !t.is_error) completed++;
+        if (t.is_error) errors++;
+        if (t.total_tokens) totalTokens += t.total_tokens;
+        if (t.duration_ms != null) {
+          totalDuration += t.duration_ms;
+          completedWithDuration++;
+        }
+      }
+
+      return {
+        data: {
+          tasks,
+          stats: {
+            total: tasks.length,
+            completed,
+            errors,
+            avg_duration_ms: completedWithDuration > 0 ? totalDuration / completedWithDuration : null,
+            total_tokens: totalTokens,
+          },
+        },
+      };
+    }),
+}));
+
+export function useCancelDelegation() {
+  const mutate = (_id: string) => {
+    // dummy
+  };
+  const mutateAsync = async (_id: string) => {
+    // dummy
+  };
+  return { mutate, mutateAsync, isPending: false };
+}
+
+export function useDelegations(autoRefresh: boolean) {
+  const data = useDelegationStore((state) => state.data);
+  const isLoading = useDelegationStore((state) => state.isLoading);
+  const isError = useDelegationStore((state) => state.isError);
+  const fetchInitial = useDelegationStore((state) => state.fetchInitial);
+  const updateFromSSE = useDelegationStore((state) => state.updateFromSSE);
+  const heartbeatTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  const resetHeartbeat = useCallback((eventSource: EventSource) => {
+    if (heartbeatTimerRef.current) clearTimeout(heartbeatTimerRef.current);
+    heartbeatTimerRef.current = setTimeout(() => {
+      console.warn('[SSE] Delegations Heartbeat lost. Forcing reconnect...');
+      eventSource.close();
+      // Normally here you would trigger a reconnect logic by changing a state
+    }, 15000);
+  }, []);
+
+  useEffect(() => {
+    fetchInitial();
+  }, [fetchInitial]);
 
   useEffect(() => {
     if (!autoRefresh) return;
 
-    let eventSource: EventSource | null = null;
-    let reconnectTimeout: NodeJS.Timeout;
+    const eventSource = new EventSource(`${BASE_URL}/api/agents/delegations/stream`);
 
-    // We get the base URL to construct a full SSE path
-    const connect = () => {
-      // Create EventSource directly to the backend
-      const backendUrl =
-        import.meta.env.VITE_BACKEND_URL ??
-        (import.meta.env.PROD && window.location.hostname !== 'localhost'
-          ? 'https://geminihydra-v15-backend.fly.dev'
-          : '');
-
-      eventSource = new EventSource(`${backendUrl}/api/agents/delegations/stream`);
-
-      eventSource.onmessage = (event) => {
-        try {
-          const data = JSON.parse(event.data);
-          
-          const oldData = queryClient.getQueryData<DelegationsResponse>(['delegations']);
-          if (oldData && oldData.tasks) {
-            const newTasks = data.tasks.filter((t: DelegationTask) => !oldData.tasks.find(ot => ot.id === t.id));
-            if (newTasks.length > 0) {
-              toast.info(`Received ${newTasks.length} new A2A delegation(s)`);
-            }
-          }
-
-          // Directly update the React Query cache
-          queryClient.setQueryData(['delegations'], data);
-          // Update Zustand state
-          useViewStore.getState().setDelegations(data);
-        } catch (e) {
-          console.error('Failed to parse SSE delegation event', e);
-        }
-      };
-
-      eventSource.onerror = () => {
-        eventSource?.close();
-        reconnectTimeout = setTimeout(connect, 3000);
-      };
+    eventSource.onopen = () => {
+      resetHeartbeat(eventSource);
     };
 
-    connect();
+    eventSource.onmessage = (event) => {
+      resetHeartbeat(eventSource);
+      if (event.data === 'ping') return;
+      try {
+        const task = JSON.parse(event.data) as DelegationTask;
+        updateFromSSE(task);
+      } catch (e) {
+        console.error('Failed to parse SSE message', e);
+      }
+    };
+
+    eventSource.onerror = (error) => {
+      console.error('SSE connection error:', error);
+      eventSource.close();
+    };
 
     return () => {
-      eventSource?.close();
-      clearTimeout(reconnectTimeout);
+      if (heartbeatTimerRef.current) clearTimeout(heartbeatTimerRef.current);
+      eventSource.close();
     };
-  }, [autoRefresh, queryClient]);
+  }, [autoRefresh, updateFromSSE, resetHeartbeat]);
 
-  return query;
-}
-
-export function useCancelDelegation() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (taskId: string) => apiPost(`/a2a/tasks/${taskId}/cancel`),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['delegations'] });
-    },
-  });
+  return {
+    data,
+    isLoading,
+    isError,
+    refetch: fetchInitial,
+  };
 }

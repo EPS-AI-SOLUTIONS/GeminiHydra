@@ -21,7 +21,6 @@ import { ThemeProvider } from '@/contexts/ThemeContext';
 import { ChatViewWrapper } from '@/features/chat/components/ChatViewWrapper';
 import { queryClient } from '@/shared/api/queryClient';
 import { useAuthGate } from '@/shared/hooks/useAuthGate';
-import { reportWebVitals } from '@/shared/utils/reportWebVitals';
 import { useViewStore } from '@/stores/viewStore';
 import '@/i18n';
 import './styles/globals.css';
@@ -209,7 +208,4 @@ if (root) {
       appRoot.unmount();
     });
   }
-
-  // Report Web Vitals performance metrics
-  reportWebVitals();
 }

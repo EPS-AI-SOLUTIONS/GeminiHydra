@@ -6,8 +6,7 @@ set "LIB=C:\Users\BIURODOM\Desktop\ClaudeDesktop\jaskier-lib.bat"
 :: Init colors
 call "%LIB%" :init_colors
 :: Kill previous instances
-taskkill /F /FI "WINDOWTITLE eq [Jaskier] GeminiHydra*" >nul 2>&1
-powershell -NoProfile -Command "Get-Process | Where-Object { $_.Name -eq 'powershell' -and $_.CommandLine -like '*tray-minimizer.ps1*' -and $_.CommandLine -like '*GeminiHydra DEV*' } | Stop-Process -Force -ErrorAction SilentlyContinue" >nul 2>&1
+taskkill /F /IM geminihydra-backend.exe >nul 2>&1
 title [Jaskier] GeminiHydra v15 DEV
 echo !BOLD!!MAGENTA!=== GeminiHydra v15 DEV ===!RESET!
 
@@ -68,7 +67,8 @@ call "%LIB%" :proxy_ensure
 
 :: Start backend
 echo !CYAN![START]!RESET! Backend ^(cargo run^)...
-start "[Jaskier] GeminiHydra Backend" /min cmd /c "cd /d %~dp0backend && cargo run 2>&1"
+call "%LIB%" :log_rotate "jaskier-geminihydra-backend"
+powershell -NoProfile -WindowStyle Hidden -Command "Start-Process cmd -ArgumentList '/c cd /d %~dp0backend && cargo run > \"%TEMP%\jaskier-geminihydra-backend.log\" 2>&1' -WindowStyle Hidden"
 
 :: [#2] Health check — fatal on failure (abort if backend doesn't start)
 call :health_check_fatal 8081 60
@@ -100,8 +100,6 @@ echo.
 
 :: Start frontend dev server (foreground — endlocal FIRST)
 echo !CYAN![DEV]!RESET! Starting frontend dev server on port 5176...
-echo !YELLOW!Hiding to tray... Check the system tray icon to restore or stop.!RESET!
-start "" /B powershell -NoProfile -ExecutionPolicy Bypass -File "C:\Users\BIURODOM\Desktop\ClaudeDesktop\tray-minimizer.ps1" -AppTitle "GeminiHydra DEV" -IconPath "C:\Users\BIURODOM\Desktop\ClaudeDesktop\.jaskier-icons\geminihydra.ico" -KillExe "geminihydra-backend" -KillTitle "[Jaskier] GeminiHydra"
 endlocal && cd /d "%~dp0" && npm run dev
 goto :eof
 

@@ -1,13 +1,21 @@
 // src/features/chat/components/ChatInput.tsx
+
+import { BaseChatInput, type BaseChatInputHandle } from '@jaskier/ui';
 import { AlertCircle, ChevronDown, FolderOpen, Network, Send, StopCircle } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
-import { type ChangeEvent, memo, useCallback, useEffect, useRef, useState, type ClipboardEvent, type DragEvent } from 'react';
+import { memo,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
-import { BaseChatInput, type BaseChatInputHandle } from '@jaskier/ui';
 import { Button } from '@/components/atoms';
 import { useViewTheme } from '@/shared/hooks/useViewTheme';
 import { cn } from '@/shared/utils/cn';
 import { ImagePreview } from './ImagePreview';
+import { useChatFileHandler } from './useChatFileHandler';
+
 import { WorkingFolderPicker } from './WorkingFolderPicker';
 
 export type OrchestrationMode = 'direct' | 'orchestrate';
@@ -80,102 +88,28 @@ export const ChatInput = memo<ChatInputProps>(
 
     const canSubmit = !isStreaming && (value.trim().length > 0 || !!pendingImage);
 
-    const handleSubmit = useCallback((val: string) => {
-      if (!canSubmit) return;
-      const trimmed = val.trim();
-      if (orchMode === 'orchestrate' && onOrchestrate) {
-        const pattern = orchPattern === 'auto' ? 'hierarchical' : orchPattern;
-        onOrchestrate(trimmed, pattern);
-      } else {
-        onSubmit(trimmed, pendingImage);
-      }
-      setValue('');
-      setError(null);
-      setShowPatternPicker(false);
-      baseInputRef.current?.clear();
-    }, [canSubmit, onSubmit, onOrchestrate, pendingImage, orchMode, orchPattern]);
-
-    const handlePaste = useCallback(
-      (e: ClipboardEvent<HTMLTextAreaElement>) => {
-        const items = e.clipboardData.items;
-        for (const item of items) {
-          if (item.type.startsWith('image/')) {
-            const blob = item.getAsFile();
-            if (blob) {
-              const reader = new FileReader();
-              reader.onload = (event) => {
-                if (event.target?.result && typeof event.target.result === 'string') {
-                  onPasteImage?.(event.target.result);
-                }
-              };
-              reader.readAsDataURL(blob);
-              e.preventDefault();
-              return;
-            }
-          }
-          if (item.kind === 'file' && !item.type.startsWith('image/')) {
-            const file = item.getAsFile();
-            if (file && file.size < 5 * 1024 * 1024) {
-              const reader = new FileReader();
-              reader.onload = (event) => {
-                if (event.target?.result && typeof event.target.result === 'string') {
-                  onPasteFile?.(event.target.result.substring(0, 20_000), file.name);
-                }
-              };
-              reader.readAsText(file);
-              e.preventDefault();
-              return;
-            }
-          }
+    const handleSubmit = useCallback(
+      (val: string) => {
+        if (!canSubmit) return;
+        const trimmed = val.trim();
+        if (orchMode === 'orchestrate' && onOrchestrate) {
+          const pattern = orchPattern === 'auto' ? 'hierarchical' : orchPattern;
+          onOrchestrate(trimmed, pattern);
+        } else {
+          onSubmit(trimmed, pendingImage);
         }
+        setValue('');
+        setError(null);
+        setShowPatternPicker(false);
+        baseInputRef.current?.clear();
       },
-      [onPasteImage, onPasteFile],
+      [canSubmit, onSubmit, onOrchestrate, pendingImage, orchMode, orchPattern],
     );
 
-    const handleDrop = useCallback(
-      (e: DragEvent<HTMLElement>) => {
-        const text = e.dataTransfer.getData('text/plain');
-        if (text && e.dataTransfer.files.length === 0) {
-          const lines = text.split('\n');
-          if (lines.length > 10) {
-            e.preventDefault();
-            e.stopPropagation();
-            onPasteFile?.(text.substring(0, 50000), `Zrzut ${lines.length} linii.txt`);
-          }
-        }
-      },
-      [onPasteFile],
-    );
-
-    const handleFileSelect = useCallback(
-      (e: ChangeEvent<HTMLInputElement>) => {
-        const files = e.target.files;
-        if (!files || files.length === 0) return;
-
-        for (const file of Array.from(files)) {
-          if (file.type.startsWith('image/')) {
-            const reader = new FileReader();
-            reader.onload = (event) => {
-              if (event.target?.result && typeof event.target.result === 'string') {
-                onPasteImage?.(event.target.result);
-              }
-            };
-            reader.readAsDataURL(file);
-          } else if (file.size < 5 * 1024 * 1024) {
-            const reader = new FileReader();
-            reader.onload = (event) => {
-              if (event.target?.result && typeof event.target.result === 'string') {
-                onPasteFile?.(event.target.result.substring(0, 20_000), file.name);
-              }
-            };
-            reader.readAsText(file);
-          }
-        }
-
-        e.target.value = '';
-      },
-      [onPasteImage, onPasteFile],
-    );
+    const { handlePaste, handleDrop, handleFileSelect } = useChatFileHandler({
+      onPasteImage,
+      onPasteFile,
+    });
 
     return (
       <section className="p-4 flex flex-col relative transition-all duration-300 z-10 w-full" onDrop={handleDrop}>
@@ -206,7 +140,7 @@ export const ChatInput = memo<ChatInputProps>(
           disabled={isStreaming}
           placeholder={pendingImage ? t('chat.describeVisualContext') : t('chat.typeMessage')}
           promptHistory={promptHistory}
-          onPaste={handlePaste as any}
+          onPaste={handlePaste as React.ClipboardEventHandler<HTMLTextAreaElement>}
           topActions={
             <>
               {pendingImage && (
@@ -220,8 +154,7 @@ export const ChatInput = memo<ChatInputProps>(
                   workingDirectory={workingDirectory ?? ''}
                   onDirectoryChange={onWorkingDirectoryChange}
                 />
-              )}
-            </>
+              )
           }
           leftActions={
             <>
@@ -231,6 +164,8 @@ export const ChatInput = memo<ChatInputProps>(
                     type="button"
                     variant={orchMode === 'orchestrate' ? 'primary' : 'ghost'}
                     size="md"
+                    aria-label="Toggle orchestration mode"
+                    aria-expanded={showPatternPicker}
                     onClick={() => {
                       if (orchMode === 'direct') {
                         setOrchMode('orchestrate');
@@ -292,6 +227,7 @@ export const ChatInput = memo<ChatInputProps>(
                     ref={fileInputRef}
                     type="file"
                     multiple
+                    aria-hidden="true"
                     className="hidden"
                     onChange={handleFileSelect}
                     accept="image/*,.txt,.md,.ts,.tsx,.js,.jsx,.json,.css,.html,.py,.rs,.toml,.yaml,.yml,.xml,.csv,.log,.sh,.bat,.sql,.env"
@@ -300,26 +236,27 @@ export const ChatInput = memo<ChatInputProps>(
                     type="button"
                     variant="ghost"
                     size="md"
+                    aria-label="Attach local file"
+                    aria-keyshortcuts="Ctrl+O"
                     onClick={() => fileInputRef.current?.click()}
                     title={t('chat.attachLocalFile', 'Attach local file')}
                   >
                     <FolderOpen size={20} />
                   </Button>
                 </>
-              )}
-            </>
+              )
           }
           rightActions={
-            <>
-              {isStreaming ? (
+              isStreaming ? (
                 <Button
                   type="button"
                   variant="danger"
                   size="md"
+                  aria-label="Stop generation"
                   onClick={onStop}
                   title={t('chat.stopGeneration', 'Stop generation')}
                 >
-                  <StopCircle size={20} className="animate-pulse" />
+                  <StopCircle size={20} className="animate-pulse" aria-hidden="true" />
                 </Button>
               ) : (
                 <Button
@@ -327,13 +264,14 @@ export const ChatInput = memo<ChatInputProps>(
                   variant="primary"
                   size="md"
                   disabled={!canSubmit}
+                  aria-label="Send message"
+                  aria-disabled={!canSubmit}
                   onClick={() => handleSubmit(value)}
                   title={t('chat.send', 'Send')}
                 >
-                  <Send size={20} strokeWidth={2.5} className="ml-0.5" />
+                  <Send size={20} strokeWidth={2.5} className="ml-0.5" aria-hidden="true" />
                 </Button>
-              )}
-            </>
+              )
           }
         />
       </section>
