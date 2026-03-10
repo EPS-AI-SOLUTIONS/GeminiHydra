@@ -1,11 +1,11 @@
 export interface SSEEvent {
   event: string;
-  data: any;
+  data: unknown;
 }
 
 export interface SSEStreamConfig {
   path: string;
-  body: any;
+  body: unknown;
   onEvent: (event: SSEEvent) => void;
   onError: (err: Error) => void;
   onComplete: () => void;

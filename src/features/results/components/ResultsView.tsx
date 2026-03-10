@@ -25,7 +25,7 @@
  * - DownloadPanel
  */
 
-import { Button, EmptyState } from '@jaskier/ui';
+import { Button, cn, EmptyState } from '@jaskier/ui';
 import { CheckCircle, ImageIcon, Upload } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -39,14 +39,10 @@ import { performOcr } from '@/features/ocr/api/ocrApi';
 import { useRestoreStream } from '@/features/restore/hooks/useRestoreStream';
 import { useRestoreStore } from '@/features/restore/stores/restoreStore';
 import { useResultsStore } from '@/features/results/stores/resultsStore';
+import { useSettingsQuery } from '@/features/settings/hooks/useSettings';
 import { useUploadStore } from '@/features/upload/stores/uploadStore';
 import { apiPost } from '@/shared/api/client';
 import type { OcrResponse, SaveImageResponse } from '@/shared/api/schemas';
-
-type FileSystemDirectoryHandle = any;
-
-import { cn } from '@jaskier/ui';
-import { useSettingsQuery } from '@/features/settings/hooks/useSettings';
 import { useViewTheme } from '@/shared/hooks/useViewTheme';
 import { saveToDirectory, urlToBlob } from '@/shared/utils/fileSystemAccess';
 import { useViewStore } from '@/stores/viewStore';
@@ -225,7 +221,7 @@ export function ResultsView() {
       if (!dirHandle && !backendOutputDir && 'showDirectoryPicker' in window) {
         try {
           dirHandle = await (
-            window as unknown as { showDirectoryPicker: (opts: unknown) => Promise<any> }
+            window as unknown as { showDirectoryPicker: (opts: unknown) => Promise<FileSystemDirectoryHandle> }
           ).showDirectoryPicker({ mode: 'readwrite' });
         } catch (err: unknown) {
           if (err instanceof Error && err.name === 'AbortError') return;
@@ -306,7 +302,7 @@ export function ResultsView() {
     if (!('showDirectoryPicker' in window)) return;
     try {
       const handle = await (
-        window as unknown as { showDirectoryPicker: (opts: unknown) => Promise<any> }
+        window as unknown as { showDirectoryPicker: (opts: unknown) => Promise<FileSystemDirectoryHandle> }
       ).showDirectoryPicker({ mode: 'readwrite' });
       setSaveDirectory(handle);
       toast.success(t('results.folderSelected', 'Save folder: {{folder}}', { folder: handle.name }));
@@ -325,8 +321,11 @@ export function ResultsView() {
   }, [clearPhotos, restoreReset, resultsReset, setView]);
 
   // Animate photo
-  const animateReset = useAnimateStore((s: any) => s.reset);
-  const setAnimateSource = useAnimateStore((s: any) => s.setSourceImage);
+  const animateReset = useAnimateStore((s: { reset: () => void }) => s.reset);
+  const setAnimateSource = useAnimateStore(
+    (s: { setSourceImage: (img: { imageUrl: string; mimeType: string; fileName: string }) => void }) =>
+      s.setSourceImage,
+  );
   const handleAnimate = useCallback(() => {
     if (!displayData) return;
     animateReset();

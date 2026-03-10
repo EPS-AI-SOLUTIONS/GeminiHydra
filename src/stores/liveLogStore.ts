@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 
 export interface LiveLogStore {
-  addLog: (level: 'info' | 'success' | 'warning' | 'error', msg: string, data?: any) => void;
+  addLog: (level: 'info' | 'success' | 'warning' | 'error', msg: string, data?: Record<string, unknown>) => void;
   clear: () => void;
   startRun: (total: number, name: string) => void;
   finishRun: (successCount: number, errorCount: number) => void;

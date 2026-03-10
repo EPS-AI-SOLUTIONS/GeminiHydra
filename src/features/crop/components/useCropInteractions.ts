@@ -114,7 +114,7 @@ export function useCropInteractions() {
   const {
     photos,
     outputDirectoryHandle,
-    outputDirectoryName,
+    outputDirectoryName: _outputDirectoryName,
     setAutoSaveTotal,
     incrementAutoSaved,
     resetAutoSaveProgress,
@@ -303,7 +303,7 @@ export function useCropInteractions() {
   useEffect(() => {
     hasDetectedRef.current = false;
     cropState.setDetectionBoxes([]);
-  }, [cropState.activePhotoIndex, cropState.setDetectionBoxes]);
+  }, [cropState.setDetectionBoxes]);
 
   const handleReDetect = useCallback(() => {
     if (!currentPhoto) return;
@@ -433,7 +433,8 @@ export function useCropInteractions() {
 
       const processCrop = async (i: number): Promise<ResultsImageData> => {
         const cropStartTime = Date.now();
-        const crop = cropResult.crops[i]!;
+        const crop = cropResult.crops[i];
+        if (!crop) throw new Error(`Crop ${i} not found`);
         addLog('info', `Kadr ${i + 1}: start przetwarzania`, { cropIndex: i });
 
         startCropStep(i, 'orient');
@@ -460,7 +461,7 @@ export function useCropInteractions() {
             model: orientModel,
             provider: 'onnx',
           });
-        } catch (orientErr) {
+        } catch (_orientErr) {
           finishCropStep(i, 'orient');
           addLog('warning', `Kadr ${i + 1}: orientacja pominięta`, { cropIndex: i, step: 'orient' });
         }
@@ -581,7 +582,8 @@ export function useCropInteractions() {
       const smallCropIndices: number[] = [];
       const largeCropIndices: number[] = [];
       for (let i = 0; i < totalCrops; i++) {
-        const crop = cropResult.crops[i]!;
+        const crop = cropResult.crops[i];
+        if (!crop) continue;
         if (totalCrops >= BATCH_MIN_TOTAL && crop.width < BATCH_THRESHOLD_PX && crop.height < BATCH_THRESHOLD_PX) {
           smallCropIndices.push(i);
         } else {
@@ -596,7 +598,8 @@ export function useCropInteractions() {
         const batchIndices = smallCropIndices.slice(b, b + 4);
         const batchPromise = (async (): Promise<ResultsImageData[]> => {
           const batchCrops = batchIndices.map((i) => {
-            const crop = cropResult.crops[i]!;
+            const crop = cropResult.crops[i];
+            if (!crop) throw new Error(`Crop ${i} not found`);
             return {
               image_base64: crop.cropped_base64,
               mime_type: mimeType,
@@ -612,9 +615,11 @@ export function useCropInteractions() {
             const gridResults = await batchRestoreGrid(batchCrops, totalCrops);
             const resultDatas: ResultsImageData[] = [];
             for (let gi = 0; gi < gridResults.length; gi++) {
-              const gridResult = gridResults[gi]!;
-              const cropIdx = batchIndices[gi]!;
-              const crop = cropResult.crops[cropIdx]!;
+              const gridResult = gridResults[gi];
+              const cropIdx = batchIndices[gi];
+              if (!gridResult || cropIdx === undefined) continue;
+              const crop = cropResult.crops[cropIdx];
+              if (!crop) continue;
 
               finishCropStep(cropIdx, 'restore');
               finishCropStep(cropIdx, 'upscale');
@@ -649,13 +654,13 @@ export function useCropInteractions() {
               }
             }
             return resultDatas;
-          } catch (err) {
+          } catch (_err) {
             const fallbackResults: ResultsImageData[] = [];
             for (const i of batchIndices) {
               try {
                 const result = await processCrop(i);
                 fallbackResults.push(result);
-              } catch (fallbackErr) {}
+              } catch (_fallbackErr) {}
             }
             return fallbackResults;
           }
@@ -673,7 +678,7 @@ export function useCropInteractions() {
       setRestoreProgress(100);
       finishRun(successCount, results.filter((r) => r.status === 'rejected').length);
       if (successCount > 0) setView('results');
-    } catch (err) {
+    } catch (_err) {
       setRestoreStatus('error');
       finishRun(0, 0);
     } finally {
@@ -701,7 +706,6 @@ export function useCropInteractions() {
     startRun,
     finishRun,
     outputDirectoryHandle,
-    outputDirectoryName,
     backendOutputDir,
     setAutoSaveTotal,
     incrementAutoSaved,
@@ -835,7 +839,6 @@ export function useCropInteractions() {
       setView('restore');
 
       const restoreLimit = pLimit(10);
-      let completedCount = 0;
 
       const restoreOneCrop = async (fc: FlatCrop): Promise<ResultsImageData> => {
         const gi = fc.globalIndex;
@@ -862,7 +865,13 @@ export function useCropInteractions() {
 
         startCropStep(gi, 'restore');
         let finalBase64: string;
-        let restoreResult: any;
+        let restoreResult: {
+          restored_base64: string;
+          processing_time_ms?: number;
+          provider_used?: string;
+          thumbnail_base64?: string;
+          safety_fallback?: boolean;
+        };
         try {
           restoreResult = await startRestoreStream(
             {
@@ -898,7 +907,6 @@ export function useCropInteractions() {
         }
 
         finishCrop(gi);
-        completedCount++;
         cropTimesRef.current.push(Date.now() - cropStartTime);
 
         const batchOrigDataUrl = `data:${fc.mimeType};base64,${orientedBase64}`;
@@ -938,7 +946,7 @@ export function useCropInteractions() {
       finishRun(totalSuccessCount, failedCount);
 
       setRestoreStatus('completed');
-    } catch (err) {
+    } catch (_err) {
       setRestoreStatus('completed');
     } finally {
       cropState.setIsCropping(false);
@@ -963,12 +971,10 @@ export function useCropInteractions() {
     setRestoreStatus,
     setRestoreProgress,
     setRetryMetadata,
-    addLog,
     clearLogs,
     startRun,
     finishRun,
     outputDirectoryHandle,
-    outputDirectoryName,
     backendOutputDir,
     setAutoSaveTotal,
     incrementAutoSaved,

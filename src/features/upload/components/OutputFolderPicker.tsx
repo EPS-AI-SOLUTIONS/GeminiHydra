@@ -6,17 +6,16 @@
  * Jaskier Shared Pattern — uses native Windows FolderBrowserDialog via backend.
  */
 
+import { cn } from '@jaskier/ui';
 import { CheckCircle, FolderOpen, HardDrive, Loader2, Pencil, X } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import { memo, useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
-
 import { Badge, Button, Card, Input } from '@/components/atoms';
 import { apiPost } from '@/shared/api/client';
 import { useSettingsQuery, useUpdateSettingsMutation } from '@/shared/hooks/useSettings';
 import { useViewTheme } from '@/shared/hooks/useViewTheme';
-import { cn } from '@/shared/utils/cn';
 
 // ============================================================================
 // OUTPUT FOLDER PICKER (Card UI)

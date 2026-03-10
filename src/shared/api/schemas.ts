@@ -127,6 +127,8 @@ const settingsSchema = z
     working_directory: z.string().optional().default(''),
     /** Force all agents to use this model (null = auto-select per agent) */
     force_model: z.string().nullable().optional(),
+    /** Backend-persisted output directory for auto-save */
+    output_directory: z.string().optional().default(''),
   })
   .passthrough();
 
