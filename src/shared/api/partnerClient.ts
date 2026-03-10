@@ -1,7 +1,10 @@
 // Cross-session visibility: GH ↔ CH partner client
 // Vite proxy: /partner-api → ClaudeHydra backend (:8082)
 
+import { env } from '../config/env';
+
 const PARTNER_BASE = '/partner-api';
+const PARTNER_AUTH_SECRET = env.VITE_PARTNER_AUTH_SECRET;
 
 export interface PartnerSessionSummary {
   id: string;
@@ -29,15 +32,17 @@ export interface PartnerSession {
 
 export async function fetchPartnerSessions(): Promise<PartnerSessionSummary[]> {
   const res = await fetch(`${PARTNER_BASE}/api/sessions`, {
-    headers: { 'Content-Type': 'application/json' },
+    signal: AbortSignal.timeout(5000),
+    ...(PARTNER_AUTH_SECRET ? { headers: { Authorization: `Bearer ${PARTNER_AUTH_SECRET}` } } : {}),
   });
   if (!res.ok) return [];
   return res.json();
 }
 
 export async function fetchPartnerSession(id: string): Promise<PartnerSession> {
-  const res = await fetch(`${PARTNER_BASE}/api/sessions/${id}`, {
-    headers: { 'Content-Type': 'application/json' },
+  const res = await fetch(`${PARTNER_BASE}/api/sessions/${encodeURIComponent(id)}`, {
+    signal: AbortSignal.timeout(10000),
+    ...(PARTNER_AUTH_SECRET ? { headers: { Authorization: `Bearer ${PARTNER_AUTH_SECRET}` } } : {}),
   });
   if (!res.ok) throw new Error(`Partner session ${id} not found`);
   return res.json();
