@@ -8,6 +8,8 @@ use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 use sqlx::{FromRow, PgPool};
 
+use tracing;
+
 use crate::state::AppState;
 
 // ── SSRF URL validation ──────────────────────────────────────────────────
@@ -401,10 +403,13 @@ pub async fn mcp_server_list(State(state): State<AppState>) -> (StatusCode, Json
             let val: Vec<Value> = servers.iter().map(redact_server).collect();
             (StatusCode::OK, Json(json!({ "servers": val })))
         }
-        Err(e) => (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            Json(json!({ "error": format!("DB error: {}", e) })),
-        ),
+        Err(e) => {
+            tracing::error!("mcp config list: {}", e);
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(json!({ "error": "Internal database error" })),
+            )
+        }
     }
 }
 
@@ -441,10 +446,13 @@ pub async fn mcp_server_create(
     }
     match create_mcp_server_db(&state.db, &body).await {
         Ok(server) => (StatusCode::CREATED, Json(redact_server(&server))),
-        Err(e) => (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            Json(json!({ "error": format!("Failed to create: {}", e) })),
-        ),
+        Err(e) => {
+            tracing::error!("mcp config create: {}", e);
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(json!({ "error": "Internal database error" })),
+            )
+        }
     }
 }
 
@@ -467,9 +475,10 @@ pub async fn mcp_server_update(
                 );
             }
             Err(e) => {
+                tracing::error!("mcp config update (fetch current): {}", e);
                 return (
                     StatusCode::INTERNAL_SERVER_ERROR,
-                    Json(json!({ "error": format!("DB error: {}", e) })),
+                    Json(json!({ "error": "Internal database error" })),
                 );
             }
         };
@@ -505,10 +514,13 @@ pub async fn mcp_server_update(
             StatusCode::NOT_FOUND,
             Json(json!({ "error": "MCP server not found" })),
         ),
-        Err(e) => (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            Json(json!({ "error": format!("Failed to update: {}", e) })),
-        ),
+        Err(e) => {
+            tracing::error!("mcp config update: {}", e);
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(json!({ "error": "Internal database error" })),
+            )
+        }
     }
 }
 
@@ -523,10 +535,13 @@ pub async fn mcp_server_delete(
             StatusCode::NOT_FOUND,
             Json(json!({ "error": "MCP server not found" })),
         ),
-        Err(e) => (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            Json(json!({ "error": format!("Failed to delete: {}", e) })),
-        ),
+        Err(e) => {
+            tracing::error!("mcp config delete: {}", e);
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(json!({ "error": "Internal database error" })),
+            )
+        }
     }
 }
 
@@ -543,9 +558,10 @@ pub async fn mcp_server_connect(
             );
         }
         Err(e) => {
+            tracing::error!("mcp config connect (fetch server): {}", e);
             return (
                 StatusCode::INTERNAL_SERVER_ERROR,
-                Json(json!({ "error": format!("DB error: {}", e) })),
+                Json(json!({ "error": "Internal database error" })),
             );
         }
     };
@@ -561,10 +577,13 @@ pub async fn mcp_server_connect(
                 })),
             )
         }
-        Err(e) => (
-            StatusCode::BAD_GATEWAY,
-            Json(json!({ "error": format!("Failed to connect: {}", e) })),
-        ),
+        Err(e) => {
+            tracing::error!("mcp config connect: {}", e);
+            (
+                StatusCode::BAD_GATEWAY,
+                Json(json!({ "error": "Failed to connect to MCP server" })),
+            )
+        }
     }
 }
 
@@ -596,10 +615,13 @@ pub async fn mcp_server_tools(
                 Json(json!({ "tools": tools_val, "source": "db" })),
             )
         }
-        Err(e) => (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            Json(json!({ "error": format!("Failed to list tools: {}", e) })),
-        ),
+        Err(e) => {
+            tracing::error!("mcp config list tools: {}", e);
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(json!({ "error": "Internal database error" })),
+            )
+        }
     }
 }
 

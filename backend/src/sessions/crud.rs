@@ -505,9 +505,10 @@ pub async fn unlock_session_agent(
             .fetch_optional(&state.db)
             .await
             .map_err(|e| {
+                tracing::error!("sessions crud: unlock_session_agent SELECT agent_id: {}", e);
                 (
                     axum::http::StatusCode::INTERNAL_SERVER_ERROR,
-                    Json(serde_json::json!({"error": format!("DB error: {}", e)})),
+                    Json(serde_json::json!({"error": "Internal database error"})),
                 )
             })?
             .and_then(|(a,)| a);
@@ -517,9 +518,10 @@ pub async fn unlock_session_agent(
         .execute(&state.db)
         .await
         .map_err(|e| {
+            tracing::error!("sessions crud: unlock_session_agent UPDATE agent_id: {}", e);
             (
                 axum::http::StatusCode::INTERNAL_SERVER_ERROR,
-                Json(serde_json::json!({"error": format!("DB error: {}", e)})),
+                Json(serde_json::json!({"error": "Internal database error"})),
             )
         })?;
 
@@ -563,9 +565,10 @@ pub async fn rate_message(
     .fetch_optional(&state.db)
     .await
     .map_err(|e| {
+        tracing::error!("sessions crud: rate_message SELECT message info: {}", e);
         (
             axum::http::StatusCode::INTERNAL_SERVER_ERROR,
-            Json(serde_json::json!({"error": format!("DB error: {}", e)})),
+            Json(serde_json::json!({"error": "Internal database error"})),
         )
     })?;
 
@@ -583,9 +586,10 @@ pub async fn rate_message(
     .execute(&state.db)
     .await
     .map_err(|e| {
+        tracing::error!("sessions crud: rate_message INSERT rating: {}", e);
         (
             axum::http::StatusCode::INTERNAL_SERVER_ERROR,
-            Json(serde_json::json!({"error": format!("DB error: {}", e)})),
+            Json(serde_json::json!({"error": "Database operation failed"})),
         )
     })?;
 

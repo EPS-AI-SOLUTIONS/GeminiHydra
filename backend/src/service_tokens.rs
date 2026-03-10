@@ -11,6 +11,32 @@ use serde_json::{Value, json};
 use crate::oauth::{decrypt_token, encrypt_token};
 use crate::state::AppState;
 
+// ── Validation helpers ─────────────────────────────────────────────────────
+
+/// Maximum token size in bytes (10 KB).
+const MAX_TOKEN_BYTES: usize = 10_240;
+
+/// Check whether an encryption key is configured.
+/// Mirrors the logic in `oauth::get_encryption_key()` without exposing the key.
+fn is_encryption_configured() -> bool {
+    std::env::var("OAUTH_ENCRYPTION_KEY")
+        .ok()
+        .or_else(|| std::env::var("AUTH_SECRET").ok())
+        .filter(|s| !s.is_empty())
+        .is_some()
+}
+
+/// Validate service name: alphanumeric, underscore, hyphen; 1-64 chars.
+fn validate_service_name(name: &str) -> Result<(), String> {
+    if name.is_empty() || name.len() > 64 {
+        return Err("Service name must be 1-64 characters".into());
+    }
+    if !name.chars().all(|c| c.is_alphanumeric() || c == '_' || c == '-') {
+        return Err("Service name must be alphanumeric, underscore, or hyphen".into());
+    }
+    Ok(())
+}
+
 // ── DB row ───────────────────────────────────────────────────────────────
 
 #[derive(sqlx::FromRow)]
@@ -64,6 +90,32 @@ pub async fn store_token(
         ));
     }
 
+    // Bug fix #2: validate service name
+    validate_service_name(&req.service).map_err(|e| {
+        (StatusCode::BAD_REQUEST, Json(json!({ "error": e })))
+    })?;
+
+    // Bug fix #3: enforce token size limit (10 KB)
+    if req.token.len() > MAX_TOKEN_BYTES {
+        return Err((
+            StatusCode::BAD_REQUEST,
+            Json(json!({ "error": format!("Token too large ({} bytes, max {})", req.token.len(), MAX_TOKEN_BYTES) })),
+        ));
+    }
+
+    // Bug fix #1: refuse to store tokens without encryption key
+    if !is_encryption_configured() {
+        tracing::warn!(
+            "Attempted to store service token for '{}' but no encryption key is configured \
+             (set OAUTH_ENCRYPTION_KEY or AUTH_SECRET)",
+            req.service
+        );
+        return Err((
+            StatusCode::SERVICE_UNAVAILABLE,
+            Json(json!({ "error": "Encryption key not configured — cannot safely store tokens" })),
+        ));
+    }
+
     let encrypted = encrypt_token(&req.token);
 
     sqlx::query(concat!(
@@ -98,7 +150,12 @@ pub async fn store_token(
 pub async fn delete_token(
     State(state): State<AppState>,
     Path(service): Path<String>,
-) -> Json<Value> {
+) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
+    // Bug fix #2: validate service name
+    validate_service_name(&service).map_err(|e| {
+        (StatusCode::BAD_REQUEST, Json(json!({ "error": e })))
+    })?;
+
     sqlx::query(concat!(
         "DELETE FROM ",
         "gh_service_tokens",
@@ -110,7 +167,7 @@ pub async fn delete_token(
     .ok();
 
     tracing::info!("Service token deleted for: {}", service);
-    Json(json!({ "status": "ok" }))
+    Ok(Json(json!({ "status": "ok" })))
 }
 
 // ═══════════════════════════════════════════════════════════════════════
@@ -119,6 +176,15 @@ pub async fn delete_token(
 
 /// Get a decrypted service token by service name.
 pub async fn get_service_token(state: &AppState, service: &str) -> Option<String> {
+    // Bug fix #2: validate service name
+    if validate_service_name(service).is_err() {
+        tracing::warn!(
+            "get_service_token called with invalid service name: {:?}",
+            service
+        );
+        return None;
+    }
+
     let row = sqlx::query_as::<_, ServiceTokenRow>(concat!(
         "SELECT service, encrypted_token FROM ",
         "gh_service_tokens",
@@ -128,6 +194,15 @@ pub async fn get_service_token(state: &AppState, service: &str) -> Option<String
     .fetch_optional(&state.db)
     .await
     .ok()??;
+
+    // Bug fix #1: warn when reading a plaintext token (backward compat — still returned)
+    if !row.encrypted_token.starts_with("enc:") {
+        tracing::warn!(
+            "Service token for '{}' is stored in PLAINTEXT — set OAUTH_ENCRYPTION_KEY \
+             or AUTH_SECRET and re-store the token to encrypt it",
+            service
+        );
+    }
 
     decrypt_token(&row.encrypted_token).ok()
 }

@@ -297,6 +297,8 @@ pub struct AppState {
     pub browser_proxy_history: Arc<crate::browser_proxy::ProxyHealthHistory>,
     /// Semaphore limiting concurrent A2A delegations (max 5 system-wide).
     pub a2a_semaphore: Arc<tokio::sync::Semaphore>,
+    /// Semaphore limiting concurrent WebSocket connections (max 20 system-wide).
+    pub ws_semaphore: Arc<tokio::sync::Semaphore>,
 }
 
 // ── Shared: readiness helpers ───────────────────────────────────────────────
@@ -440,6 +442,7 @@ impl AppState {
             )),
             browser_proxy_history: Arc::new(crate::browser_proxy::ProxyHealthHistory::new(50)),
             a2a_semaphore: Arc::new(tokio::sync::Semaphore::new(5)),
+            ws_semaphore: Arc::new(tokio::sync::Semaphore::new(20)),
         }
     }
 

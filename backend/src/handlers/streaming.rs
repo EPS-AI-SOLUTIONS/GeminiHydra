@@ -156,6 +156,42 @@ const GEMINI_BACKOFF_BASE: Duration = Duration::from_secs(1);
 /// Maximum random jitter added to each backoff delay.
 const GEMINI_BACKOFF_JITTER_MS: u64 = 500;
 
+/// Maximum number of conversation messages (contents entries) kept in context.
+/// Prevents OOM on long-running agent sessions with many iterations.
+const MAX_CONVERSATION_MESSAGES: usize = 80;
+
+/// Trim the conversation history to prevent unbounded growth across iterations.
+/// Keeps the first `keep_head` entries (system context / initial user prompt)
+/// and the most recent entries, inserting a marker where content was removed.
+fn trim_conversation(contents: &mut Vec<Value>) {
+    if contents.len() <= MAX_CONVERSATION_MESSAGES {
+        return;
+    }
+    let keep_head = 2; // Keep system context at the beginning
+    let keep_tail = MAX_CONVERSATION_MESSAGES.saturating_sub(keep_head);
+    let remove_start = keep_head;
+    let remove_end = contents.len().saturating_sub(keep_tail);
+    if remove_end > remove_start {
+        let removed = remove_end - remove_start;
+        contents.drain(remove_start..remove_end);
+        contents.insert(
+            keep_head,
+            json!({
+                "role": "user",
+                "parts": [{"text": format!(
+                    "[Earlier conversation trimmed — {} messages removed for context management]",
+                    removed
+                )}]
+            }),
+        );
+        tracing::debug!(
+            "trim_conversation: removed {} messages, {} remaining",
+            removed,
+            contents.len()
+        );
+    }
+}
+
 /// Wrapper using the default limit (kept for potential external usage).
 #[allow(dead_code)]
 fn truncate_for_context(output: &str) -> String {
@@ -215,13 +251,33 @@ pub async fn ws_execute(
         return (axum::http::StatusCode::UNAUTHORIZED, "Unauthorized").into_response();
     }
 
-    ws.on_upgrade(move |socket| handle_ws(socket, state))
+    // Acquire a permit from the connection semaphore (max 20 concurrent WS).
+    let permit = match state.ws_semaphore.clone().try_acquire_owned() {
+        Ok(permit) => permit,
+        Err(_) => {
+            tracing::warn!("WebSocket connection rejected — concurrent limit reached (20)");
+            return (
+                axum::http::StatusCode::SERVICE_UNAVAILABLE,
+                "Too many concurrent WebSocket connections",
+            )
+                .into_response();
+        }
+    };
+
+    ws.max_message_size(256 * 1024) // 256 KB message size limit
+        .on_upgrade(move |socket| handle_ws(socket, state, permit))
         .into_response()
 }
 
-async fn handle_ws(socket: WebSocket, state: AppState) {
+async fn handle_ws(
+    socket: WebSocket,
+    state: AppState,
+    _permit: tokio::sync::OwnedSemaphorePermit,
+) {
     let (mut sender, mut receiver) = socket.split();
-    let cancel = CancellationToken::new();
+    // Fresh CancellationToken per request — cancelling one request must not
+    // poison subsequent requests on the same WebSocket connection.
+    let mut cancel = CancellationToken::new();
 
     loop {
         tokio::select! {
@@ -239,9 +295,12 @@ async fn handle_ws(socket: WebSocket, state: AppState) {
                             WsClientMessage::Ping => { let _ = ws_send(&mut sender, &WsServerMessage::Pong).await; }
                             WsClientMessage::Cancel => { cancel.cancel(); }
                             WsClientMessage::Execute { prompt, mode, model, session_id } => {
+                                // Reset token so previous cancellation doesn't carry over
+                                cancel = CancellationToken::new();
                                 execute_streaming(&mut sender, &state, &prompt, mode, model, session_id, cancel.child_token()).await;
                             }
                             WsClientMessage::Orchestrate { prompt, pattern, agents, session_id } => {
+                                cancel = CancellationToken::new();
                                 execute_orchestrated(&mut sender, &state, &prompt, &pattern, agents.as_deref(), session_id, cancel.child_token()).await;
                             }
                             WsClientMessage::ToolResponse { tool_name, response } => {
@@ -324,7 +383,7 @@ async fn execute_orchestrated(
             let _ = ws_send(
                 sender,
                 &WsServerMessage::Error {
-                    message: format!("ADK sidecar unavailable: {}. Use direct mode.", e),
+                    message: "ADK sidecar unavailable. Use direct mode.".to_string(),
                     code: Some("ADK_UNAVAILABLE".into()),
                 },
             )
@@ -335,15 +394,20 @@ async fn execute_orchestrated(
 
     if !resp.status().is_success() {
         let status = resp.status();
-        let body_text = resp.text().await.unwrap_or_default();
+        let raw_body = resp.text().await.unwrap_or_default();
+        // Log the full error for debugging but send a sanitized message to
+        // the client — raw ADK bodies may contain internal URLs, stack traces,
+        // or Python tracebacks.
+        tracing::error!("ADK error {}: {}", status, raw_body);
+        let sanitized = if status.is_server_error() {
+            "Agent processing failed".to_string()
+        } else {
+            format!("Agent request failed ({})", status.as_u16())
+        };
         let _ = ws_send(
             sender,
             &WsServerMessage::Error {
-                message: format!(
-                    "ADK returned {}: {}",
-                    status,
-                    body_text.chars().take(200).collect::<String>()
-                ),
+                message: sanitized,
                 code: Some("ADK_ERROR".into()),
             },
         )
@@ -850,6 +914,9 @@ async fn execute_streaming_gemini(
             },
         )
         .await;
+
+        // Trim conversation history to prevent unbounded growth across iterations
+        trim_conversation(&mut contents);
 
         let mut gen_config = json!({
             "temperature": ctx.temperature,
