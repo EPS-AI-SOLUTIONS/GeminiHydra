@@ -24,7 +24,7 @@ type AuthMode = z.infer<typeof AuthModeSchema>;
 
 const ModelsResponseSchema = z
   .object({
-    providers: z.record(z.array(z.unknown())).optional(),
+    providers: z.record(z.string(), z.array(z.unknown())).optional(),
   })
   .passthrough();
 type ModelsResponse = z.infer<typeof ModelsResponseSchema>;
@@ -39,6 +39,9 @@ export interface HealthDashboardData {
   modelCount: number | null;
   metrics: unknown;
   audit: unknown;
+  resolvedModels: { chat?: string; thinking?: string; image?: string } | null;
+  watchdogStatus: string | null;
+  watchdogLastCheck: string | null;
   loading: boolean;
   error: boolean;
   refetch: () => void;
@@ -97,16 +100,24 @@ export function useHealthDashboard(): HealthDashboardData {
   });
   const uptimeSeconds = healthQuery.data?.uptime_seconds ?? null;
   const authRequired = authQuery.data?.auth_required ?? null;
-  const cpuUsage = statsQuery.data?.cpu_usage ?? null;
-  const memoryUsedMb = statsQuery.data?.memory_used ?? null;
-  const memoryTotalMb = statsQuery.data?.memory_total ?? null;
+  const cpuUsage = statsQuery.data?.cpu_usage_percent ?? null;
+  const memoryUsedMb = statsQuery.data?.memory_used_mb ?? null;
+  const memoryTotalMb = statsQuery.data?.memory_total_mb ?? null;
   const modelCount = modelsQuery.data?.providers
-    ? Object.values(modelsQuery.data.providers).reduce((sum, arr) => sum + (Array.isArray(arr) ? arr.length : 0), 0)
+    ? Object.values(modelsQuery.data.providers).reduce(
+        (sum: number, arr) => sum + (Array.isArray(arr) ? arr.length : 0),
+        0,
+      )
     : null;
   const loading = healthQuery.isLoading || statsQuery.isLoading;
   const error = healthQuery.isError && statsQuery.isError;
   const metrics = metricsQuery.data ?? null;
   const audit = auditQuery.data ?? null;
+
+  // Add missing properties
+  const resolvedModels = (healthQuery.data as any)?.resolved_models ?? null;
+  const watchdogStatus = (healthQuery.data as any)?.watchdog_status ?? null;
+  const watchdogLastCheck = (healthQuery.data as any)?.watchdog_last_check ?? null;
 
   const refetch = () => {
     void healthQuery.refetch();
@@ -127,6 +138,9 @@ export function useHealthDashboard(): HealthDashboardData {
     modelCount,
     metrics,
     audit,
+    resolvedModels,
+    watchdogStatus,
+    watchdogLastCheck,
     loading,
     error,
     refetch,

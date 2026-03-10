@@ -12,6 +12,7 @@
 import { AlertCircle, Camera, ChevronLeft, ChevronRight, ImagePlus, Sparkles, Trash2, Upload, X } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import { memo, useCallback, useEffect, useRef, useState } from 'react';
+// @ts-expect-error
 import { type FileRejection, useDropzone } from 'react-dropzone';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';

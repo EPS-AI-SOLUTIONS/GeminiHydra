@@ -1,0 +1,130 @@
+\src\i18n\index.ts:34 - default
+\src\stores\viewStore.ts:97 - useCurrentSession
+\src\stores\viewStore.ts:102 - useCurrentChatHistory
+\src\stores\viewStore.ts:20 - ChatSession (used in module)
+\src\stores\viewStore.ts:12 - Artifact
+\src\stores\viewStore.ts:26 - MessageRole
+\src\stores\viewStore.ts:6 - sanitizeTitle
+\src\stores\viewStore.ts:10 - sanitizeContent
+\src\stores\viewStore.ts:2 - MAX_SESSIONS
+\src\stores\viewStore.ts:3 - MAX_MESSAGES_PER_SESSION
+\src\stores\viewStore.ts:4 - MAX_TITLE_LENGTH
+\src\components\molecules\index.ts:4 - CodeBlockProps
+\src\components\molecules\index.ts:5 - CodeBlock
+\src\components\molecules\index.ts:6 - EmptyState
+\src\components\molecules\index.ts:7 - FeatureErrorFallback
+\src\components\molecules\index.ts:9 - ModelOption
+\src\components\molecules\index.ts:10 - ModelSelectorProps
+\src\components\molecules\index.ts:12 - ModelSelector
+\src\components\molecules\index.ts:13 - QueryError
+\src\components\molecules\index.ts:14 - SessionSearch
+\src\components\molecules\index.ts:16 - StatusIndicatorProps
+\src\components\molecules\index.ts:17 - StatusSize
+\src\components\molecules\index.ts:18 - StatusState
+\src\components\molecules\index.ts:20 - StatusIndicator
+\src\components\molecules\index.ts:21 - ViewSkeleton
+\src\components\molecules\LanguageSwitcher.tsx:19 - LanguageSwitcher
+\src\components\molecules\SessionSearch.tsx:81 - default
+\src\components\molecules\ViewSkeleton.tsx:59 - default
+\src\components\organisms\ErrorBoundary.tsx:121 - default
+\src\shared\api\client.ts:235 - checkHealth
+\src\shared\api\client.ts:229 - HealthStatus (used in module)
+\src\shared\api\schemas.ts:37 - DetailedHealth
+\src\shared\api\schemas.ts:139 - authStatusSchema (used in module)
+\src\shared\api\schemas.ts:152 - OAuthStatus
+\src\shared\api\schemas.ts:154 - authLoginResponseSchema (used in module)
+\src\shared\api\schemas.ts:162 - OAuthLoginResponse
+\src\shared\api\schemas.ts:164 - saveApiKeyResponseSchema (used in module)
+\src\shared\api\schemas.ts:388 - ocrPageSchema (used in module)
+\src\shared\api\schemas.ts:393 - OcrPage
+\src\shared\api\schemas.ts:395 - ocrResponseSchema (used in module)
+\src\shared\config\env.ts:18 - Env (used in module)
+\src\shared\hooks\useIsMobile.ts:11 - useIsMobile
+\src\shared\hooks\useNotifications.ts:29 - useNotifications
+\src\shared\hooks\useOAuthStatus.ts:3 - OAuthPhase
+\src\shared\hooks\useOAuthStatus.ts:3 - UseOAuthStatusReturn
+\src\shared\hooks\useOAuthStatus.ts:4 - useOAuthStatus
+\src\shared\hooks\useOnlineStatus.ts:36 - default
+\src\shared\hooks\useTextareaAutoResize.ts:27 - useTextareaAutoResize
+\src\shared\hooks\useViewTheme.ts:167 - default
+\src\shared\types\index.ts:3 - ChatMessage
+\src\shared\types\index.ts:3 - ChatSession
+\src\shared\types\index.ts:3 - ChatTab
+\src\shared\types\index.ts:3 - MessageRole
+\src\shared\types\index.ts:4 - ResolvedTheme
+\src\shared\types\index.ts:4 - Theme
+\src\shared\utils\fileReaderUtils.ts:7 - readFileAsDataUrl
+\src\shared\utils\fileReaderUtils.ts:27 - readFileAsText
+\src\shared\utils\highlightLanguages.ts:23 - chatLanguages
+\src\features\chat\components\ChatInput.tsx:13 - Attachment (used in module)
+\src\features\chat\components\ChatInput.tsx:19 - OrchestrationMode
+\src\features\chat\components\ChatInput.tsx:182 - default
+\src\features\chat\components\ChatViewWrapper.tsx:471 - default
+\src\features\chat\components\ImagePreview.tsx:14 - ImagePreviewProps (used in module)
+\src\features\chat\components\ImagePreview.tsx:53 - default
+\src\features\chat\components\MessageRating.tsx:225 - default
+\src\features\chat\components\NewMessagesButton.tsx:117 - default
+\src\features\chat\components\OfflineBanner.tsx:51 - default
+\src\features\chat\components\SearchOverlay.tsx:367 - default
+\src\features\chat\hooks\useAgentStream.ts:4 - AgentMessage (used in module)
+\src\features\chat\hooks\useOrchestration.ts:16 - OrchestrationPattern (used in module)
+\src\features\chat\hooks\useOrchestration.ts:41 - EMPTY_ORCHESTRATION (used in module)
+\src\features\crop\components\BoxOverlay.tsx:14 - BoxOverlayProps (used in module)
+\src\features\crop\components\CropActionBar.tsx:12 - CropActionBarProps (used in module)
+\src\features\crop\components\CropCanvas.tsx:18 - CropCanvasProps (used in module)
+\src\features\crop\components\CropHeader.tsx:16 - CropHeaderProps (used in module)
+\src\features\crop\components\CropToolbar.tsx:16 - CropToolbarProps (used in module)
+\src\features\crop\components\CropView.tsx:10 - CropViewProps (used in module)
+\src\features\crop\components\CropView.tsx:126 - default
+\src\features\crop\components\CropViewContainer.tsx:5 - CropViewContainer (used in module)
+\src\features\crop\hooks\useUpscale.ts:17 - useUpscaleMutation
+\src\features\crop\stores\cropStore.ts:16 - VerificationSource (used in module)
+\src\features\crop\stores\cropStore.ts:37 - Point2D (used in module)
+\src\features\crop\stores\cropStore.ts:42 - CroppedPhoto (used in module)
+\src\features\crop\utils\batchRestoreGrid.ts:7 - BatchCropInput (used in module)
+\src\features\crop\utils\batchRestoreGrid.ts:15 - BatchCropResult (used in module)
+\src\features\crop\utils\cropDedup.ts:19 - DedupCropInfo (used in module)
+\src\features\crop\utils\cropDedup.ts:31 - DedupResult (used in module)
+\src\features\delegations\hooks\useDelegations.ts:30 - DelegationStats (used in module)
+\src\features\delegations\hooks\useDelegations.ts:38 - DelegationsResponse (used in module)
+\src\features\delegations\hooks\useDelegations.ts:51 - useDelegationStore (used in module)
+\src\features\health\components\HealthDashboard.tsx:261 - default
+\src\features\health\hooks\useHealthDashboard.ts:32 - HealthDashboardData (used in module)
+\src\features\restore\components\RestoreView.tsx:1032 - default
+\src\features\restore\hooks\useRestore.ts:26 - useRestoreMutation
+\src\features\restore\hooks\useRestoreStream.ts:29 - RestoreStreamProgress (used in module)
+\src\features\restore\hooks\useRestoreStream.ts:45 - SSEDiagnostics (used in module)
+\src\features\restore\hooks\useRestoreStream.ts:58 - RestoreStreamRequest (used in module)
+\src\features\restore\hooks\useRestoreStream.ts:68 - ProgressCallback (used in module)
+\src\features\restore\stores\restoreStore.ts:38 - StepTiming (used in module)
+\src\features\restore\stores\restoreStore.ts:65 - RetryMetadata (used in module)
+\src\features\restore\stores\restoreStore.ts:273 - selectRestoreStatus
+\src\features\restore\stores\restoreStore.ts:274 - selectRestoreProgress
+\src\features\restore\stores\restoreStore.ts:275 - selectIsRestoring
+\src\features\restore\utils\pipelineCheckpoint.ts:6 - CropMeta (used in module)
+\src\features\results\components\BeforeAfterSlider.tsx:33 - ComparisonSliderProps (used in module)
+\src\features\results\components\BeforeAfterSlider.tsx:240 - SideBySideProps (used in module)
+\src\features\results\components\DownloadPanel.tsx:18 - DownloadPanelProps (used in module)
+\src\features\results\components\ProgressiveImage.tsx:91 - ProgressiveImageProps (used in module)
+\src\features\results\components\ResultActions.tsx:27 - ResultActionsProps (used in module)
+\src\features\results\components\ResultControls.tsx:30 - ResultControlsProps (used in module)
+\src\features\results\components\ResultFilmstrip.tsx:15 - ResultFilmstripProps (used in module)
+\src\features\results\components\ResultMetadata.tsx:19 - ResultMetadataProps (used in module)
+\src\features\results\components\ResultsView.tsx:64 - ResultsView (used in module)
+\src\features\results\components\ResultsView.tsx:802 - default
+\src\features\results\stores\resultsStore.ts:17 - ImageTransform (used in module)
+\src\features\results\stores\resultsStore.ts:317 - selectComparisonMode
+\src\features\results\stores\resultsStore.ts:318 - selectActiveImage
+\src\features\results\stores\resultsStore.ts:319 - selectHasImages
+\src\features\results\stores\resultsStore.ts:320 - selectImageCount
+\src\features\results\stores\resultsStore.ts:321 - selectSaveDirectoryName
+\src\features\settings\components\WorkingFolderSection.tsx:15 - WorkingFolderSection (used in module)
+\src\features\settings\hooks\useMcpServers.ts:19 - McpDiscoveredTool (used in module)
+\src\features\upload\stores\uploadStore.ts:220 - selectPhotos
+\src\features\upload\stores\uploadStore.ts:221 - selectIsUploading
+\src\features\upload\stores\uploadStore.ts:222 - selectUploadProgress
+\src\features\upload\stores\uploadStore.ts:223 - selectHasPhotos
+\src\features\upload\stores\uploadStore.ts:224 - selectOutputDirectoryName
+\src\features\upload\stores\uploadStore.ts:225 - selectHasOutputDirectory
+\src\features\upload\stores\uploadStore.ts:226 - selectAutoSavedCount
+\src\features\upload\stores\uploadStore.ts:227 - selectAutoSaveTotal

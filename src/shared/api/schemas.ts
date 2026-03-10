@@ -402,3 +402,28 @@ export const ocrResponseSchema = z.object({
 });
 
 export type OcrResponse = z.infer<typeof ocrResponseSchema>;
+
+export interface SSEProgressDetail {
+  tiles_done: number;
+  tiles_total: number;
+  progress: number;
+  eta_seconds?: number | null;
+}
+
+export interface SSEProgressEvent {
+  step: string;
+  status: string;
+  detail?: SSEProgressDetail;
+}
+
+export interface RestoreResponse {
+  restored_base64: string;
+  processing_time_ms: number;
+  provider_used: string;
+  safety_fallback?: boolean;
+}
+
+export interface SaveImageResponse {
+  success: boolean;
+  path: string;
+}

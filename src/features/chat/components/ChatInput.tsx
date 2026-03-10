@@ -20,10 +20,10 @@ export type OrchestrationMode = 'direct' | 'orchestrator';
 export type OrchestrationPattern = 'auto' | 'hierarchical' | 'sequential' | 'parallel';
 
 interface ChatInputProps {
-  input: string;
-  setInput: (val: string) => void;
+  input?: string;
+  setInput?: (val: string) => void;
   isStreaming?: boolean;
-  onSubmit: (e?: React.FormEvent) => void;
+  onSend: (prompt: string, image: string | null) => void;
   onOrchestrate?: () => void;
   onStop?: () => void;
   pendingImage?: string | null;
@@ -35,34 +35,32 @@ interface ChatInputProps {
   className?: string;
   disabled?: boolean;
   sessionId?: string;
+  workingDirectory?: string;
   onWorkingDirectoryChange?: (path: string) => void;
+  promptHistory?: string[];
+  initialValue?: string;
+  initialValueKey?: number;
 }
-
-const _PATTERN_OPTIONS: Array<{ value: OrchestrationPattern; label: string }> = [
-  { value: 'auto', label: 'Auto' },
-  { value: 'hierarchical', label: 'Hierarchical' },
-  { value: 'sequential', label: 'Sequential' },
-  { value: 'parallel', label: 'Parallel' },
-];
 
 export const ChatInput = memo(
   ({
-    input,
+    input = '',
     setInput,
     isStreaming,
-    onSubmit,
+    onSend,
     onOrchestrate,
-    _onStop,
     pendingImage,
     onClearImage,
     onPasteImage,
     onPasteFile,
     attachments = [],
-    _onClearAttachment,
     className,
     disabled,
     sessionId,
+    workingDirectory,
     onWorkingDirectoryChange,
+    initialValue,
+    initialValueKey,
   }: ChatInputProps) => {
     const { t } = useTranslation();
     const _theme = useViewTheme();
@@ -85,7 +83,7 @@ export const ChatInput = memo(
     const handleChange = useCallback(
       (val: string) => {
         setValue(val);
-        setInput(val);
+        setInput?.(val);
       },
       [setInput],
     );
@@ -94,10 +92,10 @@ export const ChatInput = memo(
       (e?: React.FormEvent) => {
         e?.preventDefault();
         if ((!value.trim() && !pendingImage && attachments.length === 0) || isStreaming) return;
-        onSubmit(e);
+        onSend(value, pendingImage ?? null);
         setValue('');
       },
-      [value, pendingImage, attachments.length, isStreaming, onSubmit],
+      [value, pendingImage, attachments.length, isStreaming, onSend],
     );
 
     const {

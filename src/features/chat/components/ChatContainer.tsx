@@ -539,7 +539,7 @@ export const ChatContainer = memo<ChatContainerProps>(
           <div className={cn('shrink-0 rounded-xl', theme.glassPanel)}>
             <ChatInput
               isStreaming={isStreaming}
-              onSubmit={handleSubmit}
+              onSend={handleSubmit}
               {...(onOrchestrate !== undefined && { onOrchestrate })}
               {...(onStop !== undefined && { onStop })}
               pendingImage={pendingImage}

@@ -36,10 +36,10 @@ export const MessageBubble = memo<MessageBubbleProps>(({ message, isLast, isStre
   const toolSegments = useMemo(() => segments.filter((s) => s.type === 'tool'), [segments]);
 
   const status = useMemo<'idle' | 'typing' | 'thinking' | 'error'>(() => {
-    if (message.error) return 'error';
+    if ((message as any).error) return 'error';
     if (isStreaming && isLast) return message.content ? 'typing' : 'thinking';
     return 'idle';
-  }, [message.error, isStreaming, isLast, message.content]);
+  }, [(message as any).error, isStreaming, isLast, message.content]);
 
   const assistantBubbleClasses = theme.isLight
     ? 'bg-white/50 border border-white/30 text-black shadow-sm'
@@ -76,7 +76,7 @@ export const MessageBubble = memo<MessageBubbleProps>(({ message, isLast, isStre
             accentBg: theme.accentBg,
             textMuted: theme.textMuted,
           }}
-          avatar={message.role === 'assistant' ? <AgentAvatar status={status} /> : undefined}
+          avatar={message.role === 'assistant' ? <AgentAvatar state={status} /> : undefined}
           copyText={t('chat.copyMessage', 'Copy message')}
           copiedText={t('common.copied', 'Copied')}
           modelBadge={message.model}

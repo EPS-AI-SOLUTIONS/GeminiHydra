@@ -37,7 +37,7 @@ import { type CropStepProgress, type PipelineStep, useRestoreStore } from '@/fea
 import { clearCheckpoint, loadCheckpoint, type PipelineCheckpoint } from '@/features/restore/utils/pipelineCheckpoint';
 import { type ResultsImageData, useResultsStore } from '@/features/results/stores/resultsStore';
 import { apiPost } from '@/shared/api/client';
-import type { OrientResponse } from '@/shared/api/schemas';
+import type { OcrResponse } from '@/shared/api/schemas';
 import { useViewTheme } from '@/shared/hooks/useViewTheme';
 import { findClosestRatio } from '@/shared/utils/aspectRatioHelpers';
 import { cn } from '@/shared/utils/cn';
@@ -526,12 +526,12 @@ function RestoreView() {
       startCropStep(cropIndex, 'orient');
       let orientedBase64 = photo.base64;
       try {
-        const orientResult = await apiPost<OrientResponse>('/api/orient', {
+        const orientResult = await apiPost<OcrResponse>('/api/orient', {
           image_base64: photo.base64,
           mime_type: mimeType,
         });
-        if (orientResult.rotation_angle !== 0) {
-          orientedBase64 = await rotateBase64Image(photo.base64, orientResult.rotation_angle, mimeType);
+        if ((orientResult as any).rotation_angle !== 0) {
+          orientedBase64 = await rotateBase64Image(photo.base64, (orientResult as any).rotation_angle, mimeType);
         }
         finishCropStep(cropIndex, 'orient');
       } catch {
@@ -665,12 +665,12 @@ function RestoreView() {
       startCropStep(cropIndex, 'orient');
       let orientedBase64 = photo.base64;
       try {
-        const orientResult = await apiPost<OrientResponse>('/api/orient', {
+        const orientResult = await apiPost<OcrResponse>('/api/orient', {
           image_base64: photo.base64,
           mime_type: mimeType,
         });
-        if (orientResult.rotation_angle !== 0) {
-          orientedBase64 = await rotateBase64Image(photo.base64, orientResult.rotation_angle, mimeType);
+        if ((orientResult as any).rotation_angle !== 0) {
+          orientedBase64 = await rotateBase64Image(photo.base64, (orientResult as any).rotation_angle, mimeType);
         }
         finishCropStep(cropIndex, 'orient');
       } catch {

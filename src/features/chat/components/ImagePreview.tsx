@@ -13,10 +13,10 @@ import { cn } from '@/shared/utils/cn';
 
 export interface ImagePreviewProps {
   src: string;
-  onRemove: () => void;
+  onClear: () => void;
 }
 
-export const ImagePreview = memo<ImagePreviewProps>(({ src, onRemove }) => (
+export const ImagePreview = memo<ImagePreviewProps>(({ src, onClear }) => (
   <motion.div
     layout
     initial={{ opacity: 0, scale: 0.8, y: 10 }}
@@ -35,7 +35,7 @@ export const ImagePreview = memo<ImagePreviewProps>(({ src, onRemove }) => (
     />
     <button
       type="button"
-      onClick={onRemove}
+      onClick={onClear}
       className={cn(
         'absolute -top-2 -right-2 p-1 rounded-full',
         'bg-red-500 text-white',
