@@ -10,7 +10,19 @@ ALTER TABLE gh_agents ADD COLUMN IF NOT EXISTS temperature DOUBLE PRECISION DEFA
 -- #49: Max tool calls per request setting
 ALTER TABLE gh_settings ADD COLUMN IF NOT EXISTS max_iterations INTEGER NOT NULL DEFAULT 10;
 
--- #50: Agent rating stats view (used by feedback loop)
+-- #50a: Ensure gh_ratings table exists (needed by view below)
+CREATE TABLE IF NOT EXISTS gh_ratings (
+    id BIGSERIAL PRIMARY KEY,
+    message_id UUID NOT NULL,
+    session_id UUID NOT NULL,
+    rating INTEGER NOT NULL CHECK (rating >= 1 AND rating <= 5),
+    feedback TEXT,
+    agent_id TEXT,
+    model TEXT,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- #50b: Agent rating stats view (used by feedback loop)
 CREATE OR REPLACE VIEW gh_agent_rating_stats AS
 SELECT
     m.agent as agent_id,

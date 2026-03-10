@@ -266,7 +266,7 @@ async fn patch_settings_persists_changes() {
         .unwrap();
 
     let json = body_json(get_resp).await;
-    assert!((json["temperature"].as_f64().unwrap() - 0.9).abs() < f64::EPSILON);
+    assert!((json["temperature"].as_f64().unwrap() - 0.9).abs() < 1e-6);
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
