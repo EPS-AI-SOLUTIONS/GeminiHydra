@@ -102,6 +102,7 @@ impl SseParser {
         self.buffer.push_str(chunk);
         let mut events = Vec::new();
         while let Some(pos) = self.buffer.find("\n\n") {
+            // Safety: "\n\n" is ASCII — find() returns byte pos at char boundary
             let block = self.buffer[..pos].to_string();
             self.buffer = self.buffer[pos + 2..].to_string();
             for line in block.lines() {
@@ -341,7 +342,7 @@ async fn execute_orchestrated(
                 message: format!(
                     "ADK returned {}: {}",
                     status,
-                    &body_text[..body_text.len().min(200)]
+                    body_text.chars().take(200).collect::<String>()
                 ),
                 code: Some("ADK_ERROR".into()),
             },
@@ -372,6 +373,7 @@ async fn execute_orchestrated(
                         buffer.push_str(&String::from_utf8_lossy(&bytes));
 
                         // Parse SSE events from buffer
+                        // Safety: "\n\n" is ASCII — find() returns byte pos at char boundary
                         while let Some(pos) = buffer.find("\n\n") {
                             let event_text = buffer[..pos].to_string();
                             buffer = buffer[pos + 2..].to_string();

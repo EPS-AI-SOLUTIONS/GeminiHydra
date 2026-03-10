@@ -429,10 +429,12 @@ async fn execute_a2a_task(
             let status = resp.status();
             let text = resp.text().await.unwrap_or_default();
             state.gemini_circuit.record_failure().await;
+            // UTF-8 safe truncation
+            let preview: String = text.chars().take(500).collect();
             return Err(format!(
                 "Gemini API error {}: {}",
                 status,
-                &text[..text.len().min(500)]
+                preview
             ));
         }
 
@@ -533,7 +535,7 @@ async fn execute_a2a_task(
                     tool_error_count,
                     MAX_TOOL_ERRORS,
                     name,
-                    &output[..output.len().min(200)]
+                    output.chars().take(200).collect::<String>()
                 );
                 if tool_error_count >= MAX_TOOL_ERRORS {
                     tracing::error!(

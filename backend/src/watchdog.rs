@@ -483,7 +483,7 @@ async fn try_restart_proxy(
         // Detach on Windows so proxy survives if backend restarts
         #[cfg(windows)]
         {
-            cmd.creation_flags(0x00000208u32); // DETACHED_PROCESS | CREATE_NEW_PROCESS_GROUP
+            cmd.creation_flags(0x08000208u32); // CREATE_NO_WINDOW | DETACHED_PROCESS | CREATE_NEW_PROCESS_GROUP
         }
 
         cmd.spawn()

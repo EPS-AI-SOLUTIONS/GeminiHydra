@@ -72,6 +72,8 @@ pub async fn prepare_execution(
     // #32 — Parse @agent prefix from prompt before classification
     let (prompt_clean, agent_override_from_prefix) = if prompt.starts_with('@') {
         if let Some(space_idx) = prompt.find(' ') {
+            // Safety: '@' is 1 byte ASCII and ' ' is 1 byte ASCII,
+            // so byte offsets from find() are always at char boundaries.
             let agent_name = prompt[1..space_idx].to_lowercase();
             if let Some(matched_agent) = agents_lock
                 .iter()
