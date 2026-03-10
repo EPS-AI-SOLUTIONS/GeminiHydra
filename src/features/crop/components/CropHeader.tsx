@@ -4,13 +4,13 @@
  * progress bar, and processing phase text.
  */
 
+import { cn } from '@jaskier/ui';
 import { ArrowLeft, ArrowRight, Crop, Loader2 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { memo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Badge, Button, ProgressBar } from '@/components/atoms';
 import { useViewTheme } from '@/shared/hooks/useViewTheme';
-import { cn } from '@/shared/utils/cn';
 import { expandIn } from './cropConstants';
 
 export interface CropHeaderProps {

@@ -42,9 +42,9 @@ import { useTheme } from '@/contexts/ThemeContext';
 
 const PartnerChatModal = lazy(() => import('@/features/chat/components/PartnerChatModal'));
 
+import { cn } from '@jaskier/ui';
 import { SessionSearch } from '@/components/molecules/SessionSearch';
 import { usePartnerSessions } from '@/features/chat/hooks/usePartnerSessions';
-import { cn } from '@/shared/utils/cn';
 import { useViewStore, type View } from '@/stores/viewStore';
 import { FooterControls } from './sidebar/FooterControls';
 import { LogoButton } from './sidebar/LogoButton';

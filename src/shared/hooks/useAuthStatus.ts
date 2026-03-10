@@ -92,13 +92,25 @@ export function useAuthStatus(): UseAuthStatusReturn {
       const win = window.open(data.auth_url, '_blank', 'noopener');
       if (!win) {
         toast.info(t('auth.popupBlocked'));
+        // Don't start polling if popup was blocked — user must retry
+        return;
       }
 
-      // Start polling /api/auth/status every 2s
+      // Start polling /api/auth/status every 2s, auto-stop after 5 minutes
       stopPolling();
       pollRef.current = setInterval(() => {
         qc.invalidateQueries({ queryKey: AUTH_QUERY_KEY });
       }, 2000);
+      setTimeout(
+        () => {
+          if (pollRef.current) {
+            stopPolling();
+            setLocalPhase('idle');
+            toast.info(t('auth.loginTimeout', 'Login timed out — please try again'));
+          }
+        },
+        5 * 60 * 1000,
+      );
     },
     onError: (err) => {
       const msg = err instanceof Error ? err.message : t('auth.loginError');

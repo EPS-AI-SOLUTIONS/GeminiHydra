@@ -7,12 +7,12 @@
  * Click scrolls to the bottom. Auto-hides when user scrolls back down.
  */
 
+import { cn } from '@jaskier/ui';
 import { ArrowDown } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import { memo, useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useViewTheme } from '@/shared/hooks/useViewTheme';
-import { cn } from '@/shared/utils/cn';
 
 // ============================================================================
 // TYPES

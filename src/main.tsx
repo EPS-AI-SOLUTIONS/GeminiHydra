@@ -7,6 +7,7 @@
  * ThemeProvider hoisted above AppShell so LoginView (outside AppShell) has access to theme.
  */
 
+import { ErrorBoundary } from '@jaskier/ui';
 import { QueryClientProvider, QueryErrorResetBoundary } from '@tanstack/react-query';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 import { AnimatePresence, motion } from 'motion/react';
@@ -16,7 +17,6 @@ import { Toaster } from 'sonner';
 import { FeatureErrorFallback } from '@/components/molecules/FeatureErrorFallback';
 import { ViewSkeleton } from '@/components/molecules/ViewSkeleton';
 import { AppShell } from '@/components/organisms/AppShell';
-import { ErrorBoundary } from '@/components/organisms/ErrorBoundary';
 import { ThemeProvider } from '@/contexts/ThemeContext';
 import { ChatViewWrapper } from '@/features/chat/components/ChatViewWrapper';
 import { queryClient } from '@/shared/api/queryClient';
@@ -113,8 +113,8 @@ function ViewRouter() {
             className="h-full w-full"
           >
             <QueryErrorResetBoundary>
-              {({ reset }) => (
-                <ErrorBoundary onReset={reset}>
+              {() => (
+                <ErrorBoundary fallback={<ViewSkeleton />}>
                   <Suspense fallback={<ViewSkeleton />}>{renderNonChatView()}</Suspense>
                 </ErrorBoundary>
               )}
@@ -158,8 +158,8 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <ThemeProvider defaultTheme="dark">
         <QueryErrorResetBoundary>
-          {({ reset }) => (
-            <ErrorBoundary onReset={reset}>
+          {() => (
+            <ErrorBoundary fallback={<ViewSkeleton />}>
               <AuthGate />
             </ErrorBoundary>
           )}

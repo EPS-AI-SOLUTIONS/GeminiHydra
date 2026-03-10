@@ -9,14 +9,13 @@
  * and connects to viewStore for navigation to crop view.
  */
 
+import { cn } from '@jaskier/ui';
 import { AlertCircle, Camera, ChevronLeft, ChevronRight, ImagePlus, Sparkles, Trash2, Upload, X } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import { memo, useCallback, useEffect, useRef, useState } from 'react';
-// @ts-expect-error
 import { type FileRejection, useDropzone } from 'react-dropzone';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
-
 import { Badge, Button, Card, ProgressBar } from '@/components/atoms';
 import {
   createPreviewUrl,
@@ -26,7 +25,6 @@ import {
   useUploadStore,
 } from '@/features/upload/stores/uploadStore';
 import { useViewTheme } from '@/shared/hooks/useViewTheme';
-import { cn } from '@/shared/utils/cn';
 import { useViewStore } from '@/stores/viewStore';
 import { OutputFolderPicker } from './OutputFolderPicker';
 
@@ -198,7 +196,7 @@ const Thumbnail = memo(function Thumbnail({ photo, index, total, onRemove, onMov
 export function UploadView() {
   const { t } = useTranslation();
   const theme = useViewTheme();
-  const setView = useViewStore((s) => s.setView);
+  const setView = useViewStore((s) => s.setCurrentView);
 
   // Upload store
   const photos = useUploadStore((s) => s.photos);

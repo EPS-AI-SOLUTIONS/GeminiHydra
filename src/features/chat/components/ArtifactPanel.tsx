@@ -1,8 +1,7 @@
-import { BaseArtifactView } from '@jaskier/ui';
+import { BaseArtifactView, cn } from '@jaskier/ui';
 import { motion } from 'motion/react';
 import { memo, useState } from 'react';
 import { useViewTheme } from '@/shared/hooks/useViewTheme';
-import { cn } from '@/shared/utils/cn';
 import { useViewStore } from '@/stores/viewStore';
 
 export const ArtifactPanel = memo(function ArtifactPanel() {

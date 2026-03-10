@@ -7,6 +7,7 @@
  * View transition animations are handled by ViewRouter in main.tsx.
  */
 
+import { cn } from '@jaskier/ui';
 import { type ReactNode, useCallback, useEffect, useMemo } from 'react';
 import { RuneRain, ThemedBackground } from '@/components/atoms';
 import { CommandPalette } from '@/components/molecules/CommandPalette';
@@ -18,7 +19,6 @@ import { useTheme } from '@/contexts/ThemeContext';
 import { useSessionSync } from '@/features/chat/hooks/useSessionSync';
 import { useHealthStatus, useSystemStatsQuery } from '@/features/health/hooks/useHealth';
 import { useSettingsQuery } from '@/features/settings/hooks/useSettings';
-import { cn } from '@/shared/utils/cn';
 import { useViewStore } from '@/stores/viewStore';
 
 /** Format raw model ID (e.g. "gemini-3.1-pro-preview") into a display name ("Gemini 3.1 Pro"). */

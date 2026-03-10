@@ -4,11 +4,11 @@
  * Displays confidence badge, remove button, and corner handles.
  */
 
+import { cn } from '@jaskier/ui';
 import { X } from 'lucide-react';
 import { motion } from 'motion/react';
 import { memo } from 'react';
 import type { BoundingBox } from '@/features/crop/stores/cropStore';
-import { cn } from '@/shared/utils/cn';
 import { CONFIDENCE_COLORS, formatConfidence, getConfidenceLevel, scaleIn } from './cropConstants';
 
 export interface BoxOverlayProps {

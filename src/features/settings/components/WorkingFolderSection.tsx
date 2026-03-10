@@ -1,15 +1,14 @@
 /** Jaskier Shared Pattern — Working Folder Settings Section */
 
+import { cn } from '@jaskier/ui';
 import { AlertCircle, Check, FolderOpen, Loader2, Pencil, X } from 'lucide-react';
 import { memo, useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
-
 import { Button, Input } from '@/components/atoms';
 import { apiPatch, apiPost } from '@/shared/api/client';
 import type { Settings } from '@/shared/api/schemas';
 import { useViewTheme } from '@/shared/hooks/useViewTheme';
-import { cn } from '@/shared/utils/cn';
 import { useSettingsQuery } from '../hooks/useSettings';
 
 export const WorkingFolderSection = memo(() => {

@@ -1,10 +1,9 @@
+import { cn } from '@jaskier/ui';
 import { Chrome, ExternalLink, Loader2 } from 'lucide-react';
 import { memo } from 'react';
 import { useTranslation } from 'react-i18next';
-
 import { Button } from '@/components/atoms';
 import { useViewTheme } from '@/shared/hooks/useViewTheme';
-import { cn } from '@/shared/utils/cn';
 
 interface GoogleOAuthFlowProps {
   oauthAvailable: boolean;

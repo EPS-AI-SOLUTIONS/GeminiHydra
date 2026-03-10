@@ -4,10 +4,10 @@
  * Filters sessions by title match with 300ms debounce.
  */
 
+import { cn } from '@jaskier/ui';
 import { Search, X } from 'lucide-react';
 import { memo, useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { cn } from '@/shared/utils/cn';
 
 interface SessionSearchProps {
   /** Callback fired with the debounced search query. */

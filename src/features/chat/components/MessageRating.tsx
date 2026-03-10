@@ -7,12 +7,12 @@
  * Sends rating to backend via POST /api/ratings.
  */
 
+import { cn } from '@jaskier/ui';
 import { Star } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import { memo, useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { apiPost } from '@/shared/api/client';
-import { cn } from '@/shared/utils/cn';
 
 // ============================================================================
 // TYPES

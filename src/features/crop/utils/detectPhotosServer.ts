@@ -50,7 +50,7 @@ export async function detectPhotos(
 
     const result = await apiPostFormData<DetectionResult>('/api/detect/upload', formData);
 
-    const boxes: BoundingBox[] = result.bounding_boxes.map((b, i) => ({
+    const boxes: BoundingBox[] = result.bounding_boxes.map((b: ServerBoundingBox, i: number) => ({
       x: b.x,
       y: b.y,
       width: b.width,

@@ -5,13 +5,13 @@
  * When inactive: clears force_model (agents use their own model selection logic).
  */
 
+import { cn } from '@jaskier/ui';
 import { useQueryClient } from '@tanstack/react-query';
 import { Gem } from 'lucide-react';
 import { useState } from 'react';
 import { useSettingsQuery } from '@/features/settings/hooks/useSettings';
 import { apiPatch } from '@/shared/api/client';
 import { useViewTheme } from '@/shared/hooks/useViewTheme';
-import { cn } from '@/shared/utils/cn';
 
 const PRO_MODEL = 'gemini-3.1-pro-preview-customtools';
 

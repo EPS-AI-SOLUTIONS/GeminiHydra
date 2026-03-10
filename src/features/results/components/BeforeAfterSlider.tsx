@@ -9,7 +9,7 @@
  * - Progressive image loading via ProgressiveImage
  */
 
-import { Badge, Card } from '@jaskier/ui';
+import { Badge, Card, cn } from '@jaskier/ui';
 import { SlidersHorizontal } from 'lucide-react';
 import { motion } from 'motion/react';
 import {
@@ -23,7 +23,6 @@ import {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { ViewTheme } from '@/shared/hooks/useViewTheme';
-import { cn } from '@/shared/utils/cn';
 import { ProgressiveImage } from './ProgressiveImage';
 
 // ============================================

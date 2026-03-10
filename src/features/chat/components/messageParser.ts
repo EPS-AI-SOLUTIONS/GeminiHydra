@@ -23,9 +23,9 @@ export function splitToolOutput(input: string): MessageSegment[] {
   const toolRegex = /(?:\n)?---\n\*\*(?:🔧\s*)?Tool:\*\* `([^`]+)`\n```\n([\s\S]*?)\n```\n---(?:\n)?/g;
 
   let lastIndex = 0;
-  let match;
+  let match: RegExpExecArray | null = toolRegex.exec(input);
 
-  while ((match = toolRegex.exec(input)) !== null) {
+  while (match !== null) {
     const textContent = input.slice(lastIndex, match.index);
     if (textContent) {
       segments.push({ type: 'text', content: textContent });
@@ -38,6 +38,7 @@ export function splitToolOutput(input: string): MessageSegment[] {
     });
 
     lastIndex = match.index + match[0].length;
+    match = toolRegex.exec(input);
   }
 
   const remainingText = input.slice(lastIndex);

@@ -4,12 +4,11 @@
  * and current save directory info.
  */
 
-import { Button, Card } from '@jaskier/ui';
+import { Button, Card, cn } from '@jaskier/ui';
 import { Download, FolderOpen } from 'lucide-react';
 import { memo } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { ViewTheme } from '@/shared/hooks/useViewTheme';
-import { cn } from '@/shared/utils/cn';
 
 // ============================================
 // TYPES

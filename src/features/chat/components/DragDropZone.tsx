@@ -1,9 +1,9 @@
+import { cn } from '@jaskier/ui';
 import { Paperclip } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import { type DragEvent, memo, type ReactNode, useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
-import { cn } from '@/shared/utils/cn';
 
 interface DragDropZoneProps {
   children: ReactNode;

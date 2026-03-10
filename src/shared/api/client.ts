@@ -204,6 +204,33 @@ export async function apiGetPolling<T>(path: string): Promise<T> {
   return apiFetch<T>(path, { method: 'GET' }, 0);
 }
 
+export async function apiPostFormData<T>(path: string, body: FormData): Promise<T> {
+  const url = `${BASE_URL}${path}`;
+  const response = await fetchWithRetry(url, {
+    method: 'POST',
+    body,
+    headers: {
+      ...(AUTH_SECRET ? { Authorization: `Bearer ${AUTH_SECRET}` } : {}),
+    },
+  });
+
+  if (!response.ok) {
+    let errBody: unknown;
+    try {
+      errBody = await response.json();
+    } catch {
+      errBody = await response.text().catch(() => null);
+    }
+    throw new ApiError(response.status, response.statusText, errBody);
+  }
+
+  if (response.status === 204) {
+    return undefined as T;
+  }
+
+  return response.json() as Promise<T>;
+}
+
 export async function apiPost<T>(path: string, body?: unknown): Promise<T> {
   return apiFetch<T>(path, {
     method: 'POST',

@@ -4,13 +4,13 @@
  * draw box mode, zoom, detection zones list, undo/redo, and reset.
  */
 
+import { cn } from '@jaskier/ui';
 import { BoxSelect, Images, Minus, Plus, Redo2, RotateCcw, Undo2, X, ZoomIn } from 'lucide-react';
 import { memo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Badge, Button, Card } from '@/components/atoms';
 import type { AspectRatioLock, BoundingBox } from '@/features/crop/stores/cropStore';
 import { useViewTheme } from '@/shared/hooks/useViewTheme';
-import { cn } from '@/shared/utils/cn';
 import { ASPECT_RATIO_OPTIONS, formatConfidence, getConfidenceLevel } from './cropConstants';
 
 export interface CropToolbarProps {
@@ -225,36 +225,30 @@ const CropToolbar = memo(function CropToolbar({
               return (
                 <div
                   key={zoneKey}
-                  tabIndex={0}
-                  role="button"
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' || e.key === ' ') {
-                      e.preventDefault();
-                      onZoneActivate(idx);
-                    }
-                  }}
-                  onClick={() => onZoneActivate(idx)}
                   className={cn(
                     'flex items-center justify-between px-2 py-1.5 rounded-lg',
                     'bg-white/5 border border-white/10',
                     'text-sm',
-                    'focus:outline-none focus:ring-1 focus:ring-[var(--matrix-accent)]',
-                    'cursor-pointer hover:bg-white/10 transition-colors',
                     highlightedZoneIndex === idx && 'ring-1 ring-[var(--matrix-accent)] bg-[var(--matrix-accent)]/10',
                   )}
                 >
-                  <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => onZoneActivate(idx)}
+                    className={cn(
+                      'flex items-center gap-2 flex-1',
+                      'cursor-pointer hover:opacity-80 transition-opacity',
+                      'focus:outline-none focus:ring-1 focus:ring-[var(--matrix-accent)] rounded',
+                    )}
+                  >
                     <span className={cn('font-bold', theme.text)}>#{idx + 1}</span>
                     <Badge variant={level === 'high' ? 'success' : level === 'medium' ? 'warning' : 'error'} size="sm">
                       {formatConfidence(box.confidence)}
                     </Badge>
-                  </div>
+                  </button>
                   <button
                     type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      removeDetectionBox(idx);
-                    }}
+                    onClick={() => removeDetectionBox(idx)}
                     className="text-[var(--matrix-text-secondary)] hover:text-red-400 transition-colors"
                   >
                     <X size={12} />

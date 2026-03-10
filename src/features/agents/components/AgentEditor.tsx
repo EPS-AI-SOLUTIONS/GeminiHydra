@@ -1,10 +1,11 @@
 // src/features/agents/components/AgentEditor.tsx
+
+import { cn } from '@jaskier/ui';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Button, Input } from '@/components/atoms';
 import type { Agent } from '@/shared/api/schemas';
 import { useViewTheme } from '@/shared/hooks/useViewTheme';
-import { cn } from '@/shared/utils/cn';
 
 interface AgentEditorProps {
   agent?: Agent | null; // null = create mode

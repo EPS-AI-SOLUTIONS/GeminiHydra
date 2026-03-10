@@ -4,7 +4,7 @@
  * hold-to-compare, and re-restore controls.
  */
 
-import { Card } from '@jaskier/ui';
+import { Card, cn } from '@jaskier/ui';
 import {
   ChevronLeft,
   ChevronRight,
@@ -21,7 +21,6 @@ import { memo } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { ComparisonMode } from '@/features/results/stores/resultsStore';
 import type { ViewTheme } from '@/shared/hooks/useViewTheme';
-import { cn } from '@/shared/utils/cn';
 
 // ============================================
 // TYPES

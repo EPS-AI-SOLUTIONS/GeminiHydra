@@ -1,16 +1,15 @@
 // src/features/logs/components/LogsView.tsx
 
+import { cn } from '@jaskier/ui';
 import { useQueryClient } from '@tanstack/react-query';
 import { ChevronDown, Copy, RefreshCw, ScrollText, Search, Trash2 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { memo, useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
-
 import { Badge, Button, Card, Input } from '@/components/atoms';
 import { type BackendLogEntry, clearBackendLogs, useBackendLogs } from '@/features/logs/hooks/useLogs';
 import { useViewTheme } from '@/shared/hooks/useViewTheme';
-import { cn } from '@/shared/utils/cn';
 
 // ============================================
 // LEVEL BADGE

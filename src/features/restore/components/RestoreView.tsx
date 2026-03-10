@@ -8,7 +8,7 @@
  * Pipeline steps: Orient → Outpaint → Restore → Upscale
  */
 
-import { Badge, Button, Card, ProgressBar } from '@jaskier/ui';
+import { Badge, Button, Card, cn, ProgressBar } from '@jaskier/ui';
 import {
   AlertTriangle,
   Check,
@@ -40,7 +40,6 @@ import { apiPost } from '@/shared/api/client';
 import type { OcrResponse } from '@/shared/api/schemas';
 import { useViewTheme } from '@/shared/hooks/useViewTheme';
 import { findClosestRatio } from '@/shared/utils/aspectRatioHelpers';
-import { cn } from '@/shared/utils/cn';
 import { formatEta, formatMs } from '@/shared/utils/formatters';
 import { upscaleOriginalToMatchRestored } from '@/shared/utils/imageResize';
 import { pLimit } from '@/shared/utils/pLimit';
@@ -427,7 +426,7 @@ function ThumbnailGrid({ cropSteps, croppedPhotos, theme }: ThumbnailGridProps) 
 function RestoreView() {
   const theme = useViewTheme();
   const { t } = useTranslation();
-  const setView = useViewStore((s) => s.setView);
+  const setView = useViewStore((s) => s.setCurrentView);
 
   // Restore store state
   const status = useRestoreStore((s) => s.status);

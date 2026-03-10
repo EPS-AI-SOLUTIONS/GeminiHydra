@@ -3,10 +3,11 @@
  * ResultFilmstrip — horizontal thumbnail strip for batch image navigation.
  * Shows thumbnails of all restored images with active selection highlight.
  */
+
+import { cn } from '@jaskier/ui';
 import { memo } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { ResultsImageData } from '@/features/results/stores/resultsStore';
-import { cn } from '@/shared/utils/cn';
 
 // ============================================
 // TYPES
@@ -35,10 +36,10 @@ export const ResultFilmstrip = memo(function ResultFilmstrip({
     <div className="flex gap-2 overflow-x-auto py-2 snap-x snap-mandatory scrollbar-thin">
       {images.map((img, idx) => {
         const isNearActive = Math.abs(idx - activeIndex) <= 20;
+        const stableKey = `filmstrip-${img.fileName}-${img.restoredImage.slice(-16)}`;
         return (
-          // biome-ignore lint/suspicious/noArrayIndexKey: The order of items never changes
           <button
-            key={`filmstrip-${idx}`}
+            key={stableKey}
             type="button"
             onClick={() => onSelectImage(idx)}
             aria-label={t('results.goToImage', 'Go to image {{num}}', { num: idx + 1 })}

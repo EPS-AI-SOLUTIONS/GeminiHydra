@@ -1,5 +1,5 @@
+import { cn } from '@jaskier/ui';
 import { describe, expect, it } from 'vitest';
-import { cn } from '@/shared/utils/cn';
 
 describe('cn utility', () => {
   // ========================================

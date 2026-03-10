@@ -9,12 +9,12 @@
  * - Escape to close
  */
 
+import { cn } from '@jaskier/ui';
 import { ChevronDown, ChevronUp, Search, X } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useViewTheme } from '@/shared/hooks/useViewTheme';
-import { cn } from '@/shared/utils/cn';
 import type { Message } from '@/stores/viewStore';
 
 // ============================================================================

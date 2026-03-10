@@ -1,12 +1,11 @@
 // src/features/restore/components/ResumeDialog.tsx
 
-import { Badge, Button, Card } from '@jaskier/ui';
+import { Badge, Button, Card, cn } from '@jaskier/ui';
 import { History, Play, Trash2 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { useTranslation } from 'react-i18next';
 import type { PipelineCheckpoint } from '@/features/restore/utils/pipelineCheckpoint';
 import { useViewTheme } from '@/shared/hooks/useViewTheme';
-import { cn } from '@/shared/utils/cn';
 
 interface ResumeDialogProps {
   checkpoint: PipelineCheckpoint;

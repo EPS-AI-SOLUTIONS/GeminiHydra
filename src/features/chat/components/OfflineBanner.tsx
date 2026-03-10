@@ -6,13 +6,13 @@
  * Uses useOnlineStatus() hook + motion/react for slide animation.
  */
 
+import { cn } from '@jaskier/ui';
 import { WifiOff } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import { memo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useOnlineStatus } from '@/shared/hooks/useOnlineStatus';
 import { useViewTheme } from '@/shared/hooks/useViewTheme';
-import { cn } from '@/shared/utils/cn';
 
 export const OfflineBanner = memo(() => {
   const { t } = useTranslation();

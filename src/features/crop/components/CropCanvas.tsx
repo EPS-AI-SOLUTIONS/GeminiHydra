@@ -4,6 +4,7 @@
  * Supports mouse-drag drawing of manual bounding boxes.
  */
 
+import { cn } from '@jaskier/ui';
 import { Scan } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import { memo, useCallback, useEffect, useRef, useState } from 'react';
@@ -11,7 +12,6 @@ import { useTranslation } from 'react-i18next';
 import { ProgressBar } from '@/components/atoms';
 import type { BoundingBox } from '@/features/crop/stores/cropStore';
 import { useViewTheme } from '@/shared/hooks/useViewTheme';
-import { cn } from '@/shared/utils/cn';
 import BoxOverlay from './BoxOverlay';
 import { fadeIn } from './cropConstants';
 
@@ -208,6 +208,7 @@ const CropCanvas = memo(function CropCanvas({
           {imgLayout && !isDetecting && (
             <div
               ref={overlayRef}
+              role="application"
               className="absolute inset-0 pointer-events-auto"
               onMouseDown={handleMouseDown}
               onMouseMove={handleMouseMove}

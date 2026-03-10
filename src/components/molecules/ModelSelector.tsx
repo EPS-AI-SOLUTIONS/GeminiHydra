@@ -9,12 +9,12 @@
  * GeminiHydra-v15: White/neutral accent with --matrix-* CSS variables.
  */
 
+import { cn } from '@jaskier/ui';
 import { Check, ChevronDown, Search } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import { type KeyboardEvent, type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useDebounce } from '@/shared/hooks/useDebounce';
-import { cn } from '@/shared/utils/cn';
 
 // ---------------------------------------------------------------------------
 // Types

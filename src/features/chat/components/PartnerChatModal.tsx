@@ -3,6 +3,7 @@
  * Focus trap: Tab cycles within modal, Escape closes.
  */
 
+import { cn } from '@jaskier/ui';
 import { Bot, Loader2, User, X } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import { useCallback, useEffect, useRef } from 'react';
@@ -11,7 +12,6 @@ import { useTranslation } from 'react-i18next';
 import { useTheme } from '@/contexts/ThemeContext';
 import { usePartnerSession } from '@/features/chat/hooks/usePartnerSessions';
 import { useFocusTrap } from '@/shared/hooks/useFocusTrap';
-import { cn } from '@/shared/utils/cn';
 
 interface Props {
   sessionId: string | null;
@@ -118,7 +118,7 @@ export default function PartnerChatModal({ sessionId, onClose }: Props) {
                   {t('chat.failedLoadSession')}
                 </div>
               )}
-              {session?.messages.map((msg) => (
+              {session?.messages.map((msg: any) => (
                 <div
                   key={msg.id}
                   className={cn('flex gap-3 max-w-3xl', msg.role === 'user' ? 'ml-auto flex-row-reverse' : '')}

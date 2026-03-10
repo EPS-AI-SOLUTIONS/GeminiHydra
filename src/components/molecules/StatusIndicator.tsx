@@ -9,9 +9,9 @@
  * GeminiHydra-v15: White/neutral accent theme with --matrix-success/error/warning vars.
  */
 
+import { cn } from '@jaskier/ui';
 import { motion } from 'motion/react';
 import type { HTMLAttributes } from 'react';
-import { cn } from '@/shared/utils/cn';
 
 // ---------------------------------------------------------------------------
 // Types

@@ -6,18 +6,17 @@
  * Ported from legacy GeminiHydra WelcomeScreen with glassmorphism + motion.
  */
 
+import { cn } from '@jaskier/ui';
 import type { TFunction } from 'i18next';
 import { Clock, Cpu, Globe, MessageSquare, Plus, Sparkles, Users, Workflow } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import { memo, useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-
 import { Badge, Button } from '@/components/atoms';
 import { useSessionSync } from '@/features/chat/hooks/useSessionSync';
 import { HealthDashboard } from '@/features/health/components/HealthDashboard';
 import { OAuthBanner } from '@/features/settings/components/OAuthBanner';
 import { useViewTheme } from '@/shared/hooks/useViewTheme';
-import { cn } from '@/shared/utils/cn';
 import { type Session, useViewStore } from '@/stores/viewStore';
 
 // ============================================================================

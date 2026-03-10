@@ -4,12 +4,11 @@
  * provider, resolution, and upscale factor.
  */
 
-import { Badge, Card } from '@jaskier/ui';
+import { Badge, Card, cn } from '@jaskier/ui';
 import { AlertTriangle, CheckCircle, Clock, ImageIcon, Maximize2 } from 'lucide-react';
 import { memo } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { ViewTheme } from '@/shared/hooks/useViewTheme';
-import { cn } from '@/shared/utils/cn';
 import { formatMs, formatTimestamp } from '@/shared/utils/formatters';
 
 // ============================================

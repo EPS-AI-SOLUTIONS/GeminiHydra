@@ -1,14 +1,13 @@
 /** Jaskier Shared Pattern — Google Auth startup suggestion banner */
 
+import { cn } from '@jaskier/ui';
 import { ArrowRight, Key, X } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import { memo } from 'react';
 import { useTranslation } from 'react-i18next';
-
 import { Button } from '@/components/atoms';
 import { useAuthStatus } from '@/shared/hooks/useAuthStatus';
 import { useViewTheme } from '@/shared/hooks/useViewTheme';
-import { cn } from '@/shared/utils/cn';
 import { useViewStore } from '@/stores/viewStore';
 
 export const OAuthBanner = memo(() => {

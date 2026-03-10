@@ -1,8 +1,8 @@
+import { cn } from '@jaskier/ui';
 import { Copy, Trash2, X } from 'lucide-react';
 import { memo, useRef } from 'react';
 import { useOutsideClick } from '@/shared/hooks/useOutsideClick';
 import { useViewTheme } from '@/shared/hooks/useViewTheme';
-import { cn } from '@/shared/utils/cn';
 
 interface ChatContextMenuProps {
   x: number;
