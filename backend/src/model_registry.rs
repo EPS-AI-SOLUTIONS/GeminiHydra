@@ -275,7 +275,9 @@ pub async fn refresh_cache(state: &AppState) -> (HashMap<String, Vec<ModelInfo>>
                             }
                         }
                     } else {
-                        errors.push("google: model refresh failed (no fallback available)".to_string());
+                        errors.push(
+                            "google: model refresh failed (no fallback available)".to_string(),
+                        );
                     }
                 } else {
                     errors.push("google: model refresh failed".to_string());

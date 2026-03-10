@@ -213,14 +213,20 @@ pub async fn google_redirect(
         Ok(r) => r,
         Err(e) => {
             tracing::error!("oauth_google: token exchange request failed: {}", e);
-            return Html("Token Exchange Failed: Could not complete authentication. Please try again.".to_string());
+            return Html(
+                "Token Exchange Failed: Could not complete authentication. Please try again."
+                    .to_string(),
+            );
         }
     };
 
     if !resp.status().is_success() {
         let err = resp.text().await.unwrap_or_default();
         tracing::error!("oauth_google: token exchange rejected: {}", err);
-        return Html("Token Exchange Rejected: Google rejected the authorization request. Please try again.".to_string());
+        return Html(
+            "Token Exchange Rejected: Google rejected the authorization request. Please try again."
+                .to_string(),
+        );
     }
 
     let tokens: GoogleTokenResponse = match resp.json().await {

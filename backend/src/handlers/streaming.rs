@@ -269,11 +269,7 @@ pub async fn ws_execute(
         .into_response()
 }
 
-async fn handle_ws(
-    socket: WebSocket,
-    state: AppState,
-    _permit: tokio::sync::OwnedSemaphorePermit,
-) {
+async fn handle_ws(socket: WebSocket, state: AppState, _permit: tokio::sync::OwnedSemaphorePermit) {
     let (mut sender, mut receiver) = socket.split();
     // Fresh CancellationToken per request — cancelling one request must not
     // poison subsequent requests on the same WebSocket connection.

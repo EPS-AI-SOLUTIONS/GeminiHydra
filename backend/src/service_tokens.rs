@@ -31,7 +31,10 @@ fn validate_service_name(name: &str) -> Result<(), String> {
     if name.is_empty() || name.len() > 64 {
         return Err("Service name must be 1-64 characters".into());
     }
-    if !name.chars().all(|c| c.is_alphanumeric() || c == '_' || c == '-') {
+    if !name
+        .chars()
+        .all(|c| c.is_alphanumeric() || c == '_' || c == '-')
+    {
         return Err("Service name must be alphanumeric, underscore, or hyphen".into());
     }
     Ok(())
@@ -91,15 +94,16 @@ pub async fn store_token(
     }
 
     // Bug fix #2: validate service name
-    validate_service_name(&req.service).map_err(|e| {
-        (StatusCode::BAD_REQUEST, Json(json!({ "error": e })))
-    })?;
+    validate_service_name(&req.service)
+        .map_err(|e| (StatusCode::BAD_REQUEST, Json(json!({ "error": e }))))?;
 
     // Bug fix #3: enforce token size limit (10 KB)
     if req.token.len() > MAX_TOKEN_BYTES {
         return Err((
             StatusCode::BAD_REQUEST,
-            Json(json!({ "error": format!("Token too large ({} bytes, max {})", req.token.len(), MAX_TOKEN_BYTES) })),
+            Json(
+                json!({ "error": format!("Token too large ({} bytes, max {})", req.token.len(), MAX_TOKEN_BYTES) }),
+            ),
         ));
     }
 
@@ -152,9 +156,8 @@ pub async fn delete_token(
     Path(service): Path<String>,
 ) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
     // Bug fix #2: validate service name
-    validate_service_name(&service).map_err(|e| {
-        (StatusCode::BAD_REQUEST, Json(json!({ "error": e })))
-    })?;
+    validate_service_name(&service)
+        .map_err(|e| (StatusCode::BAD_REQUEST, Json(json!({ "error": e }))))?;
 
     sqlx::query(concat!(
         "DELETE FROM ",

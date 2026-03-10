@@ -342,7 +342,10 @@ pub async fn ocr(
     .await
     .map_err(|e| {
         tracing::error!("OCR failed: {e}");
-        (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({"error": "OCR processing failed"})))
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(json!({"error": "OCR processing failed"})),
+        )
     })?;
 
     let pages = if format == "html" {
