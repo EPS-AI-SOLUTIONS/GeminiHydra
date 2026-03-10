@@ -116,7 +116,7 @@ pub async fn tool_git_diff(repo_path: &str, target: Option<&str>) -> Result<Stri
         Some("staged") | Some("--staged") => vec!["diff", "--staged", "--stat"],
         Some("--stat") => vec!["diff", "--stat"],
         Some(t) => {
-            if t.starts_with('-') || t.contains("..") && t.contains('/') {
+            if t.starts_with('-') || (t.contains("..") && t.contains('/')) {
                 return Err(format!("Invalid diff target: '{}'", t));
             }
             vec!["diff", t]

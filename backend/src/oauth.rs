@@ -283,7 +283,7 @@ pub async fn google_redirect(
             <body style="font-family:monospace;background:#0a0a0a;color:#ff4444;display:flex;align-items:center;justify-content:center;height:100vh;margin:0">
             <div style="text-align:center"><h2>Authentication Failed</h2><p>{}</p><p>You can close this tab.</p></div>
             </body></html>"#,
-            error
+            html_escape(&error)
         ));
     }
 
@@ -347,7 +347,7 @@ pub async fn google_redirect(
                 <body style="font-family:monospace;background:#0a0a0a;color:#ff4444;display:flex;align-items:center;justify-content:center;height:100vh;margin:0">
                 <div style="text-align:center"><h2>Token Exchange Failed</h2><p>{}</p></div>
                 </body></html>"#,
-                e
+                html_escape(&e.to_string())
             ));
         }
     };
