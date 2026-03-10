@@ -6,8 +6,8 @@
  * header region and content shimmer area. Used as `<Suspense fallback>`.
  */
 
+import { Skeleton } from '@jaskier/ui';
 import { useTranslation } from 'react-i18next';
-import { Skeleton  } from '@jaskier/ui';
 
 export function ViewSkeleton() {
   const { t } = useTranslation();

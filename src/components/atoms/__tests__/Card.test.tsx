@@ -1,6 +1,6 @@
+import { Card } from '@jaskier/ui';
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
-import { Card  } from '@jaskier/ui';
 
 describe('Card', () => {
   it('renders children', () => {

@@ -19,11 +19,11 @@ import {
   Mountain,
   Music,
   Plus,
+  RefreshCw,
   Shield,
   Sword,
   Terminal,
   Trash2,
-  RefreshCw,
   Wand2,
   Zap,
 } from 'lucide-react';
@@ -292,11 +292,7 @@ function LevelBadge({ level }: { level: string }) {
           ? 'bg-blue-500/20 text-blue-400'
           : 'bg-slate-500/20 text-slate-400';
 
-  return (
-    <span className={cn('px-1.5 py-0.5 rounded text-[10px] font-bold', variant)}>
-      {upper}
-    </span>
-  );
+  return <span className={cn('px-1.5 py-0.5 rounded text-[10px] font-bold', variant)}>{upper}</span>;
 }
 
 function TerminalLogs() {
@@ -305,7 +301,12 @@ function TerminalLogs() {
   const logs = data?.logs ?? [];
 
   return (
-    <div className={cn("flex flex-col h-full rounded-lg border overflow-hidden", t.isLight ? "bg-slate-900 border-slate-800" : "bg-black border-white/10")}>
+    <div
+      className={cn(
+        'flex flex-col h-full rounded-lg border overflow-hidden',
+        t.isLight ? 'bg-slate-900 border-slate-800' : 'bg-black border-white/10',
+      )}
+    >
       <div className="flex items-center justify-between px-4 py-2 border-b border-white/10 bg-white/5">
         <div className="flex items-center gap-2">
           <Terminal size={14} className="text-emerald-400" />
@@ -314,14 +315,17 @@ function TerminalLogs() {
         {isLoading && <RefreshCw size={12} className="text-emerald-400/50 animate-spin" />}
       </div>
       <div className="flex-1 overflow-y-auto p-4 space-y-1 font-mono text-[11px]">
-        {logs.length === 0 && !isLoading && (
-          <div className="text-white/30 italic">Waiting for logs...</div>
-        )}
+        {logs.length === 0 && !isLoading && <div className="text-white/30 italic">Waiting for logs...</div>}
         {logs.map((log: BackendLogEntry, idx: number) => (
-          <div key={`${log.timestamp}-${idx}`} className="flex items-start gap-2 text-white/70 hover:bg-white/5 px-1 rounded transition-colors">
+          <div
+            key={`${log.timestamp}-${idx}`}
+            className="flex items-start gap-2 text-white/70 hover:bg-white/5 px-1 rounded transition-colors"
+          >
             <span className="text-white/40 flex-shrink-0">{formatTimestamp(log.timestamp)}</span>
             <LevelBadge level={log.level} />
-            <span className="text-white/50 flex-shrink-0 max-w-[100px] truncate" title={log.target}>{log.target}</span>
+            <span className="text-white/50 flex-shrink-0 max-w-[100px] truncate" title={log.target}>
+              {log.target}
+            </span>
             <span className="text-white/90 break-all">{log.message}</span>
           </div>
         ))}
@@ -471,7 +475,12 @@ export function AgentsView(): ReactNode {
         </div>
 
         {/* Right Side: Terminal Logs */}
-        <div className={cn('w-[400px] xl:w-[500px] p-4 flex-shrink-0 flex flex-col', t.isLight ? 'bg-slate-50' : 'bg-black/20')}>
+        <div
+          className={cn(
+            'w-[400px] xl:w-[500px] p-4 flex-shrink-0 flex flex-col',
+            t.isLight ? 'bg-slate-50' : 'bg-black/20',
+          )}
+        >
           <TerminalLogs />
         </div>
       </div>

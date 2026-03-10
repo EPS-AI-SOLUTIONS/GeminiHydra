@@ -8,11 +8,10 @@
  * active model assignments, and watchdog report.
  */
 
+import { Card } from '@jaskier/ui';
 import { Activity, Bot, Clock, Cpu, Database, Radio, RefreshCw, Shield, Wifi } from 'lucide-react';
 import { memo, type ReactNode, useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-
-import { Card  } from '@jaskier/ui';
 import { QueryError } from '@/components/molecules/QueryError';
 import { useViewTheme } from '@/shared/hooks/useViewTheme';
 import { cn } from '@/shared/utils/cn';

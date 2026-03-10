@@ -3,12 +3,7 @@
 import { BaseChatInput, type BaseChatInputHandle } from '@jaskier/ui';
 import { AlertCircle, ChevronDown, FolderOpen, Network, Send, StopCircle } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
-import { memo,
-  useCallback,
-  useEffect,
-  useRef,
-  useState,
-} from 'react';
+import { memo, useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/atoms';
 import { useViewTheme } from '@/shared/hooks/useViewTheme';
@@ -154,7 +149,7 @@ export const ChatInput = memo<ChatInputProps>(
                   workingDirectory={workingDirectory ?? ''}
                   onDirectoryChange={onWorkingDirectoryChange}
                 />
-              )
+              )}
           }
           leftActions={
             <>
@@ -227,7 +222,7 @@ export const ChatInput = memo<ChatInputProps>(
                     ref={fileInputRef}
                     type="file"
                     multiple
-                    aria-hidden="true"
+                    
                     className="hidden"
                     onChange={handleFileSelect}
                     accept="image/*,.txt,.md,.ts,.tsx,.js,.jsx,.json,.css,.html,.py,.rs,.toml,.yaml,.yml,.xml,.csv,.log,.sh,.bat,.sql,.env"
@@ -244,10 +239,9 @@ export const ChatInput = memo<ChatInputProps>(
                     <FolderOpen size={20} />
                   </Button>
                 </>
-              )
+              )}
           }
-          rightActions={
-              isStreaming ? (
+          rightActions={isStreaming ? (
                 <Button
                   type="button"
                   variant="danger"
@@ -256,7 +250,7 @@ export const ChatInput = memo<ChatInputProps>(
                   onClick={onStop}
                   title={t('chat.stopGeneration', 'Stop generation')}
                 >
-                  <StopCircle size={20} className="animate-pulse" aria-hidden="true" />
+                  <StopCircle size={20} className="animate-pulse"  />
                 </Button>
               ) : (
                 <Button
@@ -269,9 +263,9 @@ export const ChatInput = memo<ChatInputProps>(
                   onClick={() => handleSubmit(value)}
                   title={t('chat.send', 'Send')}
                 >
-                  <Send size={20} strokeWidth={2.5} className="ml-0.5" aria-hidden="true" />
+                  <Send size={20} strokeWidth={2.5} className="ml-0.5"  />
                 </Button>
-              )
+              )}
           }
         />
       </section>

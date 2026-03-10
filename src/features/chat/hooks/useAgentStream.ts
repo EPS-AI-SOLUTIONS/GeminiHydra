@@ -24,7 +24,7 @@ export function useAgentStream() {
         // typically handled by higher level unmount/mount or manual retry
       }
     }, 15000); // 15 seconds timeout
-  };
+  }, [handleTimeout]);
 
   const _addOptimisticMessage = (content: string) => {
     setMessages((prev) => [
