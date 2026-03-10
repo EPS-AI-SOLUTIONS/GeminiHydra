@@ -61,8 +61,10 @@ pub async fn github_auth_login(State(state): State<AppState>) -> Json<Value> {
     let oauth_state = random_base64url(32);
 
     {
-        let mut pkce = state.github_oauth_state.write().await;
-        *pkce = Some(oauth_state.clone());
+        let mut states = state.github_oauth_states.write().await;
+        // Prune expired entries (>10 min old)
+        states.retain(|_, created| created.elapsed() < crate::state::OAUTH_STATE_TTL);
+        states.insert(oauth_state.clone(), tokio::time::Instant::now());
     }
 
     let mut auth_url = url::Url::parse(GITHUB_AUTHORIZE_URL)
@@ -90,23 +92,24 @@ pub async fn github_auth_callback(
     State(state): State<AppState>,
     Json(req): Json<GitHubCallbackRequest>,
 ) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
-    // Verify state parameter
+    // Verify state parameter — remove() validates AND consumes atomically
     {
-        let stored = state.github_oauth_state.read().await;
-        match stored.as_ref() {
-            Some(s) if *s == req.state => {}
-            _ => {
+        let mut states = state.github_oauth_states.write().await;
+        match states.remove(&req.state) {
+            Some(created) if created.elapsed() < crate::state::OAUTH_STATE_TTL => {}
+            Some(_) => {
+                return Err((
+                    StatusCode::BAD_REQUEST,
+                    Json(json!({ "error": "OAuth state expired" })),
+                ));
+            }
+            None => {
                 return Err((
                     StatusCode::BAD_REQUEST,
                     Json(json!({ "error": "Invalid or expired OAuth state" })),
                 ));
             }
         }
-    }
-
-    // Clear OAuth state immediately after validation to prevent replay attacks
-    {
-        *state.github_oauth_state.write().await = None;
     }
 
     let client_id = std::env::var("GITHUB_CLIENT_ID").unwrap_or_default();

@@ -232,6 +232,15 @@ impl McpClientManager {
             "http" => {
                 let url = cfg.url.as_deref().ok_or("HTTP transport requires a URL")?;
 
+                // Defense-in-depth: SSRF validation before making any HTTP request
+                let is_prod = std::env::var("AUTH_SECRET")
+                    .ok()
+                    .filter(|s| !s.is_empty())
+                    .is_some();
+                if let Err(msg) = config::validate_mcp_url(url, is_prod) {
+                    return Err(format!("SSRF blocked: {}", msg));
+                }
+
                 // Step 1: Initialize
                 let _init_result = self
                     .http_jsonrpc(

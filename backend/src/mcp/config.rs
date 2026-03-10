@@ -10,6 +10,107 @@ use sqlx::{FromRow, PgPool};
 
 use crate::state::AppState;
 
+// ── SSRF URL validation ──────────────────────────────────────────────────
+
+/// Validate an MCP server URL to prevent SSRF attacks.
+///
+/// In production (AUTH_SECRET set): blocks localhost, private IPs, cloud metadata,
+/// and Fly.io .internal addresses.
+/// In dev mode (no AUTH_SECRET): only blocks cloud metadata and .internal addresses.
+pub fn validate_mcp_url(url: &str, is_prod: bool) -> Result<(), String> {
+    let parsed =
+        url::Url::parse(url).map_err(|e| format!("Invalid MCP server URL: {}", e))?;
+
+    let scheme = parsed.scheme();
+    if scheme != "http" && scheme != "https" {
+        return Err(format!("Only http/https schemes allowed, got: {}", scheme));
+    }
+
+    let host = parsed
+        .host_str()
+        .ok_or_else(|| "MCP server URL has no host".to_string())?;
+
+    let h = host.to_lowercase();
+
+    // Always block: cloud metadata and Fly.io internal network
+    if h == "metadata.google.internal"
+        || h.ends_with(".internal")
+        || h.contains("169.254.169.254")
+    {
+        return Err(format!(
+            "Blocked: MCP URL points to internal/metadata host '{}'",
+            host
+        ));
+    }
+
+    // Block IP literals pointing to link-local (metadata) range — always
+    if let Ok(ip) = host.parse::<std::net::IpAddr>() {
+        if let std::net::IpAddr::V4(v4) = ip {
+            if v4.octets()[0] == 169 && v4.octets()[1] == 254 {
+                return Err(format!(
+                    "Blocked: MCP URL points to link-local IP {}",
+                    ip
+                ));
+            }
+        }
+    }
+
+    // Production-only: also block localhost and private IPs
+    if is_prod {
+        if h == "localhost" || h.ends_with(".local") || h.ends_with(".localhost") {
+            return Err(format!(
+                "Blocked: MCP URL points to local host '{}' (production mode)",
+                host
+            ));
+        }
+
+        if let Ok(ip) = host.parse::<std::net::IpAddr>() {
+            match ip {
+                std::net::IpAddr::V4(v4) => {
+                    if v4.is_loopback()
+                        || v4.is_private()
+                        || v4.is_link_local()
+                        || v4.is_broadcast()
+                        || v4.is_unspecified()
+                    {
+                        return Err(format!(
+                            "Blocked: MCP URL points to private/local IP {} (production mode)",
+                            ip
+                        ));
+                    }
+                }
+                std::net::IpAddr::V6(v6) => {
+                    if v6.is_loopback() || v6.is_unspecified() {
+                        return Err(format!(
+                            "Blocked: MCP URL points to private IP {} (production mode)",
+                            ip
+                        ));
+                    }
+                    let seg = v6.segments();
+                    // ULA (fc00::/7) and link-local (fe80::/10)
+                    if (seg[0] & 0xfe00) == 0xfc00 || (seg[0] & 0xffc0) == 0xfe80 {
+                        return Err(format!(
+                            "Blocked: MCP URL points to private IP {} (production mode)",
+                            ip
+                        ));
+                    }
+                    // IPv4-mapped addresses (::ffff:x.x.x.x)
+                    if let Some(v4) = v6.to_ipv4_mapped() {
+                        if v4.is_loopback() || v4.is_private() || v4.is_link_local() {
+                            return Err(format!(
+                                "Blocked: MCP URL resolves to private IPv4-mapped IP {} (production mode)",
+                                ip
+                            ));
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    Ok(())
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
 pub struct McpServerConfig {
     pub id: String,
@@ -209,6 +310,57 @@ pub async fn list_all_discovered_tools(db: &PgPool) -> Result<Vec<McpDiscoveredT
     .await
 }
 
+// ── Security: stdio command allowlist ──────────────────────────────────────
+
+/// Allowed base commands for MCP stdio transport.
+/// Only well-known package runners and interpreters are permitted.
+const ALLOWED_STDIO_COMMANDS: &[&str] = &[
+    "npx", "npx.cmd", "node", "node.exe",
+    "python", "python.exe", "python3", "python3.exe",
+    "uvx", "uvx.exe", "uv", "uv.exe",
+    "deno", "deno.exe",
+    "bun", "bun.exe",
+];
+
+/// Environment variables that must not be overridden by MCP server config.
+const BLOCKED_ENV_VARS: &[&str] = &[
+    "PATH", "Path", "PATHEXT",
+    "LD_PRELOAD", "LD_LIBRARY_PATH", "DYLD_INSERT_LIBRARIES",
+    "COMSPEC", "SHELL",
+    "HOME", "USERPROFILE", "SYSTEMROOT",
+];
+
+/// Validate stdio transport config: command must be in allowlist,
+/// env vars must not contain blocked keys.
+fn validate_stdio_config(command: &str, env_vars: Option<&Value>) -> Result<(), String> {
+    let base = std::path::Path::new(command)
+        .file_name()
+        .and_then(|f| f.to_str())
+        .unwrap_or(command);
+
+    if !ALLOWED_STDIO_COMMANDS.contains(&base) {
+        return Err(format!(
+            "Command '{}' not in allowlist. Allowed: npx, node, python, python3, uvx, uv, deno, bun",
+            command
+        ));
+    }
+
+    if let Some(env_val) = env_vars {
+        if let Some(obj) = env_val.as_object() {
+            for key in obj.keys() {
+                if BLOCKED_ENV_VARS.contains(&key.as_str()) {
+                    return Err(format!(
+                        "Environment variable '{}' is blocked for security reasons",
+                        key
+                    ));
+                }
+            }
+        }
+    }
+
+    Ok(())
+}
+
 // ── Helpers ────────────────────────────────────────────────────────────────
 
 /// Redact auth_token and env_vars from server config for API responses.
@@ -260,10 +412,30 @@ pub async fn mcp_server_create(
             Json(json!({ "error": "Transport must be stdio or http" })),
         );
     }
-    match create_mcp_server_db(&state.db, &body).await {
-        Ok(server) => {
-            (StatusCode::CREATED, Json(redact_server(&server)))
+    if body.transport == "stdio" {
+        if let Some(ref cmd) = body.command {
+            if let Err(msg) = validate_stdio_config(cmd, body.env_vars.as_ref()) {
+                return (
+                    StatusCode::BAD_REQUEST,
+                    Json(json!({ "error": msg })),
+                );
+            }
         }
+    }
+    // SSRF validation for HTTP transport URLs
+    if body.transport == "http" {
+        if let Some(ref url) = body.url {
+            let is_prod = state.auth_secret.is_some();
+            if let Err(msg) = validate_mcp_url(url, is_prod) {
+                return (
+                    StatusCode::BAD_REQUEST,
+                    Json(json!({ "error": msg })),
+                );
+            }
+        }
+    }
+    match create_mcp_server_db(&state.db, &body).await {
+        Ok(server) => (StatusCode::CREATED, Json(redact_server(&server))),
         Err(e) => (
             StatusCode::INTERNAL_SERVER_ERROR,
             Json(json!({ "error": format!("Failed to create: {}", e) })),
@@ -276,10 +448,57 @@ pub async fn mcp_server_update(
     Path(id): Path<String>,
     Json(body): Json<UpdateMcpServer>,
 ) -> (StatusCode, Json<Value>) {
-    match update_mcp_server_db(&state.db, &id, &body).await {
-        Ok(Some(server)) => {
-            (StatusCode::OK, Json(redact_server(&server)))
+    // Validate stdio allowlist: check effective transport + command after merge
+    if body.transport.as_deref() == Some("stdio") || body.command.is_some() || body.env_vars.is_some() {
+        let current = match get_mcp_server(&state.db, &id).await {
+            Ok(Some(c)) => c,
+            Ok(None) => {
+                return (
+                    StatusCode::NOT_FOUND,
+                    Json(json!({ "error": "MCP server not found" })),
+                );
+            }
+            Err(e) => {
+                return (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    Json(json!({ "error": format!("DB error: {}", e) })),
+                );
+            }
+        };
+        let effective_transport = body.transport.as_deref().unwrap_or(&current.transport);
+        if effective_transport == "stdio" {
+            let effective_command = body.command.as_deref().or(current.command.as_deref());
+            let effective_env = body.env_vars.as_ref().or_else(|| {
+                // Parse current env_vars from DB JSON string for validation
+                None
+            });
+            if let Some(cmd) = effective_command {
+                if let Err(msg) = validate_stdio_config(cmd, effective_env) {
+                    return (
+                        StatusCode::BAD_REQUEST,
+                        Json(json!({ "error": msg })),
+                    );
+                }
+            }
         }
+    }
+    // SSRF validation for HTTP transport URLs on update
+    if let Some(ref url) = body.url {
+        // Validate if transport is being set to http, or if URL is changing on an existing http server
+        let needs_url_check = body.transport.as_deref() == Some("http")
+            || (body.transport.is_none() && body.url.is_some());
+        if needs_url_check {
+            let is_prod = state.auth_secret.is_some();
+            if let Err(msg) = validate_mcp_url(url, is_prod) {
+                return (
+                    StatusCode::BAD_REQUEST,
+                    Json(json!({ "error": msg })),
+                );
+            }
+        }
+    }
+    match update_mcp_server_db(&state.db, &id, &body).await {
+        Ok(Some(server)) => (StatusCode::OK, Json(redact_server(&server))),
         Ok(None) => (
             StatusCode::NOT_FOUND,
             Json(json!({ "error": "MCP server not found" })),

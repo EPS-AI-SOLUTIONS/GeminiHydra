@@ -33,9 +33,16 @@ const MAX_RETRY_ATTEMPTS: u32 = 3;
 const WEB_USER_AGENT: &str = "Jaskier-Bot/1.0 (AI Agent Tool)";
 
 const BLOCKED_HEADERS: &[&str] = &[
-    "host", "authorization", "cookie", "proxy-authorization",
-    "x-forwarded-for", "x-real-ip", "transfer-encoding",
-    "content-length", "connection", "upgrade",
+    "host",
+    "authorization",
+    "cookie",
+    "proxy-authorization",
+    "x-forwarded-for",
+    "x-real-ip",
+    "transfer-encoding",
+    "content-length",
+    "connection",
+    "upgrade",
 ];
 
 const TRACKING_PARAMS: &[&str] = &[
@@ -142,10 +149,16 @@ fn web_validate_url(raw: &str) -> Result<Url, String> {
         }
         if let Ok(ip) = host.parse::<IpAddr>() {
             let is_private = match ip {
-                IpAddr::V4(v4) => v4.is_loopback() || v4.is_private() || v4.is_link_local()
-                    || v4.is_broadcast() || v4.is_unspecified()
-                    || (v4.octets()[0] == 169 && v4.octets()[1] == 254),
-                IpAddr::V6(v6) => v6.is_loopback() || v6.is_unspecified()
+                IpAddr::V4(v4) => {
+                    v4.is_loopback()
+                        || v4.is_private()
+                        || v4.is_link_local()
+                        || v4.is_broadcast()
+                        || v4.is_unspecified()
+                        || (v4.octets()[0] == 169 && v4.octets()[1] == 254)
+                }
+                IpAddr::V6(v6) => {
+                    v6.is_loopback() || v6.is_unspecified()
                     || {
                         let seg = v6.segments();
                         (seg[0] & 0xfe00) == 0xfc00 || (seg[0] & 0xffc0) == 0xfe80
@@ -156,7 +169,8 @@ fn web_validate_url(raw: &str) -> Result<Url, String> {
                             || v4.is_broadcast() || v4.is_unspecified()
                             || (v4.octets()[0] == 169 && v4.octets()[1] == 254),
                         None => false,
-                    },
+                    }
+                }
             };
             if is_private {
                 return Err(format!("Blocked private/loopback IP: {}", ip));
@@ -164,6 +178,60 @@ fn web_validate_url(raw: &str) -> Result<Url, String> {
         }
     }
     Ok(parsed)
+}
+
+/// Resolve hostname to IPs and validate against SSRF rules (DNS rebinding prevention).
+/// Must be called AFTER `web_validate_url` but BEFORE making the HTTP request.
+async fn resolve_and_validate_dns(host: &str, port: u16) -> Result<(), String> {
+    // Skip for IP literals (already validated by web_validate_url)
+    if host.parse::<std::net::IpAddr>().is_ok() {
+        return Ok(());
+    }
+
+    let addrs = tokio::net::lookup_host(format!("{}:{}", host, port))
+        .await
+        .map_err(|e| format!("DNS resolution failed for '{}': {}", host, e))?;
+
+    for addr in addrs {
+        let ip = addr.ip();
+        match ip {
+            std::net::IpAddr::V4(v4) => {
+                if v4.is_loopback()
+                    || v4.is_private()
+                    || v4.is_link_local()
+                    || v4.is_broadcast()
+                    || v4.is_unspecified()
+                    || (v4.octets()[0] == 169 && v4.octets()[1] == 254)
+                {
+                    return Err(format!("Blocked: '{}' resolves to private IP {}", host, ip));
+                }
+            }
+            std::net::IpAddr::V6(v6) => {
+                if v6.is_loopback() || v6.is_unspecified() {
+                    return Err(format!("Blocked: '{}' resolves to private IP {}", host, ip));
+                }
+                let seg = v6.segments();
+                if (seg[0] & 0xfe00) == 0xfc00 || (seg[0] & 0xffc0) == 0xfe80 {
+                    return Err(format!("Blocked: '{}' resolves to private IP {}", host, ip));
+                }
+                if let Some(v4) = v6.to_ipv4_mapped() {
+                    if v4.is_loopback()
+                        || v4.is_private()
+                        || v4.is_link_local()
+                        || v4.is_broadcast()
+                        || v4.is_unspecified()
+                        || (v4.octets()[0] == 169 && v4.octets()[1] == 254)
+                    {
+                        return Err(format!(
+                            "Blocked: '{}' resolves to private IPv4-mapped {}",
+                            host, ip
+                        ));
+                    }
+                }
+            }
+        }
+    }
+    Ok(())
 }
 
 fn web_normalize_url(url: &Url) -> String {
@@ -351,6 +419,12 @@ async fn web_fetch_with_retry(
     custom_headers: &HashMap<String, String>,
 ) -> Result<(String, Url, u16), String> {
     let parsed = web_validate_url(url)?;
+
+    // DNS rebinding prevention: resolve hostname and validate all IPs before connecting
+    let host = parsed.host_str().unwrap_or("");
+    let port = parsed.port_or_known_default().unwrap_or(443);
+    resolve_and_validate_dns(host, port).await?;
+
     let mut last_err = String::new();
 
     for attempt in 0..MAX_RETRY_ATTEMPTS {

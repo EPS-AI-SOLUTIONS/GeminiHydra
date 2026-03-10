@@ -88,7 +88,11 @@ const MAX_INPUT_SIZE: usize = 30_000_000; // ~22 MB decoded
 const MAX_BATCH_ITEMS: usize = 10;
 
 const ALLOWED_MIME_TYPES: &[&str] = &[
-    "image/png", "image/jpeg", "image/webp", "image/gif", "image/heic",
+    "image/png",
+    "image/jpeg",
+    "image/webp",
+    "image/gif",
+    "image/heic",
     "application/pdf",
 ];
 
@@ -307,7 +311,9 @@ pub async fn ocr(
     if !ALLOWED_MIME_TYPES.contains(&body.mime_type.as_str()) {
         return Err((
             StatusCode::BAD_REQUEST,
-            Json(json!({"error": format!("Unsupported MIME type: {}. Allowed: image/png, image/jpeg, image/webp, image/gif, image/heic, application/pdf", body.mime_type)})),
+            Json(
+                json!({"error": format!("Unsupported MIME type: {}. Allowed: image/png, image/jpeg, image/webp, image/gif, image/heic, application/pdf", body.mime_type)}),
+            ),
         ));
     }
 
@@ -407,7 +413,9 @@ pub async fn ocr_stream(
     if !ALLOWED_MIME_TYPES.contains(&body.mime_type.as_str()) {
         return Err((
             StatusCode::BAD_REQUEST,
-            Json(json!({"error": format!("Unsupported MIME type: {}. Allowed: image/png, image/jpeg, image/webp, image/gif, image/heic, application/pdf", body.mime_type)})),
+            Json(
+                json!({"error": format!("Unsupported MIME type: {}. Allowed: image/png, image/jpeg, image/webp, image/gif, image/heic, application/pdf", body.mime_type)}),
+            ),
         ));
     }
 
@@ -560,7 +568,9 @@ pub async fn ocr_batch_stream(
         if !ALLOWED_MIME_TYPES.contains(&item.mime_type.as_str()) {
             return Err((
                 StatusCode::BAD_REQUEST,
-                Json(json!({"error": format!("Unsupported MIME type: {}. Allowed: image/png, image/jpeg, image/webp, image/gif, image/heic, application/pdf", item.mime_type)})),
+                Json(
+                    json!({"error": format!("Unsupported MIME type: {}. Allowed: image/png, image/jpeg, image/webp, image/gif, image/heic, application/pdf", item.mime_type)}),
+                ),
             ));
         }
     }

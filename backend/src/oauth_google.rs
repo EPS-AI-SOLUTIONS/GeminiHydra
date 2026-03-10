@@ -127,10 +127,12 @@ pub async fn google_auth_login(
     let oauth_state = random_base64url(32);
 
     {
-        let mut pkce = state.google_oauth_pkce.write().await;
-        *pkce = Some(crate::state::OAuthPkceState {
+        let mut states = state.google_oauth_pkce.write().await;
+        // Prune expired entries (>10 min old)
+        states.retain(|_, pkce| pkce.created_at.elapsed() < crate::state::OAUTH_STATE_TTL);
+        states.insert(oauth_state.clone(), crate::state::OAuthPkceState {
             code_verifier,
-            state: oauth_state.clone(),
+            created_at: tokio::time::Instant::now(),
         });
     }
 
@@ -174,10 +176,13 @@ pub async fn google_redirect(
     };
 
     let code_verifier = {
-        let pkce = state.google_oauth_pkce.read().await;
-        match pkce.as_ref() {
-            Some(p) if p.state == oauth_state => p.code_verifier.clone(),
-            _ => return Html("Invalid State".to_string()),
+        let mut states = state.google_oauth_pkce.write().await;
+        match states.remove(&oauth_state) {
+            Some(pkce) if pkce.created_at.elapsed() < crate::state::OAUTH_STATE_TTL => {
+                pkce.code_verifier
+            }
+            Some(_) => return Html("OAuth state expired".to_string()),
+            None => return Html("Invalid State".to_string()),
         }
     };
 
@@ -247,7 +252,7 @@ pub async fn google_redirect(
         return Html("Failed to store tokens".to_string());
     }
 
-    *state.google_oauth_pkce.write().await = None;
+    // PKCE state already consumed by remove() above
 
     Html(format!(
         r#"<!DOCTYPE html><html><head><title>Authenticated</title></head>

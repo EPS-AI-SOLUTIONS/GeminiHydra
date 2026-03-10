@@ -235,8 +235,11 @@ pub struct RuntimeState {
 /// Temporary PKCE state for an in-progress OAuth flow.
 pub struct OAuthPkceState {
     pub code_verifier: String,
-    pub state: String,
+    pub created_at: tokio::time::Instant,
 }
+
+/// TTL for OAuth CSRF state entries (10 minutes).
+pub const OAUTH_STATE_TTL: std::time::Duration = std::time::Duration::from_secs(600);
 
 // ── Shared: AppState (project-specific fields vary) ─────────────────────────
 /// Central application state. Clone-friendly — PgPool and Arc are both Clone.
@@ -248,7 +251,8 @@ pub struct AppState {
     pub model_cache: Arc<RwLock<ModelCache>>,
     pub start_time: Instant,
     pub client: Client,
-    pub oauth_pkce: Arc<RwLock<Option<OAuthPkceState>>>,
+    /// Google OAuth PKCE states keyed by state param (concurrent-safe, TTL 10min).
+    pub oauth_pkce: Arc<RwLock<HashMap<String, OAuthPkceState>>>,
     /// Cached system stats (CPU, memory) refreshed every 5s by background task.
     pub system_monitor: Arc<RwLock<SystemSnapshot>>,
     /// `true` once startup_sync completes (or times out).
@@ -273,12 +277,12 @@ pub struct AppState {
     pub tool_defs_cache: Arc<OnceLock<serde_json::Value>>,
     /// MCP client manager — connects to external MCP servers, discovers tools.
     pub mcp_client: Arc<McpClientManager>,
-    /// Google OAuth PKCE state (separated from generic oauth).
-    pub google_oauth_pkce: Arc<RwLock<Option<OAuthPkceState>>>,
-    /// GitHub OAuth state (CSRF protection).
-    pub github_oauth_state: Arc<RwLock<Option<String>>>,
-    /// Vercel OAuth state (CSRF protection).
-    pub vercel_oauth_state: Arc<RwLock<Option<String>>>,
+    /// Google OAuth PKCE states keyed by state param (concurrent-safe, TTL 10min).
+    pub google_oauth_pkce: Arc<RwLock<HashMap<String, OAuthPkceState>>>,
+    /// GitHub OAuth states keyed by state param (concurrent-safe, TTL 10min).
+    pub github_oauth_states: Arc<RwLock<HashMap<String, tokio::time::Instant>>>,
+    /// Vercel OAuth states keyed by state param (concurrent-safe, TTL 10min).
+    pub vercel_oauth_states: Arc<RwLock<HashMap<String, tokio::time::Instant>>>,
     /// Optional Jaskier Knowledge API URL (e.g. http://jaskier-knowledge.internal:8083).
     pub knowledge_api_url: Option<String>,
     /// Optional auth secret for the Knowledge API.
@@ -411,7 +415,7 @@ impl AppState {
             model_cache: Arc::new(RwLock::new(ModelCache::new())),
             start_time: Instant::now(),
             client,
-            oauth_pkce: Arc::new(RwLock::new(None)),
+            oauth_pkce: Arc::new(RwLock::new(HashMap::new())),
             system_monitor: Arc::new(RwLock::new(SystemSnapshot::default())),
             ready: Arc::new(AtomicBool::new(false)),
             auth_secret,
@@ -422,9 +426,9 @@ impl AppState {
             log_buffer,
             tool_defs_cache: Arc::new(OnceLock::new()),
             mcp_client,
-            google_oauth_pkce: Arc::new(RwLock::new(None)),
-            github_oauth_state: Arc::new(RwLock::new(None)),
-            vercel_oauth_state: Arc::new(RwLock::new(None)),
+            google_oauth_pkce: Arc::new(RwLock::new(HashMap::new())),
+            github_oauth_states: Arc::new(RwLock::new(HashMap::new())),
+            vercel_oauth_states: Arc::new(RwLock::new(HashMap::new())),
             knowledge_api_url,
             knowledge_auth_secret,
             swarm_tx: tokio::sync::broadcast::channel(100).0,
