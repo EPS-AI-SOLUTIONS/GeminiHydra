@@ -225,6 +225,13 @@ fn create_router_inner(state: AppState, rate_limit: bool) -> Router {
         .finish()
         .expect("rate limiter config: execute");
 
+    let rl_a2a = GovernorConfigBuilder::default()
+        .per_second(6) // ~10 requests per minute
+        .burst_size(3)
+        .use_headers()
+        .finish()
+        .expect("rate limiter config: a2a");
+
     let rl_default = GovernorConfigBuilder::default()
         .per_millisecond(100) // Much faster limit
         .burst_size(500) // Massive burst
@@ -362,6 +369,30 @@ fn create_router_inner(state: AppState, rate_limit: bool) -> Router {
             ))
     };
 
+    // A2A v0.3 — rate-limited, auth-protected (separate from other protected routes)
+    let a2a_routes = if rate_limit {
+        Router::new()
+            .route("/a2a/message/send", post(a2a::message_send))
+            .route("/a2a/message/stream", post(a2a::message_stream))
+            .route("/a2a/tasks/{id}", get(a2a::tasks_get))
+            .route("/a2a/tasks/{id}/cancel", post(a2a::tasks_cancel))
+            .route_layer(middleware::from_fn_with_state(
+                state.clone(),
+                auth::require_auth,
+            ))
+            .layer(GovernorLayer::new(rl_a2a))
+    } else {
+        Router::new()
+            .route("/a2a/message/send", post(a2a::message_send))
+            .route("/a2a/message/stream", post(a2a::message_stream))
+            .route("/a2a/tasks/{id}", get(a2a::tasks_get))
+            .route("/a2a/tasks/{id}/cancel", post(a2a::tasks_cancel))
+            .route_layer(middleware::from_fn_with_state(
+                state.clone(),
+                auth::require_auth,
+            ))
+    };
+
     // â”€â”€ Protected routes (require auth when AUTH_SECRET is set) â”€â”€â”€â”€â”€â”€
     let protected = Router::new()
         .route("/api/gemini/models", get(handlers::gemini_models))
@@ -387,11 +418,6 @@ fn create_router_inner(state: AppState, rate_limit: bool) -> Router {
             "/api/ocr/history/{id}",
             get(ocr::ocr_history_item).delete(ocr::ocr_history_delete),
         )
-        // A2A v0.3 â€” Agent-to-Agent protocol endpoints
-        .route("/a2a/message/send", post(a2a::message_send))
-        .route("/a2a/message/stream", post(a2a::message_stream))
-        .route("/a2a/tasks/{id}", get(a2a::tasks_get))
-        .route("/a2a/tasks/{id}/cancel", post(a2a::tasks_cancel))
         // Service tokens (encrypted PAT storage for Fly.io etc.)
         .route(
             "/api/tokens",
@@ -421,6 +447,7 @@ fn create_router_inner(state: AppState, rate_limit: bool) -> Router {
     let combined = public_health
         .merge(ws_routes)
         .merge(execute_routes)
+        .merge(a2a_routes)
         .merge(protected)
         .merge(handlers::agents_router(state.clone()))
         .merge(handlers::files_router(state.clone()))
