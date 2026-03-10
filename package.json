@@ -24,7 +24,7 @@
                     "analyze":  "vite build --mode analyze"
                 },
     "dependencies":  {
-                         "@jaskier/ui":  "github:EPS-AI-SOLUTIONS/jaskier-ui",
+                         "@jaskier/ui":  "https://github.com/EPS-AI-SOLUTIONS/jaskier-ui.git",
                          "@tanstack/react-query":  "^5.90.21",
                          "@tanstack/react-query-devtools":  "^5.91.3",
                          "@tanstack/react-virtual":  "^3.13.21",

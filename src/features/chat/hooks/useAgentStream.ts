@@ -23,8 +23,8 @@ export function useAgentStream() {
         // Force re-render/reconnect here if possible,
         // typically handled by higher level unmount/mount or manual retry
       }
-    }, 15000); // 15 seconds timeout
-  }, [handleTimeout]);
+    }, 15000);
+  }, []);
 
   const _addOptimisticMessage = (content: string) => {
     setMessages((prev) => [

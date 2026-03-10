@@ -1,7 +1,7 @@
 // src/features/chat/components/ChatInput.tsx
 
 import { BaseChatInput, type BaseChatInputHandle } from '@jaskier/ui';
-import { AlertCircle, ChevronDown, FolderOpen, Network, Send, StopCircle } from 'lucide-react';
+import { AlertCircle, Network, Send, StopCircle } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import { memo, useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -34,7 +34,7 @@ interface ChatInputProps {
   initialValueKey?: number;
 }
 
-const PATTERN_OPTIONS: Array<{ value: OrchestrationPattern; label: string }> = [
+const _PATTERN_OPTIONS: Array<{ value: OrchestrationPattern; label: string }> = [
   { value: 'auto', label: 'Auto' },
   { value: 'hierarchical', label: 'Hierarchical' },
   { value: 'sequential', label: 'Sequential' },
@@ -62,15 +62,15 @@ export const ChatInput = memo<ChatInputProps>(
     initialValueKey,
   }) => {
     const { t } = useTranslation();
-    const theme = useViewTheme();
-    const fileInputRef = useRef<HTMLInputElement>(null);
+    const _theme = useViewTheme();
+    const _fileInputRef = useRef<HTMLInputElement>(null);
     const baseInputRef = useRef<BaseChatInputHandle>(null);
     const [value, setValue] = useState('');
     const [error, setError] = useState<string | null>(null);
 
-    const [orchMode, setOrchMode] = useState<OrchestrationMode>('direct');
-    const [orchPattern, setOrchPattern] = useState<OrchestrationPattern>('auto');
-    const [showPatternPicker, setShowPatternPicker] = useState(false);
+    const [orchMode, _setOrchMode] = useState<OrchestrationMode>('direct');
+    const [orchPattern, _setOrchPattern] = useState<OrchestrationPattern>('auto');
+    const [_showPatternPicker, setShowPatternPicker] = useState(false);
 
     const prevKeyRef = useRef(0);
     useEffect(() => {
@@ -107,7 +107,7 @@ export const ChatInput = memo<ChatInputProps>(
     });
 
     return (
-      <section className="p-4 flex flex-col relative transition-all duration-300 z-10 w-full" onDrop={handleDrop}>
+      <section aria-label="Chat input" className="p-4 flex flex-col relative transition-all duration-300 z-10 w-full" onDrop={handleDrop}>
         <AnimatePresence>
           {error && (
             <motion.div
@@ -149,126 +149,57 @@ export const ChatInput = memo<ChatInputProps>(
                   workingDirectory={workingDirectory ?? ''}
                   onDirectoryChange={onWorkingDirectoryChange}
                 />
-              )}
+              )
           }
           leftActions={
-            <>
-              {onOrchestrate && (
-                <div className="relative">
-                  <Button
-                    type="button"
-                    variant={orchMode === 'orchestrate' ? 'primary' : 'ghost'}
-                    size="md"
-                    aria-label="Toggle orchestration mode"
-                    aria-expanded={showPatternPicker}
-                    onClick={() => {
-                      if (orchMode === 'direct') {
-                        setOrchMode('orchestrate');
-                        setShowPatternPicker(true);
-                      } else {
-                        setOrchMode('direct');
-                        setShowPatternPicker(false);
-                      }
-                    }}
-                    title={
-                      orchMode === 'orchestrate'
-                        ? t('chat.switchToDirect', 'Switch to direct mode')
-                        : t('chat.switchToOrchestrate', 'Switch to orchestrate mode')
-                    }
-                  >
-                    <Network size={18} />
-                    <ChevronDown size={12} className="ml-0.5" />
-                  </Button>
-                  <AnimatePresence>
-                    {showPatternPicker && orchMode === 'orchestrate' && (
-                      <motion.div
-                        initial={{ opacity: 0, y: 4, scale: 0.95 }}
-                        animate={{ opacity: 1, y: 0, scale: 1 }}
-                        exit={{ opacity: 0, y: 4, scale: 0.95 }}
-                        className={cn(
-                          'absolute bottom-full left-0 mb-2 z-50',
-                          'min-w-[160px] py-1 rounded-lg shadow-lg',
-                          'border border-white/10',
-                          theme.dropdown,
-                        )}
-                      >
-                        {PATTERN_OPTIONS.map((opt) => (
-                          <button
-                            key={opt.value}
-                            type="button"
-                            onClick={() => {
-                              setOrchPattern(opt.value);
-                              setShowPatternPicker(false);
-                            }}
-                            className={cn(
-                              'w-full text-left px-3 py-1.5 text-sm font-mono transition-colors',
-                              theme.dropdownItem,
-                              orchPattern === opt.value && 'font-bold',
-                            )}
-                          >
-                            {orchPattern === opt.value && '> '}
-                            {opt.label}
-                          </button>
-                        ))}
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-                </div>
-              )}
-
-              {(onPasteImage || onPasteFile) && (
-                <>
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    multiple
-                    
-                    className="hidden"
-                    onChange={handleFileSelect}
-                    accept="image/*,.txt,.md,.ts,.tsx,.js,.jsx,.json,.css,.html,.py,.rs,.toml,.yaml,.yml,.xml,.csv,.log,.sh,.bat,.sql,.env"
-                  />
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="md"
-                    aria-label="Attach local file"
-                    aria-keyshortcuts="Ctrl+O"
-                    onClick={() => fileInputRef.current?.click()}
-                    title={t('chat.attachLocalFile', 'Attach local file')}
-                  >
-                    <FolderOpen size={20} />
-                  </Button>
-                </>
-              )}
+            onOrchestrate ? (
+              <div className="relative">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="rounded-full text-white/50 hover:text-white/80 hover:bg-white/10"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    onOrchestrate();
+                  }}
+                  title="Orchestrate Sub-Agents"
+                >
+                  <Network size={20} />
+                </Button>
+              </div>
+            ) : undefined
           }
-          rightActions={isStreaming ? (
-                <Button
-                  type="button"
-                  variant="danger"
-                  size="md"
-                  aria-label="Stop generation"
-                  onClick={onStop}
-                  title={t('chat.stopGeneration', 'Stop generation')}
-                >
-                  <StopCircle size={20} className="animate-pulse"  />
-                </Button>
-              ) : (
-                <Button
-                  type="button"
-                  variant="primary"
-                  size="md"
-                  disabled={!canSubmit}
-                  aria-label="Send message"
-                  aria-disabled={!canSubmit}
-                  onClick={() => handleSubmit(value)}
-                  title={t('chat.send', 'Send')}
-                >
-                  <Send size={20} strokeWidth={2.5} className="ml-0.5"  />
-                </Button>
-              )}
+          rightActions={
+            isStreaming ? (
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                onClick={onStopGeneration}
+                className="text-red-400 hover:text-red-300 hover:bg-red-400/10 mr-1"
+                title="Zatrzymaj generowanie"
+              >
+                <StopCircle size={20} />
+              </Button>
+            ) : (
+              <Button
+                type="submit"
+                disabled={!input.trim() && !pendingImage && attachments.length === 0}
+                variant="ghost"
+                size="icon"
+                className={cn(
+                  'rounded-full transition-all duration-300 w-10 h-10',
+                  input.trim() || pendingImage || attachments.length > 0
+                    ? 'bg-matrix-accent/20 text-matrix-accent hover:bg-matrix-accent/30 hover:scale-105 shadow-[0_0_15px_rgba(var(--matrix-accent-rgb),0.3)]'
+                    : 'text-white/30',
+                )}
+              >
+                <Send size={20} strokeWidth={2.5} className="ml-0.5" />
+              </Button>
+            )
           }
         />
-      </section>
+      </form>
     );
   },
 );

@@ -1,4 +1,4 @@
-﻿#![recursion_limit = "512"]
+#![recursion_limit = "512"]
 
 pub mod a2a;
 pub mod analysis;
@@ -531,4 +531,3 @@ async fn metrics_handler(State(state): State<AppState>) -> String {
         agent_lines,
     )
 }
-

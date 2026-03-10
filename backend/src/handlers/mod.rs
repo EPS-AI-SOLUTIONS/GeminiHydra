@@ -1,4 +1,4 @@
-﻿// ---------------------------------------------------------------------------
+// ---------------------------------------------------------------------------
 // handlers/ â€” HTTP request handlers
 // Sub-modules for logical grouping; mod.rs re-exports all public items
 // so that `crate::handlers::*` paths remain unchanged.
@@ -71,7 +71,10 @@ pub fn files_router(state: AppState) -> Router<AppState> {
 
 // â”€â”€ Re-exports (backward-compatible) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-pub use agents::{classify_agent, create_agent, delete_agent, list_agents, update_agent, list_profiles, create_profile};
+pub use agents::{
+    classify_agent, create_agent, create_profile, delete_agent, list_agents, list_profiles,
+    update_agent,
+};
 pub use execute::{execute, internal_tool_execute};
 pub use files_handlers::{browse_directory, list_files, read_file};
 pub use streaming::ws_execute;
@@ -82,8 +85,8 @@ pub use system::{
 
 // â”€â”€ utoipa __path_* re-exports â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 pub use agents::{
-    __path_classify_agent, __path_create_agent, __path_delete_agent, __path_list_agents,
-    __path_update_agent, __path_list_profiles, __path_create_profile,
+    __path_classify_agent, __path_create_agent, __path_create_profile, __path_delete_agent,
+    __path_list_agents, __path_list_profiles, __path_update_agent,
 };
 pub use execute::__path_execute;
 pub use files_handlers::{__path_list_files, __path_read_file};
@@ -165,4 +168,3 @@ pub(crate) fn build_providers(
 
     providers
 }
-

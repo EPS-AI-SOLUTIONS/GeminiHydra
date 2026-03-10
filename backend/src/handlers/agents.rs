@@ -1,4 +1,4 @@
-﻿// ---------------------------------------------------------------------------
+// ---------------------------------------------------------------------------
 // handlers/agents.rs â€” Agent CRUD + classification endpoints
 // ---------------------------------------------------------------------------
 
@@ -8,7 +8,9 @@ use axum::http::StatusCode;
 use axum::response::IntoResponse;
 use serde_json::{Value, json};
 
-use crate::models::{ClassifyRequest, ClassifyResponse, WitcherAgent, CreateAgentProfile, AgentProfile};
+use crate::models::{
+    AgentProfile, ClassifyRequest, ClassifyResponse, CreateAgentProfile, WitcherAgent,
+};
 use crate::state::AppState;
 
 use crate::classify::classify_prompt;
@@ -294,10 +296,12 @@ pub async fn stream_delegations(
     responses((status = 200, description = "List of agent profiles", body = Value))
 )]
 pub async fn list_profiles(State(state): State<AppState>) -> Json<Value> {
-    let profiles = sqlx::query_as::<_, AgentProfile>("SELECT id, name, system_prompt, created_at FROM agent_profiles ORDER BY created_at DESC")
-        .fetch_all(&state.db)
-        .await
-        .unwrap_or_default();
+    let profiles = sqlx::query_as::<_, AgentProfile>(
+        "SELECT id, name, system_prompt, created_at FROM agent_profiles ORDER BY created_at DESC",
+    )
+    .fetch_all(&state.db)
+    .await
+    .unwrap_or_default();
     Json(json!({ "profiles": profiles }))
 }
 

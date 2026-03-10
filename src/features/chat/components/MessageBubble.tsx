@@ -57,11 +57,13 @@ export const MessageBubble = memo<MessageBubbleProps>(({ message, isLast, isStre
 
   return (
     <ErrorBoundary name="MessageBubble">
+      {/* biome-ignore lint/a11y/useKeyWithClickEvents: Context menu is mouse-driven */}
+      
       <div onContextMenu={(e) => onContextMenu?.(e, message)}>
         <BaseMessageBubble
           message={{
             id: message.id || '',
-            role: message.role as any,
+            role: message.role as 'user' | 'assistant' | 'system',
             content: textContent,
             isStreaming: isStreaming && isLast,
             timestamp: message.timestamp,
@@ -86,10 +88,8 @@ export const MessageBubble = memo<MessageBubbleProps>(({ message, isLast, isStre
                     key={`tool-${segment.name}-${i}`}
                     className={cn('my-2 rounded-lg border', toolDetailsClasses)}
                   >
+                    
                     <summary
-                      aria-expanded="false"
-                      role="button"
-                      tabIndex={0}
                       onKeyDown={(e) => {
                         if (e.key === 'Enter' || e.key === ' ') {
                           e.preventDefault();
