@@ -18,8 +18,7 @@ use crate::state::AppState;
 /// and Fly.io .internal addresses.
 /// In dev mode (no AUTH_SECRET): only blocks cloud metadata and .internal addresses.
 pub fn validate_mcp_url(url: &str, is_prod: bool) -> Result<(), String> {
-    let parsed =
-        url::Url::parse(url).map_err(|e| format!("Invalid MCP server URL: {}", e))?;
+    let parsed = url::Url::parse(url).map_err(|e| format!("Invalid MCP server URL: {}", e))?;
 
     let scheme = parsed.scheme();
     if scheme != "http" && scheme != "https" {
@@ -33,9 +32,7 @@ pub fn validate_mcp_url(url: &str, is_prod: bool) -> Result<(), String> {
     let h = host.to_lowercase();
 
     // Always block: cloud metadata and Fly.io internal network
-    if h == "metadata.google.internal"
-        || h.ends_with(".internal")
-        || h.contains("169.254.169.254")
+    if h == "metadata.google.internal" || h.ends_with(".internal") || h.contains("169.254.169.254")
     {
         return Err(format!(
             "Blocked: MCP URL points to internal/metadata host '{}'",
@@ -47,10 +44,7 @@ pub fn validate_mcp_url(url: &str, is_prod: bool) -> Result<(), String> {
     if let Ok(ip) = host.parse::<std::net::IpAddr>() {
         if let std::net::IpAddr::V4(v4) = ip {
             if v4.octets()[0] == 169 && v4.octets()[1] == 254 {
-                return Err(format!(
-                    "Blocked: MCP URL points to link-local IP {}",
-                    ip
-                ));
+                return Err(format!("Blocked: MCP URL points to link-local IP {}", ip));
             }
         }
     }
@@ -315,19 +309,37 @@ pub async fn list_all_discovered_tools(db: &PgPool) -> Result<Vec<McpDiscoveredT
 /// Allowed base commands for MCP stdio transport.
 /// Only well-known package runners and interpreters are permitted.
 const ALLOWED_STDIO_COMMANDS: &[&str] = &[
-    "npx", "npx.cmd", "node", "node.exe",
-    "python", "python.exe", "python3", "python3.exe",
-    "uvx", "uvx.exe", "uv", "uv.exe",
-    "deno", "deno.exe",
-    "bun", "bun.exe",
+    "npx",
+    "npx.cmd",
+    "node",
+    "node.exe",
+    "python",
+    "python.exe",
+    "python3",
+    "python3.exe",
+    "uvx",
+    "uvx.exe",
+    "uv",
+    "uv.exe",
+    "deno",
+    "deno.exe",
+    "bun",
+    "bun.exe",
 ];
 
 /// Environment variables that must not be overridden by MCP server config.
 const BLOCKED_ENV_VARS: &[&str] = &[
-    "PATH", "Path", "PATHEXT",
-    "LD_PRELOAD", "LD_LIBRARY_PATH", "DYLD_INSERT_LIBRARIES",
-    "COMSPEC", "SHELL",
-    "HOME", "USERPROFILE", "SYSTEMROOT",
+    "PATH",
+    "Path",
+    "PATHEXT",
+    "LD_PRELOAD",
+    "LD_LIBRARY_PATH",
+    "DYLD_INSERT_LIBRARIES",
+    "COMSPEC",
+    "SHELL",
+    "HOME",
+    "USERPROFILE",
+    "SYSTEMROOT",
 ];
 
 /// Validate stdio transport config: command must be in allowlist,
@@ -415,10 +427,7 @@ pub async fn mcp_server_create(
     if body.transport == "stdio" {
         if let Some(ref cmd) = body.command {
             if let Err(msg) = validate_stdio_config(cmd, body.env_vars.as_ref()) {
-                return (
-                    StatusCode::BAD_REQUEST,
-                    Json(json!({ "error": msg })),
-                );
+                return (StatusCode::BAD_REQUEST, Json(json!({ "error": msg })));
             }
         }
     }
@@ -427,10 +436,7 @@ pub async fn mcp_server_create(
         if let Some(ref url) = body.url {
             let is_prod = state.auth_secret.is_some();
             if let Err(msg) = validate_mcp_url(url, is_prod) {
-                return (
-                    StatusCode::BAD_REQUEST,
-                    Json(json!({ "error": msg })),
-                );
+                return (StatusCode::BAD_REQUEST, Json(json!({ "error": msg })));
             }
         }
     }
@@ -449,7 +455,10 @@ pub async fn mcp_server_update(
     Json(body): Json<UpdateMcpServer>,
 ) -> (StatusCode, Json<Value>) {
     // Validate stdio allowlist: check effective transport + command after merge
-    if body.transport.as_deref() == Some("stdio") || body.command.is_some() || body.env_vars.is_some() {
+    if body.transport.as_deref() == Some("stdio")
+        || body.command.is_some()
+        || body.env_vars.is_some()
+    {
         let current = match get_mcp_server(&state.db, &id).await {
             Ok(Some(c)) => c,
             Ok(None) => {
@@ -474,10 +483,7 @@ pub async fn mcp_server_update(
             });
             if let Some(cmd) = effective_command {
                 if let Err(msg) = validate_stdio_config(cmd, effective_env) {
-                    return (
-                        StatusCode::BAD_REQUEST,
-                        Json(json!({ "error": msg })),
-                    );
+                    return (StatusCode::BAD_REQUEST, Json(json!({ "error": msg })));
                 }
             }
         }
@@ -490,10 +496,7 @@ pub async fn mcp_server_update(
         if needs_url_check {
             let is_prod = state.auth_secret.is_some();
             if let Err(msg) = validate_mcp_url(url, is_prod) {
-                return (
-                    StatusCode::BAD_REQUEST,
-                    Json(json!({ "error": msg })),
-                );
+                return (StatusCode::BAD_REQUEST, Json(json!({ "error": msg })));
             }
         }
     }

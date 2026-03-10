@@ -133,12 +133,15 @@ pub async fn agent_card(State(state): State<AppState>) -> Json<AgentCard> {
 pub async fn message_send(
     State(state): State<AppState>,
     Json(body): Json<SendMessageRequest>,
-) -> Json<Value> {
+) -> Result<Json<Value>, (axum::http::StatusCode, Json<Value>)> {
     let task_id = Uuid::new_v4().to_string();
     let prompt = extract_text_from_parts(&body.message.parts);
 
     if prompt.is_empty() {
-        return Json(json!({ "error": "Message must contain at least one text part" }));
+        return Err((
+            axum::http::StatusCode::BAD_REQUEST,
+            Json(json!({ "error": "Message must contain at least one text part" })),
+        ));
     }
 
     // Determine target agent
@@ -332,7 +335,10 @@ pub async fn tasks_cancel(State(state): State<AppState>, Path(id): Path<String>)
             Json(json!({ "task_id": id, "status": "canceled" }))
         }
         Ok(None) => Json(json!({ "error": "Task not found or not cancelable" })),
-        Err(e) => Json(json!({ "error": e.to_string() })),
+        Err(e) => {
+            tracing::error!("tasks_cancel DB error: {}", e);
+            Json(json!({ "error": "Failed to cancel task" }))
+        }
     }
 }
 

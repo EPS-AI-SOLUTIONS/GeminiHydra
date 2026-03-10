@@ -295,6 +295,8 @@ pub struct AppState {
     pub browser_proxy_status: Arc<RwLock<crate::browser_proxy::BrowserProxyStatus>>,
     /// Ring buffer of proxy health status change events (last 50).
     pub browser_proxy_history: Arc<crate::browser_proxy::ProxyHealthHistory>,
+    /// Semaphore limiting concurrent A2A delegations (max 5 system-wide).
+    pub a2a_semaphore: Arc<tokio::sync::Semaphore>,
 }
 
 // ── Shared: readiness helpers ───────────────────────────────────────────────
@@ -437,6 +439,7 @@ impl AppState {
                 crate::browser_proxy::BrowserProxyStatus::default(),
             )),
             browser_proxy_history: Arc::new(crate::browser_proxy::ProxyHealthHistory::new(50)),
+            a2a_semaphore: Arc::new(tokio::sync::Semaphore::new(5)),
         }
     }
 
