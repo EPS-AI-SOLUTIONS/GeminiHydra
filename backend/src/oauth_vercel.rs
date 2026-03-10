@@ -119,9 +119,10 @@ pub async fn vercel_auth_callback(
         .unwrap_or_else(|_| "http://localhost:5176/api/auth/vercel/callback".to_string());
 
     if client_id.is_empty() || client_secret.is_empty() {
+        tracing::error!("vercel oauth config: VERCEL_CLIENT_ID or VERCEL_CLIENT_SECRET not set");
         return Err((
             StatusCode::INTERNAL_SERVER_ERROR,
-            Json(json!({ "error": "VERCEL_CLIENT_ID or VERCEL_CLIENT_SECRET not configured" })),
+            Json(json!({ "error": "Authentication failed" })),
         ));
     }
 

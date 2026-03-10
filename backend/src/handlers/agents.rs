@@ -145,7 +145,7 @@ pub async fn update_agent(
     .await
     {
         tracing::error!("Failed to update agent: {}", e);
-        return Json(json!({ "error": format!("Failed to update agent: {}", e) }));
+        return Json(json!({ "error": "Failed to update agent" }));
     }
 
     state.refresh_agents().await;

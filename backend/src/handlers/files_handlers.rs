@@ -11,6 +11,34 @@ use crate::models::{
 };
 
 // ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+/// Sanitize a FileError reason for HTTP responses — strip OS-level error details
+/// to prevent information disclosure. The full error is logged server-side.
+fn sanitize_file_error(e: &files::FileError) -> String {
+    let reason = &e.reason;
+    // These prefixes contain an OS error suffix after ": " — strip it
+    for prefix in &[
+        "Cannot access file",
+        "Cannot open file",
+        "Cannot read file",
+        "Cannot read directory",
+        "Cannot read metadata",
+        "Cannot create parent directory",
+        "Cannot write file",
+        "Error reading entry",
+    ] {
+        if reason.starts_with(prefix) {
+            tracing::warn!("file operation failed for '{}': {}", e.path, reason);
+            return prefix.to_string();
+        }
+    }
+    // Safe reasons (no OS error details) pass through as-is
+    reason.clone()
+}
+
+// ---------------------------------------------------------------------------
 // File Handlers
 // ---------------------------------------------------------------------------
 
@@ -27,7 +55,7 @@ pub async fn read_file(Json(body): Json<FileReadRequest>) -> Json<Value> {
             truncated: f.truncated,
             extension: f.extension
         })),
-        Err(e) => Json(json!({ "error": e.reason, "path": e.path })),
+        Err(e) => Json(json!({ "error": sanitize_file_error(&e), "path": e.path })),
     }
 }
 
@@ -54,7 +82,7 @@ pub async fn list_files(Json(body): Json<FileListRequest>) -> Json<Value> {
                 entries: res
             }))
         }
-        Err(e) => Json(json!({ "error": e.reason, "path": e.path })),
+        Err(e) => Json(json!({ "error": sanitize_file_error(&e), "path": e.path })),
     }
 }
 

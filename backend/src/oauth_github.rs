@@ -116,9 +116,10 @@ pub async fn github_auth_callback(
     let client_secret = std::env::var("GITHUB_CLIENT_SECRET").unwrap_or_default();
 
     if client_id.is_empty() || client_secret.is_empty() {
+        tracing::error!("github oauth config: GITHUB_CLIENT_ID or GITHUB_CLIENT_SECRET not set");
         return Err((
             StatusCode::INTERNAL_SERVER_ERROR,
-            Json(json!({ "error": "GITHUB_CLIENT_ID or GITHUB_CLIENT_SECRET not configured" })),
+            Json(json!({ "error": "Authentication failed" })),
         ));
     }
 

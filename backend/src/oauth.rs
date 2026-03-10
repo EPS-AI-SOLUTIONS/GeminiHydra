@@ -355,26 +355,24 @@ pub async fn google_redirect(
         Ok(r) => r,
         Err(e) => {
             tracing::error!("Google token exchange request failed: {}", e);
-            return Html(format!(
+            return Html(
                 r#"<!DOCTYPE html><html><head><title>Auth Error</title></head>
                 <body style="font-family:monospace;background:#0a0a0a;color:#ff4444;display:flex;align-items:center;justify-content:center;height:100vh;margin:0">
-                <div style="text-align:center"><h2>Token Exchange Failed</h2><p>{}</p></div>
-                </body></html>"#,
-                html_escape(&e.to_string())
-            ));
+                <div style="text-align:center"><h2>Token Exchange Failed</h2><p>Could not complete authentication. Please try again.</p></div>
+                </body></html>"#.to_string(),
+            );
         }
     };
 
     if !resp.status().is_success() {
         let err = resp.text().await.unwrap_or_default();
         tracing::error!("Google rejected token exchange: {}", err);
-        return Html(format!(
+        return Html(
             r#"<!DOCTYPE html><html><head><title>Auth Error</title></head>
             <body style="font-family:monospace;background:#0a0a0a;color:#ff4444;display:flex;align-items:center;justify-content:center;height:100vh;margin:0">
-            <div style="text-align:center"><h2>Token Exchange Rejected</h2><p>{}</p></div>
-            </body></html>"#,
-            html_escape(&err)
-        ));
+            <div style="text-align:center"><h2>Token Exchange Rejected</h2><p>Google rejected the authorization request. Please try again.</p></div>
+            </body></html>"#.to_string(),
+        );
     }
 
     let tokens: GoogleTokenResponse = match resp.json().await {
@@ -458,9 +456,10 @@ pub async fn save_api_key(
         .send()
         .await
         .map_err(|e| {
+            tracing::error!("oauth: API key validation request failed: {}", e);
             (
                 StatusCode::BAD_GATEWAY,
-                Json(json!({ "error": format!("Validation request failed: {}", e) })),
+                Json(json!({ "error": "API key validation request failed" })),
             )
         })?;
 
@@ -487,9 +486,10 @@ pub async fn save_api_key(
     .execute(&state.db)
     .await
     .map_err(|e| {
+        tracing::error!("oauth: failed to store API key: {}", e);
         (
             StatusCode::INTERNAL_SERVER_ERROR,
-            Json(json!({ "error": format!("Failed to store API key: {}", e) })),
+            Json(json!({ "error": "Failed to store API key" })),
         )
     })?;
 

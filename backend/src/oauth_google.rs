@@ -212,16 +212,15 @@ pub async fn google_redirect(
     let resp = match token_resp {
         Ok(r) => r,
         Err(e) => {
-            return Html(format!(
-                "Token Exchange Failed: {}",
-                html_escape(&e.to_string())
-            ));
+            tracing::error!("oauth_google: token exchange request failed: {}", e);
+            return Html("Token Exchange Failed: Could not complete authentication. Please try again.".to_string());
         }
     };
 
     if !resp.status().is_success() {
         let err = resp.text().await.unwrap_or_default();
-        return Html(format!("Token Exchange Rejected: {}", html_escape(&err)));
+        tracing::error!("oauth_google: token exchange rejected: {}", err);
+        return Html("Token Exchange Rejected: Google rejected the authorization request. Please try again.".to_string());
     }
 
     let tokens: GoogleTokenResponse = match resp.json().await {
@@ -293,7 +292,10 @@ pub async fn google_save_api_key(
     .bind(&encrypted)
     .execute(&state.db)
     .await
-    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({ "error": format!("Failed: {}", e) }))))?;
+    .map_err(|e| {
+        tracing::error!("oauth_google: failed to store API key: {}", e);
+        (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({ "error": "Failed to store API key" })))
+    })?;
 
     Ok(Json(json!({ "status": "ok", "authenticated": true })))
 }

@@ -287,7 +287,8 @@ async fn handle_ws(
                         let client_msg: WsClientMessage = match serde_json::from_str(&text) {
                             Ok(m) => m,
                             Err(e) => {
-                                let _ = ws_send(&mut sender, &WsServerMessage::Error { message: e.to_string(), code: Some("PARSE_ERROR".into()) }).await;
+                                tracing::warn!("ws_execute: invalid client message: {}", e);
+                                let _ = ws_send(&mut sender, &WsServerMessage::Error { message: "Invalid message format".to_string(), code: Some("PARSE_ERROR".into()) }).await;
                                 continue;
                             }
                         };

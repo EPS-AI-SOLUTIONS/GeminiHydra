@@ -132,7 +132,10 @@ pub async fn system_audit() -> Json<Value> {
                 })),
             }
         }
-        Err(e) => Json(json!({ "error": e.to_string() })),
+        Err(e) => {
+            tracing::error!("cargo audit failed: {}", e);
+            Json(json!({ "error": "Failed to run cargo audit" }))
+        }
     }
 }
 
