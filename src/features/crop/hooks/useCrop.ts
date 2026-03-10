@@ -6,15 +6,7 @@
 import { useMutation } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { apiPost } from '@/shared/api/client';
-
-interface CropResponse {
-  crops: Array<{
-    index: number;
-    cropped_base64: string;
-    width: number;
-    height: number;
-  }>;
-}
+import type { CropResponse } from '@/shared/api/schemas';
 
 interface CropRequest {
   image_base64: string;

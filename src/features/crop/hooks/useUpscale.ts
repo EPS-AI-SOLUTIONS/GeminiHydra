@@ -6,14 +6,7 @@
 import { useMutation } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { apiPost } from '@/shared/api/client';
-
-interface UpscaleResponse {
-  upscaled_base64: string;
-  width: number;
-  height: number;
-  processing_time_ms: number;
-  scale: number;
-}
+import type { UpscaleResponse } from '@/shared/api/schemas';
 
 interface UpscaleRequest {
   image_base64: string;

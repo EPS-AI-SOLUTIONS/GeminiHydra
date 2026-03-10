@@ -14,19 +14,12 @@ import {
   startRestoreStream,
   useRestoreStream,
 } from '@/features/restore/hooks/useRestoreStream';
-
-/** Minimal type for /api/orient response */
-interface OrientResponse {
-  rotation_angle: number;
-  processing_time_ms?: number;
-  orient_method?: string;
-}
-
 import { useRestoreStore } from '@/features/restore/stores/restoreStore';
 import { type ResultsImageData, useResultsStore } from '@/features/results/stores/resultsStore';
 import { useSettingsQuery } from '@/features/settings/hooks/useSettings';
 import { fileToDataUrl, useUploadStore } from '@/features/upload/stores/uploadStore';
 import { apiPost } from '@/shared/api/client';
+import type { OrientResponse } from '@/shared/api/schemas';
 import { useViewStore } from '@/stores/viewStore';
 import { BATCH_MIN_TOTAL, BATCH_THRESHOLD_PX } from './cropConstants';
 

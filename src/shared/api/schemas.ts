@@ -429,3 +429,30 @@ export interface SaveImageResponse {
   success: boolean;
   path: string;
 }
+
+// ============================================================================
+// ORIENT / CROP / UPSCALE
+// ============================================================================
+
+export interface OrientResponse {
+  rotation_angle: number;
+  processing_time_ms?: number;
+  orient_method?: string;
+}
+
+export interface CropResponse {
+  crops: Array<{
+    index: number;
+    cropped_base64: string;
+    width: number;
+    height: number;
+  }>;
+}
+
+export interface UpscaleResponse {
+  upscaled_base64: string;
+  width: number;
+  height: number;
+  processing_time_ms: number;
+  scale: number;
+}
