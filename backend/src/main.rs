@@ -101,10 +101,11 @@ async fn build_app(log_buffer: std::sync::Arc<LogRingBuffer>) -> (axum::Router, 
         .layer(permissions_policy)
         .layer(
             TraceLayer::new_for_http().make_span_with(|request: &axum::http::Request<_>| {
+                // Log only path (not query string) to avoid leaking WS token (?token=xxx)
                 tracing::info_span!(
                     "http_request",
                     method = %request.method(),
-                    uri = %request.uri(),
+                    uri = %request.uri().path(),
                     request_id = tracing::field::Empty,
                 )
             }),
