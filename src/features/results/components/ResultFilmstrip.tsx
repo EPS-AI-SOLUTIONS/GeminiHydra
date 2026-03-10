@@ -36,8 +36,9 @@ export const ResultFilmstrip = memo(function ResultFilmstrip({
       {images.map((img, idx) => {
         const isNearActive = Math.abs(idx - activeIndex) <= 20;
         return (
+          // biome-ignore lint/suspicious/noArrayIndexKey: The order of items never changes
           <button
-            key={ilmstrip-}
+            key={`filmstrip-${idx}`}
             type="button"
             onClick={() => onSelectImage(idx)}
             aria-label={t('results.goToImage', 'Go to image {{num}}', { num: idx + 1 })}

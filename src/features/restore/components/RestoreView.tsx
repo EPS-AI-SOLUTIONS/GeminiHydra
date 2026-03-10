@@ -322,6 +322,7 @@ function ThumbnailGrid({ cropSteps, croppedPhotos, theme }: ThumbnailGridProps) 
       <Card variant="glass" padding="md">
         {/* Toggle header */}
         <button
+          type="button"
           onClick={toggleVisible}
           className={cn(
             'w-full flex items-center justify-between text-sm font-semibold cursor-pointer',
@@ -596,7 +597,6 @@ function RestoreView() {
     for (let i = 0; i < results.length; i++) {
       if (results[i]?.status === 'rejected') {
         const idx = errorIndices[i];
-        \n
         if (idx !== undefined) errorCrop(idx);
       }
     }
@@ -730,7 +730,6 @@ function RestoreView() {
     for (let i = 0; i < results.length; i++) {
       if (results[i]?.status === 'rejected') {
         const idx = resumeIndices[i];
-        \n
         if (idx !== undefined) errorCrop(idx);
       }
     }

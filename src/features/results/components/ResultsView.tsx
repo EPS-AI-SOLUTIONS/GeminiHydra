@@ -221,7 +221,7 @@ export function ResultsView() {
       if (!dirHandle && !backendOutputDir && 'showDirectoryPicker' in window) {
         try {
           dirHandle = await (
-            window as unknown as { showDirectoryPicker: (opts: any) => Promise<any> }
+            window as unknown as { showDirectoryPicker: (opts: unknown) => Promise<unknown> }
           ).showDirectoryPicker({ mode: 'readwrite' });
         } catch (err: unknown) {
           if (err instanceof Error && err.name === 'AbortError') return;
@@ -280,7 +280,6 @@ export function ResultsView() {
       // Fallback: sequential regular downloads
       for (let idx = 0; idx < images.length; idx++) {
         const img = images[idx];
-        \n
         if (!img) continue;
         const src =
           img.restoredImage.startsWith('data:') || img.restoredImage.startsWith('blob:')
@@ -303,7 +302,7 @@ export function ResultsView() {
     if (!('showDirectoryPicker' in window)) return;
     try {
       const handle = await (
-        window as unknown as { showDirectoryPicker: (opts: any) => Promise<any> }
+        window as unknown as { showDirectoryPicker: (opts: unknown) => Promise<unknown> }
       ).showDirectoryPicker({ mode: 'readwrite' });
       setSaveDirectory(handle);
       toast.success(t('results.folderSelected', 'Save folder: {{folder}}', { folder: handle.name }));
