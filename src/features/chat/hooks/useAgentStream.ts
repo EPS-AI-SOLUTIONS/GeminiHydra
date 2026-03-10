@@ -11,30 +11,22 @@ export function useAgentStream() {
   const [messages, setMessages] = useState<AgentMessage[]>([]);
   const [isConnected, setIsConnected] = useState(false);
   const eventSourceRef = useRef<EventSource | null>(null);
-  const heartbeatTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const heartbeatTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const resetHeartbeat = useCallback(() => {
     if (heartbeatTimerRef.current) clearTimeout(heartbeatTimerRef.current);
     heartbeatTimerRef.current = setTimeout(() => {
-      console.warn('[SSE] Heartbeat lost. Forcing reconnect...');
-      if (eventSourceRef.current) {
-        eventSourceRef.current.close();
-        setIsConnected(false);
-        // Force re-render/reconnect here if possible,
-        // typically handled by higher level unmount/mount or manual retry
+      // No data received for 30s — connection may be stale
+      const es = eventSourceRef.current;
+      if (es && es.readyState === EventSource.OPEN) {
+        console.warn('[SSE] Heartbeat timeout — closing stale connection');
+        es.close();
       }
-    }, 15000);
+    }, 30_000);
   }, []);
 
-  const _addOptimisticMessage = (content: string) => {
-    setMessages((prev) => [
-      ...prev,
-      { agent_id: 'user', content, is_final: false, _pending: true } as AgentMessage & { _pending?: boolean },
-    ]);
-  };
-
   useEffect(() => {
-    // Ponieważ vite.config.ts przekierowuje zapytania, używamy relatywnej ścieżki
     const url = '/api/v1/swarm/stream';
     const eventSource = new EventSource(url, { withCredentials: true });
     eventSourceRef.current = eventSource;
@@ -47,11 +39,10 @@ export function useAgentStream() {
 
     eventSource.onmessage = (event) => {
       resetHeartbeat();
-      if (event.data === 'ping') return; // Ignore heartbeat frames
+      if (event.data === 'ping') return;
       try {
         const data = JSON.parse(event.data) as AgentMessage;
         setMessages((prev) => {
-          // Remove optimistic user messages if needed, or simply append
           const filtered = prev.filter((m) => !(m as unknown as { _pending?: boolean })._pending);
           return [...filtered, data];
         });
@@ -63,19 +54,20 @@ export function useAgentStream() {
     eventSource.onerror = (error) => {
       console.error('[SSE] Connection error:', error);
       setIsConnected(false);
-      // EventSource posiada wbudowany mechanizm auto-reconnect,
-      // jednak zamykając go wyzwalamy twardy reset przy błędach sieci
       eventSource.close();
+      eventSourceRef.current = null;
 
-      // Implementacja backoff po zamknięciu na wypadek błędu rate-limitu (429)
-      setTimeout(() => {
-        setIsConnected(false); // wyzwoli ewentualnie trigger przerysowania gdzieś wyżej
+      // Reconnect with backoff
+      reconnectTimerRef.current = setTimeout(() => {
+        setIsConnected(false);
       }, 5000);
     };
 
     return () => {
       if (heartbeatTimerRef.current) clearTimeout(heartbeatTimerRef.current);
+      if (reconnectTimerRef.current) clearTimeout(reconnectTimerRef.current);
       eventSource.close();
+      eventSourceRef.current = null;
       setIsConnected(false);
     };
   }, [resetHeartbeat]);

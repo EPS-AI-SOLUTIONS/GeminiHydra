@@ -28,4 +28,5 @@ export interface ChatMessage {
   content: string;
   timestamp: number;
   model?: string;
+  error?: string;
 }

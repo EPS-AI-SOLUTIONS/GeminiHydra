@@ -1,9 +1,8 @@
-import { AgentAvatar, BaseMessageBubble } from '@jaskier/ui';
+import { AgentAvatar, BaseMessageBubble, cn } from '@jaskier/ui';
 import { Terminal } from 'lucide-react';
 import { type MouseEvent, memo, useDeferredValue, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useViewTheme } from '@/shared/hooks/useViewTheme';
-import { cn } from '@/shared/utils/cn';
 import { type Message, useCurrentSessionId } from '@/stores/viewStore';
 import { ErrorBoundary } from './ErrorBoundary';
 import { MessageRating } from './MessageRating';
@@ -36,10 +35,10 @@ export const MessageBubble = memo<MessageBubbleProps>(({ message, isLast, isStre
   const toolSegments = useMemo(() => segments.filter((s) => s.type === 'tool'), [segments]);
 
   const status = useMemo<'idle' | 'typing' | 'thinking' | 'error'>(() => {
-    if ((message as any).error) return 'error';
+    if (message.error) return 'error';
     if (isStreaming && isLast) return message.content ? 'typing' : 'thinking';
     return 'idle';
-  }, [(message as any).error, isStreaming, isLast, message.content]);
+  }, [message.error, isStreaming, isLast, message.content]);
 
   const assistantBubbleClasses = theme.isLight
     ? 'bg-white/50 border border-white/30 text-black shadow-sm'
@@ -57,8 +56,7 @@ export const MessageBubble = memo<MessageBubbleProps>(({ message, isLast, isStre
 
   return (
     <ErrorBoundary name="MessageBubble">
-      {/* biome-ignore lint/a11y/useKeyWithClickEvents: Context menu is mouse-driven */}
-
+      {/* biome-ignore lint/a11y/noStaticElementInteractions: Context menu is mouse-driven */}
       <div onContextMenu={(e) => onContextMenu?.(e, message)}>
         <BaseMessageBubble
           message={{
@@ -83,11 +81,12 @@ export const MessageBubble = memo<MessageBubbleProps>(({ message, isLast, isStre
           toolInteractions={
             toolSegments.length > 0 ? (
               <div className="mb-3">
-                {toolSegments.map((segment, i) => (
+                {toolSegments.map((segment) => (
                   <details
-                    key={`tool-${segment.name}-${i}`}
+                    key={`tool-${segment.name}-${segment.content.length}`}
                     className={cn('my-2 rounded-lg border', toolDetailsClasses)}
                   >
+                    {/* biome-ignore lint/a11y/noStaticElementInteractions: summary is natively interactive */}
                     <summary
                       onKeyDown={(e) => {
                         if (e.key === 'Enter' || e.key === ' ') {
