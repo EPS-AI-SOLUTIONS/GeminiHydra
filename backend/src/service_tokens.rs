@@ -79,9 +79,10 @@ pub async fn store_token(
     .execute(&state.db)
     .await
     .map_err(|e| {
+        tracing::error!("Failed to store service token: {}", e);
         (
             StatusCode::INTERNAL_SERVER_ERROR,
-            Json(json!({ "error": format!("Failed to store token: {}", e) })),
+            Json(json!({ "error": "Failed to store authentication data" })),
         )
     })?;
 

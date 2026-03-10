@@ -7,6 +7,32 @@ use std::path::Path;
 use std::time::Duration;
 use tokio::process::Command;
 
+/// Validate a git ref name (branch, tag) — strict allowlist.
+fn validate_git_ref(name: &str) -> Result<(), String> {
+    if name.is_empty() {
+        return Err("Git ref name cannot be empty".into());
+    }
+    // Only allow: alphanumeric, dot, underscore, hyphen, slash (no leading -, .., @{, ~, ^, :, spaces)
+    let valid = name
+        .chars()
+        .all(|c| c.is_alphanumeric() || matches!(c, '.' | '_' | '-' | '/'));
+    if !valid
+        || name.starts_with('-')
+        || name.starts_with('/')
+        || name.ends_with('.')
+        || name.ends_with('/')
+        || name.contains("..")
+        || name.contains("@{")
+        || name.contains("//")
+    {
+        return Err(format!(
+            "Invalid git ref name: '{}'. Only alphanumeric, dots, underscores, hyphens, slashes allowed.",
+            name
+        ));
+    }
+    Ok(())
+}
+
 /// Git command timeout.
 const GIT_TIMEOUT: Duration = Duration::from_secs(15);
 
@@ -89,7 +115,12 @@ pub async fn tool_git_diff(repo_path: &str, target: Option<&str>) -> Result<Stri
     let args: Vec<&str> = match target {
         Some("staged") | Some("--staged") => vec!["diff", "--staged", "--stat"],
         Some("--stat") => vec!["diff", "--stat"],
-        Some(t) => vec!["diff", t],
+        Some(t) => {
+            if t.starts_with('-') || t.contains("..") && t.contains('/') {
+                return Err(format!("Invalid diff target: '{}'", t));
+            }
+            vec!["diff", t]
+        }
         None => vec!["diff", "--stat"],
     };
     let diff = run_git(repo_path, &args).await?;
@@ -120,10 +151,7 @@ pub async fn tool_git_branch(repo_path: &str, action: Option<&str>) -> Result<St
             if name.is_empty() {
                 return Err("Branch name required. Usage: create:branch-name".into());
             }
-            // Validate branch name
-            if name.contains(' ') || name.contains("..") || name.starts_with('-') {
-                return Err(format!("Invalid branch name: {}", name));
-            }
+            validate_git_ref(name)?;
             let result = run_git(repo_path, &["checkout", "-b", name]).await?;
             Ok(format!(
                 "### Created and switched to branch: {}\n\n{}",
@@ -135,6 +163,7 @@ pub async fn tool_git_branch(repo_path: &str, action: Option<&str>) -> Result<St
             if name.is_empty() {
                 return Err("Branch name required. Usage: switch:branch-name".into());
             }
+            validate_git_ref(name)?;
             let result = run_git(repo_path, &["checkout", name]).await?;
             Ok(format!("### Switched to branch: {}\n\n{}", name, result))
         }
@@ -163,9 +192,13 @@ pub async fn tool_git_commit(
         Some(file_list) => {
             for file in file_list.split(',') {
                 let file = file.trim();
-                if !file.is_empty() {
-                    run_git(repo_path, &["add", file]).await?;
+                if file.is_empty() {
+                    continue;
                 }
+                if file.starts_with('-') {
+                    return Err(format!("Invalid file path (starts with '-'): {}", file));
+                }
+                run_git(repo_path, &["add", "--", file]).await?;
             }
         }
         None => {

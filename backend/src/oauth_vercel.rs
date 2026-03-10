@@ -171,9 +171,10 @@ pub async fn vercel_auth_callback(
     .execute(&state.db)
     .await
     .map_err(|e| {
+        tracing::error!("Failed to store Vercel token: {}", e);
         (
             StatusCode::INTERNAL_SERVER_ERROR,
-            Json(json!({ "error": format!("Failed to store Vercel token: {}", e) })),
+            Json(json!({ "error": "Failed to store authentication data" })),
         )
     })?;
 

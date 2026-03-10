@@ -656,7 +656,7 @@ async fn tool_execute_command(
         }
     }
 
-    // Validate and resolve working directory
+    // Validate and resolve working directory (canonicalize to prevent symlink traversal)
     let cwd = if let Some(dir) = working_directory {
         let p = std::path::Path::new(dir);
         if !p.is_dir() {
@@ -665,7 +665,9 @@ async fn tool_execute_command(
                 dir
             ));
         }
-        Some(p.to_path_buf())
+        let canonical = std::fs::canonicalize(p)
+            .map_err(|e| format!("Cannot resolve working_directory '{}': {}", dir, e))?;
+        Some(canonical)
     } else {
         None
     };
@@ -738,9 +740,15 @@ async fn tool_execute_command(
         );
     }
 
-    // Truncate if too large
+    // Truncate if too large (UTF-8 safe boundary)
     if result.len() > MAX_COMMAND_OUTPUT {
-        result.truncate(MAX_COMMAND_OUTPUT);
+        let boundary = result
+            .char_indices()
+            .take_while(|(i, _)| *i < MAX_COMMAND_OUTPUT)
+            .last()
+            .map(|(i, c)| i + c.len_utf8())
+            .unwrap_or(0);
+        result.truncate(boundary);
         result.push_str("\n... [output truncated at 50KB]");
     }
 

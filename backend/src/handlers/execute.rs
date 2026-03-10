@@ -38,7 +38,10 @@ pub async fn internal_tool_execute(
     let wd: String = sqlx::query_scalar("SELECT working_directory FROM gh_settings WHERE id = 1")
         .fetch_one(&state.db)
         .await
-        .unwrap_or_default();
+        .map_err(|e| {
+            tracing::error!("Failed to read working_directory from DB: {}", e);
+            ApiError::Internal("Database error reading settings".into())
+        })?;
 
     match crate::tools::execute_tool(name, &args, &state, &wd).await {
         Ok(output) => Ok(Json(json!({

@@ -89,8 +89,14 @@ pub(crate) fn decrypt_token(stored: &str) -> Result<String, String> {
     let nonce = Nonce::from_slice(&nonce_bytes);
     let plaintext = cipher
         .decrypt(nonce, ciphertext.as_ref())
-        .map_err(|e| format!("Decryption failed (wrong key?): {}", e))?;
-    String::from_utf8(plaintext).map_err(|e| format!("Decrypted token is not valid UTF-8: {}", e))
+        .map_err(|e| {
+            tracing::error!("Token decryption failed: {}", e);
+            "Token validation failed".to_string()
+        })?;
+    String::from_utf8(plaintext).map_err(|e| {
+        tracing::error!("Decrypted token UTF-8 error: {}", e);
+        "Token validation failed".to_string()
+    })
 }
 
 // ── Utilities (Used across all OAuth providers) ──────────────────────────
