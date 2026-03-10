@@ -270,15 +270,15 @@ pub async fn refresh_cache(state: &AppState) -> (HashMap<String, Vec<ModelInfo>>
                                     "model_registry: API key fallback also failed: {}",
                                     e2
                                 );
-                                errors.push(format!("google (oauth): {}", e));
-                                errors.push(format!("google (api_key): {}", e2));
+                                errors.push("google (oauth): model refresh failed".to_string());
+                                errors.push("google (api_key): model refresh failed".to_string());
                             }
                         }
                     } else {
-                        errors.push(format!("google: {} (no API key fallback available)", e));
+                        errors.push("google: model refresh failed (no fallback available)".to_string());
                     }
                 } else {
-                    errors.push(format!("google: {}", e));
+                    errors.push("google: model refresh failed".to_string());
                 }
             }
         }
@@ -293,7 +293,7 @@ pub async fn refresh_cache(state: &AppState) -> (HashMap<String, Vec<ModelInfo>>
             }
             Err(e) => {
                 tracing::warn!("model_registry: Anthropic fetch failed: {}", e);
-                errors.push(format!("anthropic: {}", e));
+                errors.push("anthropic: model refresh failed".to_string());
             }
         }
     }
@@ -700,7 +700,10 @@ pub async fn pin_model(
 
             Json(json!({ "pinned": true, "use_case": body.use_case, "model_id": body.model_id }))
         }
-        Err(e) => Json(json!({ "error": format!("Failed to pin: {}", e) })),
+        Err(e) => {
+            tracing::error!("model registry pin: {}", e);
+            Json(json!({ "error": "Internal database error" }))
+        }
     }
 }
 
@@ -720,7 +723,10 @@ pub async fn unpin_model(
 
     match result {
         Ok(r) => Json(json!({ "unpinned": r.rows_affected() > 0, "use_case": use_case })),
-        Err(e) => Json(json!({ "error": format!("Failed to unpin: {}", e) })),
+        Err(e) => {
+            tracing::error!("model registry unpin: {}", e);
+            Json(json!({ "error": "Internal database error" }))
+        }
     }
 }
 
