@@ -79,7 +79,9 @@ pub async fn generate_image(
                 if attempt < 2 {
                     tracing::warn!(
                         "browser_proxy[{}]: body read failed on attempt {} ({}), retrying in 5s",
-                        context, attempt, e
+                        context,
+                        attempt,
+                        e
                     );
                     tokio::time::sleep(Duration::from_secs(5)).await;
                     continue;

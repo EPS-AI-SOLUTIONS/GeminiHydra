@@ -63,8 +63,8 @@ export async function detectPhotos(
     }));
 
     return { boxes, provider: result.provider_used };
-  } catch (err: any) {
-    const errorString = String(err?.message || err);
+  } catch (err: unknown) {
+    const errorString = String(err instanceof Error ? err.message : err);
     if (errorString.includes('No active Google OAuth session found')) {
       if (window.confirm('Brak aktywnej sesji Google OAuth. Czy chcesz zalogować się teraz?')) {
         fetch('http://localhost:8080/api/auth/login', { method: 'POST' })

@@ -12,11 +12,16 @@ export function isFileSystemAccessSupported(): boolean {
   return typeof window !== 'undefined' && 'showDirectoryPicker' in window;
 }
 
+/** Window with File System Access API (Chromium-only) */
+interface WindowWithFSAccess {
+  showDirectoryPicker: (opts: { mode: string }) => Promise<FileSystemDirectoryHandle>;
+}
+
 /** Prompt the user to select a directory for saving files. */
 export async function pickOutputDirectory(): Promise<FileSystemDirectoryHandle | null> {
   if (!isFileSystemAccessSupported()) return null;
   try {
-    return await (window as any).showDirectoryPicker({ mode: 'readwrite' });
+    return await (window as unknown as WindowWithFSAccess).showDirectoryPicker({ mode: 'readwrite' });
   } catch (err: unknown) {
     if (err instanceof Error && err.name === 'AbortError') return null;
     throw err;

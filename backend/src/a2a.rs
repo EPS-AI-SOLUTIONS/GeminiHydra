@@ -431,11 +431,7 @@ async fn execute_a2a_task(
             state.gemini_circuit.record_failure().await;
             // UTF-8 safe truncation
             let preview: String = text.chars().take(500).collect();
-            return Err(format!(
-                "Gemini API error {}: {}",
-                status,
-                preview
-            ));
+            return Err(format!("Gemini API error {}: {}", status, preview));
         }
 
         state.gemini_circuit.record_success().await;

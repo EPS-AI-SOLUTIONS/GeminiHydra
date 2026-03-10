@@ -11,7 +11,15 @@
 import { useQuery } from '@tanstack/react-query';
 import { z } from 'zod';
 import { apiGetPolling } from '@/shared/api/client';
+import type { Health } from '@/shared/api/schemas';
 import { useHealthQuery, useSystemStatsQuery } from './useHealth';
+
+/** Extended health response including optional fields returned by the backend */
+interface HealthExtended extends Health {
+  resolved_models?: { chat?: string; thinking?: string; image?: string } | null;
+  watchdog_status?: string | null;
+  watchdog_last_check?: string | null;
+}
 
 // ============================================================================
 // TYPES & SCHEMAS
@@ -114,10 +122,11 @@ export function useHealthDashboard(): HealthDashboardData {
   const metrics = metricsQuery.data ?? null;
   const audit = auditQuery.data ?? null;
 
-  // Add missing properties
-  const resolvedModels = (healthQuery.data as any)?.resolved_models ?? null;
-  const watchdogStatus = (healthQuery.data as any)?.watchdog_status ?? null;
-  const watchdogLastCheck = (healthQuery.data as any)?.watchdog_last_check ?? null;
+  // Add missing properties (backend returns extra fields not in base Health schema)
+  const healthData = healthQuery.data as HealthExtended | undefined;
+  const resolvedModels = healthData?.resolved_models ?? null;
+  const watchdogStatus = healthData?.watchdog_status ?? null;
+  const watchdogLastCheck = healthData?.watchdog_last_check ?? null;
 
   const refetch = () => {
     void healthQuery.refetch();

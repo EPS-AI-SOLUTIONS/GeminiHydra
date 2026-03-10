@@ -11,6 +11,7 @@ import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '@/contexts/ThemeContext';
 import { usePartnerSession } from '@/features/chat/hooks/usePartnerSessions';
+import type { PartnerMessage } from '@/shared/api/partnerClient';
 import { useFocusTrap } from '@/shared/hooks/useFocusTrap';
 
 interface Props {
@@ -118,7 +119,7 @@ export default function PartnerChatModal({ sessionId, onClose }: Props) {
                   {t('chat.failedLoadSession')}
                 </div>
               )}
-              {session?.messages.map((msg: any) => (
+              {session?.messages.map((msg: PartnerMessage) => (
                 <div
                   key={msg.id}
                   className={cn('flex gap-3 max-w-3xl', msg.role === 'user' ? 'ml-auto flex-row-reverse' : '')}

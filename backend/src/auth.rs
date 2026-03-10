@@ -70,7 +70,7 @@ pub fn check_bearer_token(header_value: Option<&str>, expected_secret: &str) -> 
     match header_value {
         Some(header) => header
             .strip_prefix("Bearer ")
-            .map_or(false, |token| bool::from(token.as_bytes().ct_eq(expected_secret.as_bytes()))),
+            .is_some_and(|token| bool::from(token.as_bytes().ct_eq(expected_secret.as_bytes()))),
         _ => false,
     }
 }

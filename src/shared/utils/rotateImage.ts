@@ -19,7 +19,9 @@ export function rotateBase64Image(base64: string, degrees: number, mimeType: str
       ctx.drawImage(img, -img.width / 2, -img.height / 2);
 
       const dataUrl = canvas.toDataURL('image/jpeg', 0.92);
-      resolve(dataUrl.split(',')[1]!);
+      const base64Part = dataUrl.split(',')[1];
+      if (!base64Part) return reject(new Error('Failed to extract base64 from data URL'));
+      resolve(base64Part);
     };
     img.onerror = () => reject(new Error('Failed to load image for rotation'));
     img.src = `data:${mimeType};base64,${base64}`;

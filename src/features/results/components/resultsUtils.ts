@@ -3,6 +3,17 @@
 
 import { urlToBlob } from '@/shared/utils/fileSystemAccess';
 
+/** File System Access API - showSaveFilePicker options (Chromium-only, not in standard TS lib) */
+interface SaveFilePickerOptions {
+  suggestedName?: string;
+  types?: Array<{ description: string; accept: Record<string, string[]> }>;
+}
+
+/** Window with File System Access API (Chromium-only) */
+interface WindowWithFSAccess {
+  showSaveFilePicker: (opts: SaveFilePickerOptions) => Promise<FileSystemFileHandle>;
+}
+
 /** Download an image from a data: or blob: URL using browser APIs. */
 export async function downloadImage(src: string, fileName: string): Promise<void> {
   const blob = await urlToBlob(src);
@@ -12,9 +23,7 @@ export async function downloadImage(src: string, fileName: string): Promise<void
   if ('showSaveFilePicker' in window) {
     try {
       const ext = fileName.includes('.') ? `.${fileName.split('.').pop()}` : '.png';
-      const handle = await (
-        window as unknown as { showSaveFilePicker: (opts: any) => Promise<any> }
-      ).showSaveFilePicker({
+      const handle = await (window as unknown as WindowWithFSAccess).showSaveFilePicker({
         suggestedName: fileName,
         types: [{ description: 'Image', accept: { [blob.type]: [ext] } }],
       });

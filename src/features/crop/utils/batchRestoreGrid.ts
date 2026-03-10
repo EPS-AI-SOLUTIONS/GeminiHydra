@@ -4,6 +4,8 @@
  * Returns an array of { index, restored_base64, provider_used, processing_time_ms, thumbnail_base64 }.
  */
 
+import type { SSEEvent } from '@/shared/api/sseClient';
+
 export interface BatchCropInput {
   image_base64: string;
   mime_type: string;
@@ -40,7 +42,7 @@ export async function batchRestoreGrid(crops: BatchCropInput[], totalCropCount: 
         total_crop_count: totalCropCount,
       },
       onComplete: () => {},
-      onEvent: (event: any) => {
+      onEvent: (event: SSEEvent) => {
         if (event.event === 'complete') {
           const data = event.data as { results?: BatchCropResult[] };
           if (data.results) {
@@ -58,7 +60,7 @@ export async function batchRestoreGrid(crops: BatchCropInput[], totalCropCount: 
           }
         }
       },
-      onError: (err: any) => reject(err),
+      onError: (err: Error) => reject(err),
     });
   });
 }

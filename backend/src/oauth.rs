@@ -87,12 +87,10 @@ pub(crate) fn decrypt_token(stored: &str) -> Result<String, String> {
     }
     let cipher = Aes256Gcm::new_from_slice(&key_bytes).expect("AES-256-GCM key is always 32 bytes");
     let nonce = Nonce::from_slice(&nonce_bytes);
-    let plaintext = cipher
-        .decrypt(nonce, ciphertext.as_ref())
-        .map_err(|e| {
-            tracing::error!("Token decryption failed: {}", e);
-            "Token validation failed".to_string()
-        })?;
+    let plaintext = cipher.decrypt(nonce, ciphertext.as_ref()).map_err(|e| {
+        tracing::error!("Token decryption failed: {}", e);
+        "Token validation failed".to_string()
+    })?;
     String::from_utf8(plaintext).map_err(|e| {
         tracing::error!("Decrypted token UTF-8 error: {}", e);
         "Token validation failed".to_string()

@@ -226,7 +226,8 @@ export const useCropStore = create<CropState>()(
         set((state) => {
           if (state.redoStack.length === 0) return state;
           const newRedoStack = [...state.redoStack];
-          const nextBoxes = newRedoStack.pop()!;
+          const nextBoxes = newRedoStack.pop();
+          if (!nextBoxes) return state;
           return {
             redoStack: newRedoStack,
             undoStack: [...state.undoStack, [...state.detectionBoxes]],

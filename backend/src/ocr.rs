@@ -1076,10 +1076,10 @@ fn split_html_into_pages(html: &str) -> Vec<OcrPage> {
                 });
                 page_num += 1;
             }
-            if let Some(n_match) = cap.get(1) {
-                if let Ok(n) = n_match.as_str().parse::<usize>() {
-                    page_num = n;
-                }
+            if let Some(n_match) = cap.get(1)
+                && let Ok(n) = n_match.as_str().parse::<usize>()
+            {
+                page_num = n;
             }
             last_end = m.end();
         }
@@ -1122,10 +1122,10 @@ fn split_into_pages(text: &str) -> Vec<OcrPage> {
                 });
                 page_num += 1;
             }
-            if let Some(n_match) = cap.get(1) {
-                if let Ok(n) = n_match.as_str().parse::<usize>() {
-                    page_num = n;
-                }
+            if let Some(n_match) = cap.get(1)
+                && let Ok(n) = n_match.as_str().parse::<usize>()
+            {
+                page_num = n;
             }
             last_end = m.end();
         }

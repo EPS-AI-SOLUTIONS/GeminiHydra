@@ -140,9 +140,18 @@ async fn exec_list_issues(
 ) -> Result<String, String> {
     let owner = input.get("owner").and_then(|v| v.as_str()).unwrap_or("");
     let repo = input.get("repo").and_then(|v| v.as_str()).unwrap_or("");
-    let state_filter = match input.get("state").and_then(|v| v.as_str()).unwrap_or("open") {
+    let state_filter = match input
+        .get("state")
+        .and_then(|v| v.as_str())
+        .unwrap_or("open")
+    {
         s @ ("open" | "closed" | "all") => s,
-        other => return Err(format!("Invalid state filter: '{}'. Use open, closed, or all", other)),
+        other => {
+            return Err(format!(
+                "Invalid state filter: '{}'. Use open, closed, or all",
+                other
+            ));
+        }
     };
 
     if owner.is_empty() || repo.is_empty() {
