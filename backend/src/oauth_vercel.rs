@@ -105,6 +105,11 @@ pub async fn vercel_auth_callback(
         }
     }
 
+    // Clear OAuth state immediately after validation to prevent replay attacks
+    {
+        *state.vercel_oauth_state.write().await = None;
+    }
+
     let client_id = std::env::var("VERCEL_CLIENT_ID").unwrap_or_default();
     let client_secret = std::env::var("VERCEL_CLIENT_SECRET").unwrap_or_default();
     let redirect_uri = std::env::var("VERCEL_REDIRECT_URI")
@@ -177,10 +182,6 @@ pub async fn vercel_auth_callback(
             Json(json!({ "error": "Failed to store authentication data" })),
         )
     })?;
-
-    {
-        *state.vercel_oauth_state.write().await = None;
-    }
 
     tracing::info!("Vercel OAuth login successful");
 

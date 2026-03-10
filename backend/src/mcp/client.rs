@@ -21,6 +21,9 @@ use super::config::{self, McpServerConfig};
 /// Default timeout for tool execution (30 seconds).
 const TOOL_CALL_TIMEOUT: Duration = Duration::from_secs(30);
 
+/// Maximum allowed MCP response size (10 MB) to prevent OOM from malicious servers.
+const MAX_MCP_RESPONSE_BYTES: usize = 10 * 1024 * 1024;
+
 // ── MCP Tool descriptor ─────────────────────────────────────────────────────
 
 /// A tool discovered from an MCP server, enriched with routing metadata.
@@ -467,9 +470,20 @@ impl McpClientManager {
             ));
         }
 
-        let json: Value = response
-            .json()
+        // Guard against OOM from oversized responses
+        if let Some(len) = response.content_length() {
+            if len > MAX_MCP_RESPONSE_BYTES as u64 {
+                return Err(format!("MCP response too large: {} bytes", len));
+            }
+        }
+        let bytes = response
+            .bytes()
             .await
+            .map_err(|e| format!("MCP response read error: {}", e))?;
+        if bytes.len() > MAX_MCP_RESPONSE_BYTES {
+            return Err(format!("MCP response too large: {} bytes", bytes.len()));
+        }
+        let json: Value = serde_json::from_slice(&bytes)
             .map_err(|e| format!("MCP response is not valid JSON: {}", e))?;
 
         if let Some(error) = json.get("error") {
@@ -709,6 +723,9 @@ impl McpClientManager {
                 if n == 0 {
                     return Err("MCP stdio: EOF while reading response".to_string());
                 }
+                if buf.len() > MAX_MCP_RESPONSE_BYTES {
+                    return Err("MCP stdio response too large".to_string());
+                }
                 let buf = buf.trim();
                 if buf.is_empty() {
                     continue;
@@ -824,6 +841,15 @@ fn parse_tools_list(result: &Value) -> Vec<RawMcpTool> {
         .collect()
 }
 
+/// Check if a tool name from an MCP server contains only safe characters.
+fn is_valid_tool_name(name: &str) -> bool {
+    !name.is_empty()
+        && name.len() <= 128
+        && name
+            .chars()
+            .all(|c| c.is_ascii_alphanumeric() || c == '_' || c == '-')
+}
+
 /// Build prefixed McpTool list from raw tools.
 fn build_tool_list(
     raw_tools: &[RawMcpTool],
@@ -833,6 +859,17 @@ fn build_tool_list(
 ) -> Vec<McpTool> {
     raw_tools
         .iter()
+        .filter(|t| {
+            if !is_valid_tool_name(&t.name) {
+                tracing::warn!(
+                    "MCP: skipping tool with invalid name '{}' from server '{}'",
+                    t.name,
+                    server_name
+                );
+                return false;
+            }
+            true
+        })
         .map(|t| {
             let prefixed = format!("mcp_{}_{}", sanitized_name, t.name);
             McpTool {
@@ -993,6 +1030,19 @@ mod tests {
     fn test_truncate_str() {
         assert_eq!(truncate_str("hello", 10), "hello");
         assert_eq!(truncate_str("hello world", 5), "hello...");
+    }
+
+    #[test]
+    fn test_is_valid_tool_name() {
+        assert!(is_valid_tool_name("fetch_and_extract"));
+        assert!(is_valid_tool_name("brave-web-search"));
+        assert!(is_valid_tool_name("tool123"));
+        assert!(!is_valid_tool_name(""));
+        assert!(!is_valid_tool_name("tool with spaces"));
+        assert!(!is_valid_tool_name("tool;injection"));
+        assert!(!is_valid_tool_name("tool/path"));
+        assert!(!is_valid_tool_name(&"a".repeat(129)));
+        assert!(is_valid_tool_name(&"a".repeat(128)));
     }
 
     #[test]

@@ -104,6 +104,11 @@ pub async fn github_auth_callback(
         }
     }
 
+    // Clear OAuth state immediately after validation to prevent replay attacks
+    {
+        *state.github_oauth_state.write().await = None;
+    }
+
     let client_id = std::env::var("GITHUB_CLIENT_ID").unwrap_or_default();
     let client_secret = std::env::var("GITHUB_CLIENT_SECRET").unwrap_or_default();
 
@@ -177,11 +182,6 @@ pub async fn github_auth_callback(
             Json(json!({ "error": "Failed to store authentication data" })),
         )
     })?;
-
-    // Clear OAuth state
-    {
-        *state.github_oauth_state.write().await = None;
-    }
 
     tracing::info!("GitHub OAuth login successful");
 

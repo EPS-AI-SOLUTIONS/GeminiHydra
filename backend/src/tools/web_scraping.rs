@@ -32,6 +32,12 @@ const MAX_TOTAL_CRAWL_SECS: u64 = 180;
 const MAX_RETRY_ATTEMPTS: u32 = 3;
 const WEB_USER_AGENT: &str = "Jaskier-Bot/1.0 (AI Agent Tool)";
 
+const BLOCKED_HEADERS: &[&str] = &[
+    "host", "authorization", "cookie", "proxy-authorization",
+    "x-forwarded-for", "x-real-ip", "transfer-encoding",
+    "content-length", "connection", "upgrade",
+];
+
 const TRACKING_PARAMS: &[&str] = &[
     "utm_source",
     "utm_medium",
@@ -136,8 +142,21 @@ fn web_validate_url(raw: &str) -> Result<Url, String> {
         }
         if let Ok(ip) = host.parse::<IpAddr>() {
             let is_private = match ip {
-                IpAddr::V4(v4) => v4.is_loopback() || v4.is_private() || v4.is_link_local(),
-                IpAddr::V6(v6) => v6.is_loopback(),
+                IpAddr::V4(v4) => v4.is_loopback() || v4.is_private() || v4.is_link_local()
+                    || v4.is_broadcast() || v4.is_unspecified()
+                    || (v4.octets()[0] == 169 && v4.octets()[1] == 254),
+                IpAddr::V6(v6) => v6.is_loopback() || v6.is_unspecified()
+                    || {
+                        let seg = v6.segments();
+                        (seg[0] & 0xfe00) == 0xfc00 || (seg[0] & 0xffc0) == 0xfe80
+                    }
+                    // IPv4-mapped (::ffff:x.x.x.x)
+                    || match v6.to_ipv4_mapped() {
+                        Some(v4) => v4.is_loopback() || v4.is_private() || v4.is_link_local()
+                            || v4.is_broadcast() || v4.is_unspecified()
+                            || (v4.octets()[0] == 169 && v4.octets()[1] == 254),
+                        None => false,
+                    },
             };
             if is_private {
                 return Err(format!("Blocked private/loopback IP: {}", ip));
@@ -346,6 +365,9 @@ async fn web_fetch_with_retry(
             .header("Accept-Language", "en-US,en;q=0.9,pl;q=0.8")
             .timeout(FETCH_TIMEOUT);
         for (k, v) in custom_headers {
+            if BLOCKED_HEADERS.contains(&k.to_lowercase().as_str()) {
+                continue;
+            }
             req = req.header(k.as_str(), v.as_str());
         }
         match req.send().await {
@@ -377,6 +399,8 @@ async fn web_fetch_with_retry(
                     return Err(format!("Response too large: {} bytes", len));
                 }
                 let final_url = resp.url().clone();
+                // SSRF: validate final URL after redirects
+                web_validate_url(final_url.as_str())?;
                 let bytes = resp
                     .bytes()
                     .await

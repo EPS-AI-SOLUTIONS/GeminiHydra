@@ -209,12 +209,32 @@ pub async fn list_all_discovered_tools(db: &PgPool) -> Result<Vec<McpDiscoveredT
     .await
 }
 
+// ── Helpers ────────────────────────────────────────────────────────────────
+
+/// Redact auth_token and env_vars from server config for API responses.
+fn redact_server(s: &McpServerConfig) -> Value {
+    json!({
+        "id": s.id,
+        "name": s.name,
+        "transport": s.transport,
+        "command": s.command,
+        "args": serde_json::from_str::<Value>(&s.args).unwrap_or(json!([])),
+        "url": s.url,
+        "enabled": s.enabled,
+        "has_auth_token": s.auth_token.is_some(),
+        "env_vars": null,
+        "timeout_secs": s.timeout_secs,
+        "created_at": s.created_at.to_rfc3339(),
+        "updated_at": s.updated_at.to_rfc3339(),
+    })
+}
+
 // ── HTTP Handlers ──────────────────────────────────────────────────────────
 
 pub async fn mcp_server_list(State(state): State<AppState>) -> (StatusCode, Json<Value>) {
     match list_mcp_servers(&state.db).await {
         Ok(servers) => {
-            let val = serde_json::to_value(&servers).unwrap_or_else(|_| json!([]));
+            let val: Vec<Value> = servers.iter().map(|s| redact_server(s)).collect();
             (StatusCode::OK, Json(json!({ "servers": val })))
         }
         Err(e) => (
@@ -242,9 +262,7 @@ pub async fn mcp_server_create(
     }
     match create_mcp_server_db(&state.db, &body).await {
         Ok(server) => {
-            let val = serde_json::to_value(&server)
-                .unwrap_or_else(|_| json!({"error": "serialization failed"}));
-            (StatusCode::CREATED, Json(val))
+            (StatusCode::CREATED, Json(redact_server(&server)))
         }
         Err(e) => (
             StatusCode::INTERNAL_SERVER_ERROR,
@@ -260,9 +278,7 @@ pub async fn mcp_server_update(
 ) -> (StatusCode, Json<Value>) {
     match update_mcp_server_db(&state.db, &id, &body).await {
         Ok(Some(server)) => {
-            let val = serde_json::to_value(&server)
-                .unwrap_or_else(|_| json!({"error": "serialization failed"}));
-            (StatusCode::OK, Json(val))
+            (StatusCode::OK, Json(redact_server(&server)))
         }
         Ok(None) => (
             StatusCode::NOT_FOUND,

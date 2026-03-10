@@ -87,6 +87,11 @@ const OCR_MODEL: &str = "gemini-3.1-flash-preview";
 const MAX_INPUT_SIZE: usize = 30_000_000; // ~22 MB decoded
 const MAX_BATCH_ITEMS: usize = 10;
 
+const ALLOWED_MIME_TYPES: &[&str] = &[
+    "image/png", "image/jpeg", "image/webp", "image/gif", "image/heic",
+    "application/pdf",
+];
+
 // Table name for OCR history (compile-time, matching oauth.rs concat! pattern)
 // Note: concat!() uses inline string literals, but this constant documents the table name.
 #[allow(dead_code)]
@@ -299,6 +304,12 @@ pub async fn ocr(
             Json(json!({"error": "Input exceeds maximum size (22 MB)"})),
         ));
     }
+    if !ALLOWED_MIME_TYPES.contains(&body.mime_type.as_str()) {
+        return Err((
+            StatusCode::BAD_REQUEST,
+            Json(json!({"error": format!("Unsupported MIME type: {}. Allowed: image/png, image/jpeg, image/webp, image/gif, image/heic, application/pdf", body.mime_type)})),
+        ));
+    }
 
     let started = Instant::now();
 
@@ -391,6 +402,12 @@ pub async fn ocr_stream(
         return Err((
             StatusCode::PAYLOAD_TOO_LARGE,
             Json(json!({"error": "Input exceeds maximum size (22 MB)"})),
+        ));
+    }
+    if !ALLOWED_MIME_TYPES.contains(&body.mime_type.as_str()) {
+        return Err((
+            StatusCode::BAD_REQUEST,
+            Json(json!({"error": format!("Unsupported MIME type: {}. Allowed: image/png, image/jpeg, image/webp, image/gif, image/heic, application/pdf", body.mime_type)})),
         ));
     }
 
@@ -538,6 +555,12 @@ pub async fn ocr_batch_stream(
             return Err((
                 StatusCode::PAYLOAD_TOO_LARGE,
                 Json(json!({"error": "One or more files exceed maximum size (22 MB)"})),
+            ));
+        }
+        if !ALLOWED_MIME_TYPES.contains(&item.mime_type.as_str()) {
+            return Err((
+                StatusCode::BAD_REQUEST,
+                Json(json!({"error": format!("Unsupported MIME type: {}. Allowed: image/png, image/jpeg, image/webp, image/gif, image/heic, application/pdf", item.mime_type)})),
             ));
         }
     }

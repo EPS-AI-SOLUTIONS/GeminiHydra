@@ -29,7 +29,7 @@ pub mod tools;
 pub mod watchdog;
 
 use axum::Router;
-use axum::extract::State;
+use axum::extract::{DefaultBodyLimit, State};
 use axum::http::HeaderValue;
 use axum::middleware;
 use axum::routing::{delete, get, post};
@@ -304,8 +304,6 @@ fn create_router_inner(state: AppState, rate_limit: bool) -> Router {
             "/api/auth/vercel/logout",
             post(oauth_vercel::vercel_auth_logout),
         )
-        // MCP server endpoint (public â€” MCP spec requires open access for tool discovery)
-        .route("/mcp", post(mcp::server::mcp_handler))
         // Browser proxy management (public â€” no auth, proxy handles its own state)
         .route(
             "/api/browser-proxy/status",
@@ -403,6 +401,8 @@ fn create_router_inner(state: AppState, rate_limit: bool) -> Router {
             "/api/tokens/{service}",
             delete(service_tokens::delete_token),
         )
+        // MCP server endpoint (auth-protected â€" exposes tool execution including shell)
+        .route("/mcp", post(mcp::server::mcp_handler))
         .route_layer(middleware::from_fn_with_state(
             state.clone(),
             auth::require_auth,
@@ -438,13 +438,18 @@ fn create_router_inner(state: AppState, rate_limit: bool) -> Router {
         // Swagger UI â€” no auth required
         .merge(SwaggerUi::new("/swagger-ui").url("/api-docs/openapi.json", ApiDoc::openapi()));
 
-    // Apply global rate limit only in production (requires ConnectInfo from TCP listener)
+    // Apply global layers and rate limit
     if rate_limit {
         combined
             .layer(GovernorLayer::new(rl_default))
+            // 60 MB body limit — must be before .with_state() for Json extractor
+            .layer(DefaultBodyLimit::max(60 * 1024 * 1024))
             .with_state(state)
     } else {
-        combined.with_state(state)
+        combined
+            // 60 MB body limit — must be before .with_state() for Json extractor
+            .layer(DefaultBodyLimit::max(60 * 1024 * 1024))
+            .with_state(state)
     }
 }
 
