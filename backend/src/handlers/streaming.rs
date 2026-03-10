@@ -674,7 +674,7 @@ async fn gemini_request_with_retry(
             // Exponential backoff: base * 2^(attempt-1) + random jitter
             let backoff = GEMINI_BACKOFF_BASE * 2u32.saturating_pow(attempt - 1);
             let jitter =
-                Duration::from_millis(rand::thread_rng().gen_range(0..=GEMINI_BACKOFF_JITTER_MS));
+                Duration::from_millis(rand::rng().random_range(0..=GEMINI_BACKOFF_JITTER_MS));
             let delay = backoff + jitter;
             tracing::warn!(
                 "gemini_retry: attempt {}/{} after {:?} backoff",

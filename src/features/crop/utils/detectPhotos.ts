@@ -28,6 +28,7 @@ function at(arr: Uint8Array | Uint8ClampedArray | Int32Array | Float64Array, i: 
 export async function detectPhotosInScan(imageUrl: string, expectedCount?: number): Promise<BoundingBox[]> {
   // Higher working resolution for better gap detection
   const { canvas, width: w, height: h } = await creatingImageCanvas(imageUrl, 1200);
+  // biome-ignore lint/style/noNonNullAssertion: canvas 2D context always available
   const ctx = canvas.getContext('2d')!;
 
   const { data } = ctx.getImageData(0, 0, w, h);
@@ -385,6 +386,7 @@ function labelComponents(mask: Uint8Array, w: number, h: number): { labels: Int3
       stack.push(idx);
 
       while (stack.length > 0) {
+        // biome-ignore lint/style/noNonNullAssertion: stack.length > 0 checked by while condition
         const ci = stack.pop()!;
         const cx = ci % w;
         const cy = (ci - cx) / w;
@@ -444,7 +446,9 @@ function mergePhotoFragments(boxes: RawBox[], w: number, h: number): RawBox[] {
     didMerge = false;
     for (let i = 0; i < result.length; i++) {
       for (let j = i + 1; j < result.length; j++) {
+        // biome-ignore lint/style/noNonNullAssertion: loop-bounded array access
         const a = result[i]!;
+        // biome-ignore lint/style/noNonNullAssertion: loop-bounded array access
         const b = result[j]!;
 
         // Calculate overlap ratio in each axis
@@ -542,7 +546,9 @@ function splitLargeBox(box: RawBox, mask: Uint8Array, w: number, _h: number): Ra
   const yEdges = [0, ...hSplits, box.bh];
   const rows: RawBox[] = [];
   for (let yi = 0; yi < yEdges.length - 1; yi++) {
+    // biome-ignore lint/style/noNonNullAssertion: yi bounded by yEdges.length - 1
     const sy = box.by + yEdges[yi]!;
+    // biome-ignore lint/style/noNonNullAssertion: yi+1 bounded by yEdges.length
     const sh = yEdges[yi + 1]! - yEdges[yi]!;
     if (sh > 0) {
       rows.push({ bx: box.bx, by: sy, bw: box.bw, bh: sh });
@@ -575,7 +581,9 @@ function splitLargeBox(box: RawBox, mask: Uint8Array, w: number, _h: number): Ra
     } else {
       const xEdges = [0, ...vSplits, row.bw];
       for (let xi = 0; xi < xEdges.length - 1; xi++) {
+        // biome-ignore lint/style/noNonNullAssertion: xi bounded by xEdges.length - 1
         const sx = row.bx + xEdges[xi]!;
+        // biome-ignore lint/style/noNonNullAssertion: xi+1 bounded by xEdges.length
         const sw = xEdges[xi + 1]! - xEdges[xi]!;
         if (sw > 0) {
           subBoxes.push({ bx: sx, by: row.by, bw: sw, bh: row.bh });
@@ -695,7 +703,9 @@ function adjustToExpectedCount(
 
     for (let i = 0; i < boxes.length; i++) {
       for (let j = i + 1; j < boxes.length; j++) {
+        // biome-ignore lint/style/noNonNullAssertion: loop-bounded array access
         const a = boxes[i]!;
+        // biome-ignore lint/style/noNonNullAssertion: loop-bounded array access
         const b = boxes[j]!;
         // Distance between box centers
         const dx = a.bx + a.bw / 2 - (b.bx + b.bw / 2);
@@ -710,7 +720,9 @@ function adjustToExpectedCount(
     }
 
     // Merge bestI and bestJ
+    // biome-ignore lint/style/noNonNullAssertion: bestI/bestJ set from valid loop indices
     const a = boxes[bestI]!;
+    // biome-ignore lint/style/noNonNullAssertion: bestI/bestJ set from valid loop indices
     const b = boxes[bestJ]!;
     const minX = Math.min(a.bx, b.bx);
     const minY = Math.min(a.by, b.by);
@@ -738,6 +750,7 @@ function adjustToExpectedCount(
       }
     }
 
+    // biome-ignore lint/style/noNonNullAssertion: largestIdx set from valid loop index
     const box = boxes[largestIdx]!;
     // Try splitting with lower threshold
     const splits = splitLargeBoxAggressive(box, mask, w, h);
@@ -807,7 +820,9 @@ function splitLargeBoxAggressive(box: RawBox, mask: Uint8Array, w: number, _h: n
   const yEdges = [0, ...hSplits, box.bh];
   const rows: RawBox[] = [];
   for (let yi = 0; yi < yEdges.length - 1; yi++) {
+    // biome-ignore lint/style/noNonNullAssertion: yi bounded by yEdges.length - 1
     const sh = yEdges[yi + 1]! - yEdges[yi]!;
+    // biome-ignore lint/style/noNonNullAssertion: yi bounded by yEdges.length - 1
     if (sh > 0) rows.push({ bx: box.bx, by: box.by + yEdges[yi]!, bw: box.bw, bh: sh });
   }
   if (rows.length === 0) rows.push(box);
@@ -831,7 +846,9 @@ function splitLargeBoxAggressive(box: RawBox, mask: Uint8Array, w: number, _h: n
     } else {
       const xEdges = [0, ...vSplits, row.bw];
       for (let xi = 0; xi < xEdges.length - 1; xi++) {
+        // biome-ignore lint/style/noNonNullAssertion: xi bounded by xEdges.length - 1
         const sw = xEdges[xi + 1]! - xEdges[xi]!;
+        // biome-ignore lint/style/noNonNullAssertion: xi bounded by xEdges.length - 1
         if (sw > 0) subBoxes.push({ bx: row.bx + xEdges[xi]!, by: row.by, bw: sw, bh: row.bh });
       }
     }

@@ -168,8 +168,10 @@ export async function deduplicateCrops<T extends DedupCropInfo>(crops: T[]): Pro
       // Only compare crops from DIFFERENT source photos
       if (crops[i]?.photoIndex === crops[j]?.photoIndex) continue;
 
+      // biome-ignore lint/style/noNonNullAssertion: parallel array, same bounds as crops loop
       if (areSimilar(fingerprints[i]!, fingerprints[j]!)) {
         removedIndices.add(j);
+        // biome-ignore lint/style/noNonNullAssertion: loop-bounded array access
         removed.push({ crop: crops[j]!, duplicateOf: crops[i]! });
       }
     }

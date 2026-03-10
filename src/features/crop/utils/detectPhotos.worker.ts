@@ -163,6 +163,7 @@ function labelComponents(mask: Uint8Array, w: number, h: number): { labels: Int3
       stack.push(idx);
 
       while (stack.length > 0) {
+        // biome-ignore lint/style/noNonNullAssertion: stack.length > 0 checked by while condition
         const ci = stack.pop()!;
         const cx = ci % w;
         const cy = (ci - cx) / w;
@@ -226,7 +227,9 @@ function mergePhotoFragments(boxes: RawBox[], w: number, h: number): RawBox[] {
     didMerge = false;
     for (let i = 0; i < result.length; i++) {
       for (let j = i + 1; j < result.length; j++) {
+        // biome-ignore lint/style/noNonNullAssertion: loop-bounded array access
         const a = result[i]!;
+        // biome-ignore lint/style/noNonNullAssertion: loop-bounded array access
         const b = result[j]!;
         const overlapXStart = Math.max(a.bx, b.bx);
         const overlapXEnd = Math.min(a.bx + a.bw, b.bx + b.bw);
@@ -343,7 +346,9 @@ function splitLargeBox(box: RawBox, mask: Uint8Array, w: number, _h: number): Ra
   const yEdges = [0, ...hSplits, box.bh];
   const rows: RawBox[] = [];
   for (let yi = 0; yi < yEdges.length - 1; yi++) {
+    // biome-ignore lint/style/noNonNullAssertion: yi bounded by yEdges.length - 1
     const sh = yEdges[yi + 1]! - yEdges[yi]!;
+    // biome-ignore lint/style/noNonNullAssertion: yi bounded by yEdges.length - 1
     if (sh > 0) rows.push({ bx: box.bx, by: box.by + yEdges[yi]!, bw: box.bw, bh: sh });
   }
   if (rows.length === 0) rows.push(box);
@@ -365,7 +370,9 @@ function splitLargeBox(box: RawBox, mask: Uint8Array, w: number, _h: number): Ra
     } else {
       const xEdges = [0, ...vSplits, row.bw];
       for (let xi = 0; xi < xEdges.length - 1; xi++) {
+        // biome-ignore lint/style/noNonNullAssertion: xi bounded by xEdges.length - 1
         const sw = xEdges[xi + 1]! - xEdges[xi]!;
+        // biome-ignore lint/style/noNonNullAssertion: xi bounded by xEdges.length - 1
         if (sw > 0) subBoxes.push({ bx: row.bx + xEdges[xi]!, by: row.by, bw: sw, bh: row.bh });
       }
     }
@@ -388,7 +395,9 @@ function splitLargeBoxAggressive(box: RawBox, mask: Uint8Array, w: number, _h: n
   const yEdges = [0, ...hSplits, box.bh];
   const rows: RawBox[] = [];
   for (let yi = 0; yi < yEdges.length - 1; yi++) {
+    // biome-ignore lint/style/noNonNullAssertion: yi bounded by yEdges.length - 1
     const sh = yEdges[yi + 1]! - yEdges[yi]!;
+    // biome-ignore lint/style/noNonNullAssertion: yi bounded by yEdges.length - 1
     if (sh > 0) rows.push({ bx: box.bx, by: box.by + yEdges[yi]!, bw: box.bw, bh: sh });
   }
   if (rows.length === 0) rows.push(box);
@@ -410,7 +419,9 @@ function splitLargeBoxAggressive(box: RawBox, mask: Uint8Array, w: number, _h: n
     } else {
       const xEdges = [0, ...vSplits, row.bw];
       for (let xi = 0; xi < xEdges.length - 1; xi++) {
+        // biome-ignore lint/style/noNonNullAssertion: xi bounded by xEdges.length - 1
         const sw = xEdges[xi + 1]! - xEdges[xi]!;
+        // biome-ignore lint/style/noNonNullAssertion: xi bounded by xEdges.length - 1
         if (sw > 0) subBoxes.push({ bx: row.bx + xEdges[xi]!, by: row.by, bw: sw, bh: row.bh });
       }
     }
@@ -433,7 +444,9 @@ function adjustToExpectedCount(
       bestJ = 1;
     for (let i = 0; i < boxes.length; i++) {
       for (let j = i + 1; j < boxes.length; j++) {
+        // biome-ignore lint/style/noNonNullAssertion: loop-bounded array access
         const a = boxes[i]!,
+          // biome-ignore lint/style/noNonNullAssertion: loop-bounded array access
           b = boxes[j]!;
         const dx = a.bx + a.bw / 2 - (b.bx + b.bw / 2),
           dy = a.by + a.bh / 2 - (b.by + b.bh / 2);
@@ -445,7 +458,9 @@ function adjustToExpectedCount(
         }
       }
     }
+    // biome-ignore lint/style/noNonNullAssertion: bestI/bestJ set from valid loop indices
     const a = boxes[bestI]!,
+      // biome-ignore lint/style/noNonNullAssertion: bestI/bestJ set from valid loop indices
       b = boxes[bestJ]!;
     const minX = Math.min(a.bx, b.bx),
       minY = Math.min(a.by, b.by);
@@ -469,6 +484,7 @@ function adjustToExpectedCount(
         largestIdx = i;
       }
     }
+    // biome-ignore lint/style/noNonNullAssertion: largestIdx set from valid loop index
     const box = boxes[largestIdx]!;
     const splits = splitLargeBoxAggressive(box, mask, w, h);
     if (splits.length > 1) {
@@ -526,6 +542,7 @@ self.onmessage = async (e: MessageEvent<{ bitmap: ImageBitmap; expectedCount?: n
     }
 
     const canvas = new OffscreenCanvas(w, h);
+    // biome-ignore lint/style/noNonNullAssertion: OffscreenCanvas 2D context always available
     const ctx = canvas.getContext('2d')!;
     ctx.drawImage(bitmap, 0, 0, w, h);
 
