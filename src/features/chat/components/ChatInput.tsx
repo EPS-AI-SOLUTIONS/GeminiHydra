@@ -1,13 +1,11 @@
 import { BaseChatInput, type BaseChatInputHandle } from '@jaskier/ui';
-import { AlertCircle, ChevronDown, FolderOpen, Network, Send, StopCircle } from 'lucide-react';
+import { AlertCircle, Network } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import { memo, useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { Button } from '@/components/atoms';
 import { useViewTheme } from '@/shared/hooks/useViewTheme';
-import { cn } from '@/shared/utils/cn';
-import { useAgentStream } from '../hooks/useAgentStream';
 import { ImagePreview } from './ImagePreview';
 import { useChatFileHandler } from './useChatFileHandler';
 import { WorkingFolderPicker } from './WorkingFolderPicker';
@@ -60,7 +58,7 @@ export const ChatInput = memo(
     onPasteImage,
     onPasteFile,
     attachments = [],
-    onClearAttachment,
+    _onClearAttachment,
     className,
     disabled,
     sessionId,
@@ -68,14 +66,14 @@ export const ChatInput = memo(
   }: ChatInputProps) => {
     const { t } = useTranslation();
     const _theme = useViewTheme();
-    const fileInputRef = useRef<HTMLInputElement>(null);
+    const _fileInputRef = useRef<HTMLInputElement>(null);
     const baseInputRef = useRef<BaseChatInputHandle>(null);
     const [value, setValue] = useState('');
-    const [error, setError] = useState<string | null>(null);
+    // const [error, _setError] = useState<string | null>(null);
 
-    const [_orchMode, _setOrchMode] = useState<OrchestrationMode>('direct');
-    const [_orchPattern, _setOrchPattern] = useState<OrchestrationPattern>('auto');
-    const [_showPatternPicker, setShowPatternPicker] = useState(false);
+    // const [_orchMode, _setOrchMode] = useState<OrchestrationMode>('direct');
+    // const [_orchPattern, _setOrchPattern] = useState<OrchestrationPattern>('auto');
+    const [_showPatternPicker, _setShowPatternPicker] = useState(false);
 
     const prevKeyRef = useRef(0);
 
@@ -102,14 +100,17 @@ export const ChatInput = memo(
       [value, pendingImage, attachments.length, isStreaming, onSubmit],
     );
 
-    const { handlePaste, handleDrop, handleFileSelect } = useChatFileHandler({
+    const {
+      handlePaste,
+      handleDrop,
+      handleFileSelect: _handleFileSelect,
+    } = useChatFileHandler({
       onPasteImage,
       onPasteFile,
     });
 
     return (
       <section
-        role="region"
         aria-label="Chat input"
         className="p-4 flex flex-col relative transition-all duration-300 z-10 w-full"
         onDrop={handleDrop}
@@ -139,15 +140,14 @@ export const ChatInput = memo(
           onPaste={handlePaste as unknown as React.ClipboardEventHandler<HTMLTextAreaElement>}
           topActions={
             <div className="flex flex-col gap-2">
-              {pendingImage &&
-                (
-                  <div className="flex w-full">
+              {pendingImage && (
+                <div className="flex w-full">
                   <ImagePreview
-                    src={pendingImage.startsWith('data:') ? pendingImage : data:image/jpeg;base64,\}
+                    src={pendingImage.startsWith('data:') ? pendingImage : `data:image/jpeg;base64,${pendingImage}`}
                     onClear={onClearImage}
                   />
                 </div>
-                )}
+              )}
               {sessionId && onWorkingDirectoryChange && (
                 <WorkingFolderPicker sessionId={sessionId} onFolderChange={onWorkingDirectoryChange} />
               )}
