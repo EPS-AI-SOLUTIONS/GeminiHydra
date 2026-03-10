@@ -1,37 +1,43 @@
-// src/features/chat/components/ChatInput.tsx
-
 import { BaseChatInput, type BaseChatInputHandle } from '@jaskier/ui';
-import { AlertCircle, Network, Send, StopCircle } from 'lucide-react';
+import { AlertCircle, ChevronDown, FolderOpen, Network, Send, StopCircle } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import { memo, useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+
 import { Button } from '@/components/atoms';
 import { useViewTheme } from '@/shared/hooks/useViewTheme';
 import { cn } from '@/shared/utils/cn';
+import { useAgentStream } from '../hooks/useAgentStream';
 import { ImagePreview } from './ImagePreview';
 import { useChatFileHandler } from './useChatFileHandler';
-
 import { WorkingFolderPicker } from './WorkingFolderPicker';
 
-export type OrchestrationMode = 'direct' | 'orchestrate';
-export type OrchestrationPattern = 'auto' | 'sequential' | 'parallel' | 'loop' | 'hierarchical' | 'review' | 'security';
+export interface Attachment {
+  name: string;
+  type: string;
+  size: number;
+}
+
+export type OrchestrationMode = 'direct' | 'orchestrator';
+export type OrchestrationPattern = 'auto' | 'hierarchical' | 'sequential' | 'parallel';
 
 interface ChatInputProps {
-  isStreaming: boolean;
-  onSubmit: (prompt: string, image: string | null) => void;
-  onOrchestrate?: (prompt: string, pattern: string) => void;
+  input: string;
+  setInput: (val: string) => void;
+  isStreaming?: boolean;
+  onSubmit: (e?: React.FormEvent) => void;
+  onOrchestrate?: () => void;
   onStop?: () => void;
-  pendingImage: string | null;
-  onClearImage: () => void;
+  pendingImage?: string | null;
+  onClearImage?: () => void;
   onPasteImage?: (base64: string) => void;
   onPasteFile?: (content: string, filename: string) => void;
-  onAttachPath?: (path: string) => void;
-  promptHistory?: string[];
+  attachments?: Attachment[];
+  onClearAttachment?: (index: number) => void;
+  className?: string;
+  disabled?: boolean;
   sessionId?: string;
-  workingDirectory?: string;
-  onWorkingDirectoryChange?: (wd: string) => void;
-  initialValue?: string;
-  initialValueKey?: number;
+  onWorkingDirectoryChange?: (path: string) => void;
 }
 
 const _PATTERN_OPTIONS: Array<{ value: OrchestrationPattern; label: string }> = [
@@ -39,66 +45,61 @@ const _PATTERN_OPTIONS: Array<{ value: OrchestrationPattern; label: string }> = 
   { value: 'hierarchical', label: 'Hierarchical' },
   { value: 'sequential', label: 'Sequential' },
   { value: 'parallel', label: 'Parallel' },
-  { value: 'loop', label: 'Loop' },
-  { value: 'review', label: 'Code Review' },
-  { value: 'security', label: 'Security Review' },
 ];
 
-export const ChatInput = memo<ChatInputProps>(
+export const ChatInput = memo(
   ({
+    input,
+    setInput,
     isStreaming,
     onSubmit,
     onOrchestrate,
-    onStop,
+    _onStop,
     pendingImage,
     onClearImage,
     onPasteImage,
     onPasteFile,
-    promptHistory = [],
+    attachments = [],
+    onClearAttachment,
+    className,
+    disabled,
     sessionId,
-    workingDirectory,
     onWorkingDirectoryChange,
-    initialValue,
-    initialValueKey,
-  }) => {
+  }: ChatInputProps) => {
     const { t } = useTranslation();
     const _theme = useViewTheme();
-    const _fileInputRef = useRef<HTMLInputElement>(null);
+    const fileInputRef = useRef<HTMLInputElement>(null);
     const baseInputRef = useRef<BaseChatInputHandle>(null);
     const [value, setValue] = useState('');
     const [error, setError] = useState<string | null>(null);
 
-    const [orchMode, _setOrchMode] = useState<OrchestrationMode>('direct');
-    const [orchPattern, _setOrchPattern] = useState<OrchestrationPattern>('auto');
+    const [_orchMode, _setOrchMode] = useState<OrchestrationMode>('direct');
+    const [_orchPattern, _setOrchPattern] = useState<OrchestrationPattern>('auto');
     const [_showPatternPicker, setShowPatternPicker] = useState(false);
 
     const prevKeyRef = useRef(0);
-    useEffect(() => {
-      if (initialValueKey !== undefined && initialValueKey !== prevKeyRef.current && initialValue) {
-        prevKeyRef.current = initialValueKey;
-        setValue(initialValue);
-        baseInputRef.current?.setValue(initialValue);
-      }
-    }, [initialValue, initialValueKey]);
 
-    const canSubmit = !isStreaming && (value.trim().length > 0 || !!pendingImage);
+    useEffect(() => {
+      setValue(input);
+      prevKeyRef.current++;
+    }, [input]);
+
+    const handleChange = useCallback(
+      (val: string) => {
+        setValue(val);
+        setInput(val);
+      },
+      [setInput],
+    );
 
     const handleSubmit = useCallback(
-      (val: string) => {
-        if (!canSubmit) return;
-        const trimmed = val.trim();
-        if (orchMode === 'orchestrate' && onOrchestrate) {
-          const pattern = orchPattern === 'auto' ? 'hierarchical' : orchPattern;
-          onOrchestrate(trimmed, pattern);
-        } else {
-          onSubmit(trimmed, pendingImage);
-        }
+      (e?: React.FormEvent) => {
+        e?.preventDefault();
+        if ((!value.trim() && !pendingImage && attachments.length === 0) || isStreaming) return;
+        onSubmit(e);
         setValue('');
-        setError(null);
-        setShowPatternPicker(false);
-        baseInputRef.current?.clear();
       },
-      [canSubmit, onSubmit, onOrchestrate, pendingImage, orchMode, orchPattern],
+      [value, pendingImage, attachments.length, isStreaming, onSubmit],
     );
 
     const { handlePaste, handleDrop, handleFileSelect } = useChatFileHandler({
@@ -107,22 +108,22 @@ export const ChatInput = memo<ChatInputProps>(
     });
 
     return (
-      <section aria-label="Chat input" className="p-4 flex flex-col relative transition-all duration-300 z-10 w-full" onDrop={handleDrop}>
+      <section
+        role="region"
+        aria-label="Chat input"
+        className="p-4 flex flex-col relative transition-all duration-300 z-10 w-full"
+        onDrop={handleDrop}
+      >
         <AnimatePresence>
           {error && (
             <motion.div
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: 5 }}
-              className={cn(
-                'absolute bottom-full left-4 mb-2',
-                'flex items-center gap-2 text-sm',
-                'text-red-400 bg-red-950/90 border border-red-500/30',
-                'px-3 py-2 rounded-lg shadow-lg backdrop-blur-sm',
-              )}
+              exit={{ opacity: 0, y: -10 }}
+              className="absolute -top-12 left-4 right-4 bg-red-500/10 border border-red-500/20 text-red-400 px-4 py-2 rounded-lg text-sm flex items-center gap-2 backdrop-blur-md"
             >
-              <AlertCircle size={14} />
-              <span>{error}</span>
+              <AlertCircle size={16} />
+              {error}
             </motion.div>
           )}
         </AnimatePresence>
@@ -130,26 +131,27 @@ export const ChatInput = memo<ChatInputProps>(
         <BaseChatInput
           ref={baseInputRef}
           value={value}
-          onChange={setValue}
-          onSend={handleSubmit}
-          disabled={isStreaming}
-          placeholder={pendingImage ? t('chat.describeVisualContext') : t('chat.typeMessage')}
-          promptHistory={promptHistory}
-          onPaste={handlePaste as React.ClipboardEventHandler<HTMLTextAreaElement>}
+          onChange={handleChange}
+          onSubmit={handleSubmit}
+          placeholder={t('chat.inputPlaceholder', 'Type a message...')}
+          disabled={disabled || isStreaming}
+          className={className}
+          onPaste={handlePaste as unknown as React.ClipboardEventHandler<HTMLTextAreaElement>}
           topActions={
-            <>
-              {pendingImage && (
-                <div className="flex w-full mb-2">
-                  <ImagePreview src={pendingImage} onRemove={onClearImage} />
+            <div className="flex flex-col gap-2">
+              {pendingImage &&
+                (
+                  <div className="flex w-full">
+                  <ImagePreview
+                    src={pendingImage.startsWith('data:') ? pendingImage : data:image/jpeg;base64,\}
+                    onClear={onClearImage}
+                  />
                 </div>
-              )}
+                )}
               {sessionId && onWorkingDirectoryChange && (
-                <WorkingFolderPicker
-                  sessionId={sessionId}
-                  workingDirectory={workingDirectory ?? ''}
-                  onDirectoryChange={onWorkingDirectoryChange}
-                />
-              )
+                <WorkingFolderPicker sessionId={sessionId} onFolderChange={onWorkingDirectoryChange} />
+              )}
+            </div>
           }
           leftActions={
             onOrchestrate ? (
@@ -169,37 +171,9 @@ export const ChatInput = memo<ChatInputProps>(
               </div>
             ) : undefined
           }
-          rightActions={
-            isStreaming ? (
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                onClick={onStopGeneration}
-                className="text-red-400 hover:text-red-300 hover:bg-red-400/10 mr-1"
-                title="Zatrzymaj generowanie"
-              >
-                <StopCircle size={20} />
-              </Button>
-            ) : (
-              <Button
-                type="submit"
-                disabled={!input.trim() && !pendingImage && attachments.length === 0}
-                variant="ghost"
-                size="icon"
-                className={cn(
-                  'rounded-full transition-all duration-300 w-10 h-10',
-                  input.trim() || pendingImage || attachments.length > 0
-                    ? 'bg-matrix-accent/20 text-matrix-accent hover:bg-matrix-accent/30 hover:scale-105 shadow-[0_0_15px_rgba(var(--matrix-accent-rgb),0.3)]'
-                    : 'text-white/30',
-                )}
-              >
-                <Send size={20} strokeWidth={2.5} className="ml-0.5" />
-              </Button>
-            )
-          }
+          rightActions={isStreaming ? undefined : undefined}
         />
-      </form>
+      </section>
     );
   },
 );

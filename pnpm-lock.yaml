@@ -12,7 +12,7 @@ importers:
   .:
     dependencies:
       '@jaskier/ui':
-        specifier: github:EPS-AI-SOLUTIONS/jaskier-ui
+        specifier: https://github.com/EPS-AI-SOLUTIONS/jaskier-ui.git
         version: git+https://git@github.com:EPS-AI-SOLUTIONS/jaskier-ui.git#abd6ae15b9de2a3fc579eb5cedff298c951966be(@types/react@19.2.14)
       '@tanstack/react-query':
         specifier: ^5.90.21

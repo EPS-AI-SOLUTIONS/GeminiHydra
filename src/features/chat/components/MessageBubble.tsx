@@ -58,7 +58,7 @@ export const MessageBubble = memo<MessageBubbleProps>(({ message, isLast, isStre
   return (
     <ErrorBoundary name="MessageBubble">
       {/* biome-ignore lint/a11y/useKeyWithClickEvents: Context menu is mouse-driven */}
-      
+
       <div onContextMenu={(e) => onContextMenu?.(e, message)}>
         <BaseMessageBubble
           message={{
@@ -88,7 +88,6 @@ export const MessageBubble = memo<MessageBubbleProps>(({ message, isLast, isStre
                     key={`tool-${segment.name}-${i}`}
                     className={cn('my-2 rounded-lg border', toolDetailsClasses)}
                   >
-                    
                     <summary
                       onKeyDown={(e) => {
                         if (e.key === 'Enter' || e.key === ' ') {
