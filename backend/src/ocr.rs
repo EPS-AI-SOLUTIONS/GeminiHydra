@@ -1067,19 +1067,22 @@ fn split_html_into_pages(html: &str) -> Vec<OcrPage> {
     let mut page_num = 1;
 
     for cap in re.captures_iter(html) {
-        let m = cap.get(0).unwrap();
-        let before = html[last_end..m.start()].trim();
-        if !before.is_empty() {
-            pages.push(OcrPage {
-                page_number: page_num,
-                text: before.to_string(),
-            });
-            page_num += 1;
+        if let Some(m) = cap.get(0) {
+            let before = html[last_end..m.start()].trim();
+            if !before.is_empty() {
+                pages.push(OcrPage {
+                    page_number: page_num,
+                    text: before.to_string(),
+                });
+                page_num += 1;
+            }
+            if let Some(n_match) = cap.get(1) {
+                if let Ok(n) = n_match.as_str().parse::<usize>() {
+                    page_num = n;
+                }
+            }
+            last_end = m.end();
         }
-        if let Ok(n) = cap[1].parse::<usize>() {
-            page_num = n;
-        }
-        last_end = m.end();
     }
 
     let remaining = html[last_end..].trim();
@@ -1110,19 +1113,22 @@ fn split_into_pages(text: &str) -> Vec<OcrPage> {
     let mut page_num = 1;
 
     for cap in re.captures_iter(text) {
-        let m = cap.get(0).unwrap();
-        let before = text[last_end..m.start()].trim();
-        if !before.is_empty() {
-            pages.push(OcrPage {
-                page_number: page_num,
-                text: before.to_string(),
-            });
-            page_num += 1;
+        if let Some(m) = cap.get(0) {
+            let before = text[last_end..m.start()].trim();
+            if !before.is_empty() {
+                pages.push(OcrPage {
+                    page_number: page_num,
+                    text: before.to_string(),
+                });
+                page_num += 1;
+            }
+            if let Some(n_match) = cap.get(1) {
+                if let Ok(n) = n_match.as_str().parse::<usize>() {
+                    page_num = n;
+                }
+            }
+            last_end = m.end();
         }
-        if let Ok(n) = cap[1].parse::<usize>() {
-            page_num = n;
-        }
-        last_end = m.end();
     }
 
     // Remaining text after last marker (or entire text if no markers)

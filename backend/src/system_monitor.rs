@@ -21,7 +21,10 @@ fn get_cpu_times() -> (u64, u64, u64) {
     let mut kernel = FILETIME::default();
     let mut user = FILETIME::default();
     unsafe {
-        GetSystemTimes(Some(&mut idle), Some(&mut kernel), Some(&mut user)).unwrap();
+        if let Err(e) = GetSystemTimes(Some(&mut idle), Some(&mut kernel), Some(&mut user)) {
+            tracing::warn!("GetSystemTimes failed: {e}");
+            return (0, 0, 0);
+        }
     }
     (
         filetime_to_u64(&idle),

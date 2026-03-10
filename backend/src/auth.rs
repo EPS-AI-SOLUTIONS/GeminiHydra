@@ -32,7 +32,7 @@ pub async fn require_auth(
 
     match auth_header {
         Some(header) if header.starts_with("Bearer ") => {
-            let token = &header[7..];
+            let token = header.strip_prefix("Bearer ").unwrap_or_default();
             if bool::from(token.as_bytes().ct_eq(secret.as_bytes())) {
                 Ok(next.run(request).await)
             } else {
@@ -68,9 +68,9 @@ pub fn validate_ws_token(query: &str, auth_secret: Option<&str>) -> bool {
 /// Used internally by `require_auth` middleware.
 pub fn check_bearer_token(header_value: Option<&str>, expected_secret: &str) -> bool {
     match header_value {
-        Some(header) if header.starts_with("Bearer ") => {
-            bool::from(header.as_bytes()[7..].ct_eq(expected_secret.as_bytes()))
-        }
+        Some(header) => header
+            .strip_prefix("Bearer ")
+            .map_or(false, |token| bool::from(token.as_bytes().ct_eq(expected_secret.as_bytes()))),
         _ => false,
     }
 }
@@ -177,5 +177,16 @@ mod tests {
     #[test]
     fn bearer_case_sensitive() {
         assert!(!check_bearer_token(Some("bearer mysecret"), "mysecret"));
+    }
+
+    #[test]
+    fn bearer_non_ascii() {
+        // Non-ASCII chars in the token must not panic (old code used `header.as_bytes()[7..]`
+        // which panics on multi-byte UTF-8 boundaries; `strip_prefix` is safe).
+        let non_ascii_header = "Bearer tökèn_ünïcödé";
+        assert!(!check_bearer_token(Some(non_ascii_header), "mysecret"));
+
+        // Also verify a correct token still matches when the secret itself is ASCII
+        assert!(check_bearer_token(Some("Bearer mysecret"), "mysecret"));
     }
 }
