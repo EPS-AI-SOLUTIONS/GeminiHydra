@@ -60,7 +60,30 @@ pub async fn create_agent(
     State(state): State<AppState>,
     Json(agent): Json<WitcherAgent>,
 ) -> Json<Value> {
-    let _ = sqlx::query(
+    // Validate agent ID: alphanumeric + hyphen + underscore, 1-64 chars
+    if agent.id.is_empty()
+        || agent.id.len() > 64
+        || !agent
+            .id
+            .chars()
+            .all(|c| c.is_alphanumeric() || c == '-' || c == '_')
+    {
+        return Json(
+            json!({ "error": "Invalid agent ID. Use 1-64 alphanumeric/hyphen/underscore characters." }),
+        );
+    }
+    if agent.name.len() > 128 {
+        return Json(json!({ "error": "Agent name too long (max 128 chars)" }));
+    }
+
+    // Truncate long text fields rather than reject
+    let system_prompt: Option<String> = agent
+        .system_prompt
+        .as_ref()
+        .map(|s| s.chars().take(50_000).collect());
+    let description: String = agent.description.chars().take(2000).collect();
+
+    if let Err(e) = sqlx::query(
         "INSERT INTO gh_agents (id, name, role, tier, status, description, system_prompt, keywords, temperature) \
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)"
     )
@@ -69,12 +92,16 @@ pub async fn create_agent(
     .bind(&agent.role)
     .bind(&agent.tier)
     .bind(&agent.status)
-    .bind(&agent.description)
-    .bind(&agent.system_prompt)
+    .bind(&description)
+    .bind(&system_prompt)
     .bind(&agent.keywords)
     .bind(agent.temperature)
     .execute(&state.db)
-    .await;
+    .await
+    {
+        tracing::error!("Failed to create agent '{}': {}", agent.id, e);
+        return Json(json!({ "error": "Failed to create agent" }));
+    }
 
     state.refresh_agents().await;
     Json(json!({ "success": true }))
@@ -90,7 +117,18 @@ pub async fn update_agent(
     axum::extract::Path(id): axum::extract::Path<String>,
     Json(agent): Json<WitcherAgent>,
 ) -> Json<Value> {
-    let _ = sqlx::query(
+    if agent.name.len() > 128 {
+        return Json(json!({ "error": "Agent name too long (max 128 chars)" }));
+    }
+
+    // Truncate long text fields rather than reject
+    let system_prompt: Option<String> = agent
+        .system_prompt
+        .as_ref()
+        .map(|s| s.chars().take(50_000).collect());
+    let description: String = agent.description.chars().take(2000).collect();
+
+    if let Err(e) = sqlx::query(
         "UPDATE gh_agents SET name=$1, role=$2, tier=$3, status=$4, description=$5, system_prompt=$6, keywords=$7, temperature=$8, updated_at=NOW() \
          WHERE id=$9"
     )
@@ -98,13 +136,17 @@ pub async fn update_agent(
     .bind(&agent.role)
     .bind(&agent.tier)
     .bind(&agent.status)
-    .bind(&agent.description)
-    .bind(&agent.system_prompt)
+    .bind(&description)
+    .bind(&system_prompt)
     .bind(&agent.keywords)
     .bind(agent.temperature)
     .bind(id)
     .execute(&state.db)
-    .await;
+    .await
+    {
+        tracing::error!("Failed to update agent: {}", e);
+        return Json(json!({ "error": format!("Failed to update agent: {}", e) }));
+    }
 
     state.refresh_agents().await;
     Json(json!({ "success": true }))

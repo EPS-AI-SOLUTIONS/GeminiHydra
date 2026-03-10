@@ -41,12 +41,12 @@ pub fn validate_mcp_url(url: &str, is_prod: bool) -> Result<(), String> {
     }
 
     // Block IP literals pointing to link-local (metadata) range — always
-    if let Ok(ip) = host.parse::<std::net::IpAddr>() {
-        if let std::net::IpAddr::V4(v4) = ip {
-            if v4.octets()[0] == 169 && v4.octets()[1] == 254 {
-                return Err(format!("Blocked: MCP URL points to link-local IP {}", ip));
-            }
-        }
+    if let Ok(ip) = host.parse::<std::net::IpAddr>()
+        && let std::net::IpAddr::V4(v4) = ip
+        && v4.octets()[0] == 169
+        && v4.octets()[1] == 254
+    {
+        return Err(format!("Blocked: MCP URL points to link-local IP {}", ip));
     }
 
     // Production-only: also block localhost and private IPs
@@ -89,13 +89,13 @@ pub fn validate_mcp_url(url: &str, is_prod: bool) -> Result<(), String> {
                         ));
                     }
                     // IPv4-mapped addresses (::ffff:x.x.x.x)
-                    if let Some(v4) = v6.to_ipv4_mapped() {
-                        if v4.is_loopback() || v4.is_private() || v4.is_link_local() {
-                            return Err(format!(
-                                "Blocked: MCP URL resolves to private IPv4-mapped IP {} (production mode)",
-                                ip
-                            ));
-                        }
+                    if let Some(v4) = v6.to_ipv4_mapped()
+                        && (v4.is_loopback() || v4.is_private() || v4.is_link_local())
+                    {
+                        return Err(format!(
+                            "Blocked: MCP URL resolves to private IPv4-mapped IP {} (production mode)",
+                            ip
+                        ));
                     }
                 }
             }
@@ -357,15 +357,15 @@ fn validate_stdio_config(command: &str, env_vars: Option<&Value>) -> Result<(), 
         ));
     }
 
-    if let Some(env_val) = env_vars {
-        if let Some(obj) = env_val.as_object() {
-            for key in obj.keys() {
-                if BLOCKED_ENV_VARS.contains(&key.as_str()) {
-                    return Err(format!(
-                        "Environment variable '{}' is blocked for security reasons",
-                        key
-                    ));
-                }
+    if let Some(env_val) = env_vars
+        && let Some(obj) = env_val.as_object()
+    {
+        for key in obj.keys() {
+            if BLOCKED_ENV_VARS.contains(&key.as_str()) {
+                return Err(format!(
+                    "Environment variable '{}' is blocked for security reasons",
+                    key
+                ));
             }
         }
     }
@@ -398,7 +398,7 @@ fn redact_server(s: &McpServerConfig) -> Value {
 pub async fn mcp_server_list(State(state): State<AppState>) -> (StatusCode, Json<Value>) {
     match list_mcp_servers(&state.db).await {
         Ok(servers) => {
-            let val: Vec<Value> = servers.iter().map(|s| redact_server(s)).collect();
+            let val: Vec<Value> = servers.iter().map(redact_server).collect();
             (StatusCode::OK, Json(json!({ "servers": val })))
         }
         Err(e) => (
@@ -424,20 +424,19 @@ pub async fn mcp_server_create(
             Json(json!({ "error": "Transport must be stdio or http" })),
         );
     }
-    if body.transport == "stdio" {
-        if let Some(ref cmd) = body.command {
-            if let Err(msg) = validate_stdio_config(cmd, body.env_vars.as_ref()) {
-                return (StatusCode::BAD_REQUEST, Json(json!({ "error": msg })));
-            }
-        }
+    if body.transport == "stdio"
+        && let Some(ref cmd) = body.command
+        && let Err(msg) = validate_stdio_config(cmd, body.env_vars.as_ref())
+    {
+        return (StatusCode::BAD_REQUEST, Json(json!({ "error": msg })));
     }
     // SSRF validation for HTTP transport URLs
-    if body.transport == "http" {
-        if let Some(ref url) = body.url {
-            let is_prod = state.auth_secret.is_some();
-            if let Err(msg) = validate_mcp_url(url, is_prod) {
-                return (StatusCode::BAD_REQUEST, Json(json!({ "error": msg })));
-            }
+    if body.transport == "http"
+        && let Some(ref url) = body.url
+    {
+        let is_prod = state.auth_secret.is_some();
+        if let Err(msg) = validate_mcp_url(url, is_prod) {
+            return (StatusCode::BAD_REQUEST, Json(json!({ "error": msg })));
         }
     }
     match create_mcp_server_db(&state.db, &body).await {
@@ -477,14 +476,14 @@ pub async fn mcp_server_update(
         let effective_transport = body.transport.as_deref().unwrap_or(&current.transport);
         if effective_transport == "stdio" {
             let effective_command = body.command.as_deref().or(current.command.as_deref());
-            let effective_env = body.env_vars.as_ref().or_else(|| {
+            let effective_env = body.env_vars.as_ref().or({
                 // Parse current env_vars from DB JSON string for validation
                 None
             });
-            if let Some(cmd) = effective_command {
-                if let Err(msg) = validate_stdio_config(cmd, effective_env) {
-                    return (StatusCode::BAD_REQUEST, Json(json!({ "error": msg })));
-                }
+            if let Some(cmd) = effective_command
+                && let Err(msg) = validate_stdio_config(cmd, effective_env)
+            {
+                return (StatusCode::BAD_REQUEST, Json(json!({ "error": msg })));
             }
         }
     }

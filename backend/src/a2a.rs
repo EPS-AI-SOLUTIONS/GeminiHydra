@@ -134,15 +134,31 @@ pub async fn message_send(
     State(state): State<AppState>,
     Json(body): Json<SendMessageRequest>,
 ) -> Result<Json<Value>, (axum::http::StatusCode, Json<Value>)> {
-    let task_id = Uuid::new_v4().to_string();
-    let prompt = extract_text_from_parts(&body.message.parts);
+    // Acquire A2A concurrency permit (max 5 concurrent delegations)
+    let _permit = state
+        .a2a_semaphore
+        .clone()
+        .acquire_owned()
+        .await
+        .map_err(|_| {
+            (
+                axum::http::StatusCode::SERVICE_UNAVAILABLE,
+                Json(json!({ "error": "A2A delegation limit reached — semaphore closed" })),
+            )
+        })?;
 
-    if prompt.is_empty() {
+    let task_id = Uuid::new_v4().to_string();
+    let prompt_raw = extract_text_from_parts(&body.message.parts);
+
+    if prompt_raw.is_empty() {
         return Err((
             axum::http::StatusCode::BAD_REQUEST,
             Json(json!({ "error": "Message must contain at least one text part" })),
         ));
     }
+
+    // Truncate prompt to 10,000 chars before DB storage
+    let prompt: String = prompt_raw.chars().take(10_000).collect();
 
     // Determine target agent
     let agent_override = body
@@ -176,8 +192,8 @@ pub async fn message_send(
             save_message(&state, &task_id, "user", &prompt, None).await;
             save_message(&state, &task_id, "agent", &result, Some(&agent_id)).await;
 
-            // Update duration
-            let duration_ms = task_start.elapsed().as_millis() as i32;
+            // Update duration (clamped to i32::MAX to prevent overflow)
+            let duration_ms = task_start.elapsed().as_millis().min(i32::MAX as u128) as i32;
             let _ = sqlx::query("UPDATE gh_a2a_tasks SET duration_ms = $1 WHERE id = $2")
                 .bind(duration_ms)
                 .bind(&task_id)
@@ -186,10 +202,11 @@ pub async fn message_send(
             let _ = state.a2a_task_tx.send(());
 
             let task = build_task_response(&state, &task_id).await;
-            Json(json!({ "task": task }))
+            Ok(Json(json!({ "task": task })))
         }
         Err(e) => {
-            let duration_ms = task_start.elapsed().as_millis() as i32;
+            tracing::error!("message_send task {} failed: {}", task_id, e);
+            let duration_ms = task_start.elapsed().as_millis().min(i32::MAX as u128) as i32;
             let _ = sqlx::query(
                 "UPDATE gh_a2a_tasks SET status = 'failed', error_message = $1, duration_ms = $2, updated_at = NOW() WHERE id = $3",
             )
@@ -200,7 +217,16 @@ pub async fn message_send(
             .await;
             let _ = state.a2a_task_tx.send(());
 
-            Json(json!({ "error": e, "task_id": task_id }))
+            // Determine appropriate status code based on error type
+            let status_code = if e.contains("AI provider error") {
+                axum::http::StatusCode::BAD_GATEWAY
+            } else {
+                axum::http::StatusCode::INTERNAL_SERVER_ERROR
+            };
+            Err((
+                status_code,
+                Json(json!({ "error": "Task execution failed", "task_id": task_id })),
+            ))
         }
     }
 }
@@ -214,7 +240,37 @@ pub async fn message_stream(
     Json(body): Json<SendMessageRequest>,
 ) -> Sse<impl futures_util::Stream<Item = Result<Event, Infallible>>> {
     let (tx, rx) = tokio::sync::mpsc::channel::<Event>(64);
-    let prompt = extract_text_from_parts(&body.message.parts);
+
+    // Acquire A2A concurrency permit (max 5 concurrent delegations).
+    // The permit is moved into the spawned task so it's held for the full duration.
+    let permit = match state.a2a_semaphore.clone().acquire_owned().await {
+        Ok(p) => p,
+        Err(_) => {
+            let tx_err = tx.clone();
+            tokio::spawn(async move {
+                let _ = tx_err
+                    .send(
+                        Event::default()
+                            .event("task_status_update")
+                            .json_data(json!({ "status": "failed", "error": "A2A delegation limit reached — semaphore closed" }))
+                            .unwrap_or_default(),
+                    )
+                    .await;
+            });
+            let stream = ReceiverStream::new(rx).map(Ok::<_, Infallible>);
+            return Sse::new(stream).keep_alive(
+                axum::response::sse::KeepAlive::new()
+                    .interval(Duration::from_secs(15))
+                    .text("heartbeat"),
+            );
+        }
+    };
+
+    // Truncate prompt to 10,000 chars before DB storage
+    let prompt: String = extract_text_from_parts(&body.message.parts)
+        .chars()
+        .take(10_000)
+        .collect();
     let agent_override = body
         .agent_id
         .map(|id| (id, 0.99_f64, "A2A stream".to_string()));
@@ -238,6 +294,9 @@ pub async fn message_stream(
     let _ = state.a2a_task_tx.send(());
 
     tokio::spawn(async move {
+        // Hold the permit for the duration of the task (released on drop)
+        let _permit = permit;
+
         // Status: working
         let _ = tx
             .send(
@@ -277,12 +336,13 @@ pub async fn message_stream(
                     .await;
             }
             Err(e) => {
+                tracing::error!("message_stream task {} failed: {}", task_id_clone, e);
                 let _ = tx
                     .send(
                         Event::default()
                             .event("task_status_update")
                             .json_data(
-                                json!({ "task_id": task_id_clone, "status": "failed", "error": e }),
+                                json!({ "task_id": task_id_clone, "status": "failed", "error": "Task execution failed" }),
                             )
                             .unwrap_or_default(),
                     )
@@ -429,22 +489,28 @@ async fn execute_a2a_task(
                 .timeout(Duration::from_secs(120))
                 .send()
                 .await
-                .map_err(|e| format!("Gemini request failed: {}", e))?;
+                .map_err(|e| {
+                    tracing::error!("Gemini request failed: {}", e);
+                    "AI provider request failed".to_string()
+                })?;
 
         if !resp.status().is_success() {
             let status = resp.status();
             let text = resp.text().await.unwrap_or_default();
             state.gemini_circuit.record_failure().await;
-            // UTF-8 safe truncation
-            let preview: String = text.chars().take(500).collect();
-            return Err(format!("Gemini API error {}: {}", status, preview));
+            tracing::error!(
+                "Gemini API error {}: {}",
+                status,
+                text.chars().take(500).collect::<String>()
+            );
+            return Err(format!("AI provider error (status {})", status));
         }
 
         state.gemini_circuit.record_success().await;
-        let json_resp: Value = resp
-            .json()
-            .await
-            .map_err(|e| format!("JSON parse error: {}", e))?;
+        let json_resp: Value = resp.json().await.map_err(|e| {
+            tracing::error!("Gemini response JSON parse error: {}", e);
+            "AI provider returned invalid response".to_string()
+        })?;
 
         if let Some(usage) = json_resp.get("usageMetadata") {
             total_prompt_tokens += usage["promptTokenCount"].as_i64().unwrap_or(0);
@@ -453,7 +519,10 @@ async fn execute_a2a_task(
 
         let parts = json_resp["candidates"][0]["content"]["parts"]
             .as_array()
-            .ok_or_else(|| "No content parts in Gemini response".to_string())?;
+            .ok_or_else(|| {
+                tracing::error!("No content parts in Gemini response: {}", json_resp);
+                "AI provider returned empty response".to_string()
+            })?;
 
         let mut text_result = String::new();
         let mut function_calls = Vec::new();
@@ -469,11 +538,13 @@ async fn execute_a2a_task(
 
         // No tool calls — agent is done
         if function_calls.is_empty() {
-            let duration_ms = task_start.elapsed().as_millis() as i32;
+            let duration_ms = task_start.elapsed().as_millis().min(i32::MAX as u128) as i32;
+            // Truncate result to 50,000 chars before DB storage
+            let result_limited: String = text_result.chars().take(50_000).collect();
             let _ = sqlx::query(
                 "UPDATE gh_a2a_tasks SET status = 'completed', result = $1, duration_ms = $2, prompt_tokens = $3, completion_tokens = $4, total_tokens = $5, updated_at = NOW() WHERE id = $6",
             )
-            .bind(&text_result)
+            .bind(&result_limited)
             .bind(duration_ms)
             .bind(total_prompt_tokens)
             .bind(total_completion_tokens)
@@ -581,7 +652,7 @@ async fn execute_a2a_task(
     }
 
     // Reached max iterations
-    let duration_ms = task_start.elapsed().as_millis() as i32;
+    let duration_ms = task_start.elapsed().as_millis().min(i32::MAX as u128) as i32;
     let _ = sqlx::query(
         "UPDATE gh_a2a_tasks SET status = 'completed', result = 'Max iterations reached', duration_ms = $1, prompt_tokens = $2, completion_tokens = $3, total_tokens = $4, updated_at = NOW() WHERE id = $5",
     )
@@ -625,9 +696,11 @@ pub(crate) async fn execute_agent_call(
     let agent_id = args["agent_id"]
         .as_str()
         .ok_or("Missing required argument: agent_id")?;
-    let task_prompt = args["task"]
+    let task_prompt_raw = args["task"]
         .as_str()
         .ok_or("Missing required argument: task")?;
+    // Truncate delegated prompt to 10,000 chars
+    let task_prompt: String = task_prompt_raw.chars().take(10_000).collect();
 
     // Validate agent exists
     {
@@ -652,7 +725,7 @@ pub(crate) async fn execute_agent_call(
     .bind(&task_id)
     .bind(agent_id)
     .bind("parent") // caller context
-    .bind(task_prompt)
+    .bind(&task_prompt)
     .bind(depth as i32)
     .execute(&state.db)
     .await;
@@ -664,7 +737,7 @@ pub(crate) async fn execute_agent_call(
         "A2A call_agent delegation".to_string(),
     ));
 
-    match execute_a2a_task(state, &task_id, task_prompt, override_tuple, depth).await {
+    match execute_a2a_task(state, &task_id, &task_prompt, override_tuple, depth).await {
         Ok((_agent, result)) => Ok(result),
         Err(e) => Err(e),
     }
