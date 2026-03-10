@@ -1,14 +1,13 @@
 // src/features/memory/components/KnowledgeGraphView.tsx
 
+import { cn, EmptyState } from '@jaskier/ui';
 import { useQuery } from '@tanstack/react-query';
 import { Share2 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { EmptyState } from '@/components/molecules/EmptyState';
 import { QueryError } from '@/components/molecules/QueryError';
 import { apiGet } from '@/shared/api/client';
 import { useViewTheme } from '@/shared/hooks/useViewTheme';
-import { cn } from '@/shared/utils/cn';
 
 // ============================================================================
 // TYPES
@@ -272,7 +271,7 @@ export function KnowledgeGraphView() {
         {nodes.length === 0 && !isLoading && !isError && (
           <div className="absolute inset-0 flex items-center justify-center z-10">
             <EmptyState
-              icon={Share2}
+              icon={<Share2 />}
               title={tr('memory.noNodes', 'No knowledge nodes found')}
               description={tr('memory.noNodesDesc', 'Start a conversation to build the knowledge graph.')}
             />

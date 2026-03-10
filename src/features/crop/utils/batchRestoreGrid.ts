@@ -39,7 +39,8 @@ export async function batchRestoreGrid(crops: BatchCropInput[], totalCropCount: 
         })),
         total_crop_count: totalCropCount,
       },
-      onEvent: (event) => {
+      onComplete: () => {},
+      onEvent: (event: any) => {
         if (event.event === 'complete') {
           const data = event.data as { results?: BatchCropResult[] };
           if (data.results) {
@@ -57,7 +58,7 @@ export async function batchRestoreGrid(crops: BatchCropInput[], totalCropCount: 
           }
         }
       },
-      onError: (err) => reject(err),
+      onError: (err: any) => reject(err),
     });
   });
 }

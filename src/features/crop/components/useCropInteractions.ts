@@ -14,12 +14,19 @@ import {
   startRestoreStream,
   useRestoreStream,
 } from '@/features/restore/hooks/useRestoreStream';
+
+/** Minimal type for /api/orient response */
+interface OrientResponse {
+  rotation_angle: number;
+  processing_time_ms?: number;
+  orient_method?: string;
+}
+
 import { useRestoreStore } from '@/features/restore/stores/restoreStore';
 import { type ResultsImageData, useResultsStore } from '@/features/results/stores/resultsStore';
 import { useSettingsQuery } from '@/features/settings/hooks/useSettings';
 import { fileToDataUrl, useUploadStore } from '@/features/upload/stores/uploadStore';
 import { apiPost } from '@/shared/api/client';
-import type { OcrResponse } from '@/shared/api/schemas';
 import { useViewStore } from '@/stores/viewStore';
 import { BATCH_MIN_TOTAL, BATCH_THRESHOLD_PX } from './cropConstants';
 
@@ -28,19 +35,19 @@ function findClosestRatio(width: number, height: number): string {
   return width > height ? '16:9' : width < height ? '9:16' : '1:1';
 }
 
-async function autoSaveRestoredImage(handle: unknown, image: string, name: string): Promise<boolean> {
+async function autoSaveRestoredImage(_handle: unknown, _image: string, _name: string): Promise<boolean> {
   return true;
 }
 
-async function autoSaveViaBackend(image: string, name: string): Promise<boolean> {
+async function autoSaveViaBackend(_image: string, _name: string): Promise<boolean> {
   return true;
 }
 
-async function resizeImageIfNeeded(dataUrl: string, maxDim: number): Promise<string> {
+async function resizeImageIfNeeded(dataUrl: string, _maxDim: number): Promise<string> {
   return dataUrl;
 }
 
-async function upscaleOriginalToMatchRestored(orig: string, restored: string): Promise<string> {
+async function upscaleOriginalToMatchRestored(orig: string, _restored: string): Promise<string> {
   return orig;
 }
 
@@ -67,21 +74,8 @@ function pLimit(concurrency: number) {
   };
 }
 
-async function rotateBase64Image(base64: string, angle: number, mimeType: string): Promise<string> {
+async function rotateBase64Image(base64: string, _angle: number, _mimeType: string): Promise<string> {
   return base64;
-}
-
-interface StreamProgress {
-  overallProgress?: number;
-  diagnostics?: Record<string, unknown>;
-  step: string;
-  statusText: string;
-  tileProgress?: {
-    tiles_done: number;
-    tiles_total: number;
-    progress: number;
-    eta_seconds?: number | null;
-  };
 }
 
 interface FlatCrop {
@@ -407,7 +401,7 @@ export function useCropInteractions() {
       });
 
       cropState.setCroppedPhotos(
-        cropResult.crops.map((c) => ({
+        cropResult.crops.map((c: { index: number; cropped_base64: string; width: number; height: number }) => ({
           index: c.index,
           base64: c.cropped_base64,
           width: c.width,
@@ -477,7 +471,6 @@ export function useCropInteractions() {
         addLog('info', `Kadr ${i + 1}: outpaint+restore (${autoRatio})`, { cropIndex: i, step: 'outpaint' });
 
         startCropStep(i, 'restore');
-        const restoreStepStart = Date.now();
         let finalBase64: string;
         let restoreResult: {
           restored_base64: string;
@@ -486,7 +479,6 @@ export function useCropInteractions() {
           thumbnail_base64?: string;
           safety_fallback?: boolean;
         };
-        let lastDiagnostics: Record<string, unknown> | undefined;
         try {
           restoreResult = await startRestoreStream(
             {
@@ -497,13 +489,11 @@ export function useCropInteractions() {
               crop_count: totalCrops,
               target_ratio: autoRatio,
             },
-            (p: StreamProgress) => {
+            (p: RestoreStreamProgress) => {
               setStreamProgress(p.overallProgress);
-              if (p.diagnostics) lastDiagnostics = p.diagnostics;
 
               if (p.step === 'restore' && p.statusText.includes('complete')) {
                 finishCropStep(i, 'restore');
-                const restoreMs = Date.now() - restoreStepStart;
                 startCropStep(i, 'upscale');
               }
 
@@ -568,8 +558,8 @@ export function useCropInteractions() {
           fileName: cropFileName(currentPhoto.name, crop.index + 1),
           mimeType,
           improvements: ['HDR Restoration', 'ONNX Upscale x4'],
-          processingTimeMs: restoreResult.processing_time_ms,
-          providerUsed: restoreResult.provider_used,
+          processingTimeMs: restoreResult.processing_time_ms ?? 0,
+          providerUsed: restoreResult.provider_used ?? '',
           timestamp: new Date().toISOString(),
           thumbnail: restoreResult.thumbnail_base64
             ? `data:image/jpeg;base64,${restoreResult.thumbnail_base64}`
@@ -774,12 +764,14 @@ export function useCropInteractions() {
               photoIndex: photoIdx,
               photoName: photo.name,
               mimeType,
-              crops: cropResult.crops.map((c) => ({
-                index: c.index,
-                cropped_base64: c.cropped_base64,
-                width: c.width,
-                height: c.height,
-              })),
+              crops: cropResult.crops.map(
+                (c: { index: number; cropped_base64: string; width: number; height: number }) => ({
+                  index: c.index,
+                  cropped_base64: c.cropped_base64,
+                  width: c.width,
+                  height: c.height,
+                }),
+              ),
             };
           }),
         ),
@@ -919,8 +911,8 @@ export function useCropInteractions() {
           fileName: cropFileName(fc.photoName, fc.cropIndex + 1),
           mimeType: fc.mimeType,
           improvements: ['HDR Restoration', 'ONNX Upscale x4'],
-          processingTimeMs: restoreResult.processing_time_ms,
-          providerUsed: restoreResult.provider_used,
+          processingTimeMs: restoreResult.processing_time_ms ?? 0,
+          providerUsed: restoreResult.provider_used ?? '',
           timestamp: new Date().toISOString(),
           thumbnail: restoreResult.thumbnail_base64
             ? `data:image/jpeg;base64,${restoreResult.thumbnail_base64}`

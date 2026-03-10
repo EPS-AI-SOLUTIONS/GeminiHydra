@@ -80,16 +80,16 @@ vi.mock('@/components/atoms', () => ({
   Badge: ({ children, ...props }: { children: React.ReactNode }) => <span {...props}>{children}</span>,
   Button: ({
     children,
-    variant,
-    size,
-    leftIcon,
-    rightIcon,
-    isLoading,
-    loadingText,
+    variant: _variant,
+    size: _size,
+    leftIcon: _leftIcon,
+    rightIcon: _rightIcon,
+    isLoading: _isLoading,
+    loadingText: _loadingText,
     ...props
   }: Record<string, unknown>) => (
     <button type="button" {...props}>
-      {children}
+      {children as React.ReactNode}
     </button>
   ),
   Card: ({ children, ...props }: { children: React.ReactNode }) => <div {...props}>{children}</div>,

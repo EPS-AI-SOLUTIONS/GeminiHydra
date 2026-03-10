@@ -25,13 +25,12 @@
  * - DownloadPanel
  */
 
-import { Button } from '@jaskier/ui';
+import { Button, EmptyState } from '@jaskier/ui';
 import { CheckCircle, ImageIcon, Upload } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
-import { EmptyState } from '@/components/molecules/EmptyState';
 import { OcrResultPanel } from '@/components/molecules/OcrResultPanel';
 // @ts-expect-error
 import { useAnimateStore } from '@/features/animate/stores/animateStore';
@@ -46,9 +45,9 @@ import type { OcrResponse, SaveImageResponse } from '@/shared/api/schemas';
 
 type FileSystemDirectoryHandle = any;
 
-import { useSettingsQuery } from '@/shared/hooks/useSettings';
+import { cn } from '@jaskier/ui';
+import { useSettingsQuery } from '@/features/settings/hooks/useSettings';
 import { useViewTheme } from '@/shared/hooks/useViewTheme';
-import { cn } from '@/shared/utils/cn';
 import { saveToDirectory, urlToBlob } from '@/shared/utils/fileSystemAccess';
 import { useViewStore } from '@/stores/viewStore';
 
@@ -68,7 +67,7 @@ import { downloadImage } from './resultsUtils';
 export function ResultsView() {
   const theme = useViewTheme();
   const { t } = useTranslation();
-  const setView = useViewStore((s) => s.setView);
+  const setView = useViewStore((s) => s.setCurrentView);
 
   // Results store
   const comparisonMode = useResultsStore((s) => s.comparisonMode);
@@ -100,7 +99,7 @@ export function ResultsView() {
 
   // Backend-persisted output directory
   const { data: settingsData } = useSettingsQuery();
-  const backendOutputDir = settingsData?.output_directory ?? '';
+  const backendOutputDir = (settingsData?.output_directory as string) ?? '';
 
   // Upload store — for clearing + output directory fallback
   const clearPhotos = useUploadStore((s) => s.clearPhotos);
@@ -326,8 +325,8 @@ export function ResultsView() {
   }, [clearPhotos, restoreReset, resultsReset, setView]);
 
   // Animate photo
-  const animateReset = useAnimateStore((s) => s.reset);
-  const setAnimateSource = useAnimateStore((s) => s.setSourceImage);
+  const animateReset = useAnimateStore((s: any) => s.reset);
+  const setAnimateSource = useAnimateStore((s: any) => s.setSourceImage);
   const handleAnimate = useCallback(() => {
     if (!displayData) return;
     animateReset();
@@ -570,7 +569,7 @@ export function ResultsView() {
         data-testid="results-empty-state"
       >
         <EmptyState
-          icon={ImageIcon}
+          icon={<ImageIcon />}
           title={t('results.noResults', 'No restorations yet')}
           description={t('results.noResultsDesc', 'Upload and restore a photo to see before/after comparison results.')}
           action={

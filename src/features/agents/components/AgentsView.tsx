@@ -6,6 +6,7 @@
  * Dynamic loading, editing, and creation of new agents.
  */
 
+import { cn, EmptyState } from '@jaskier/ui';
 import {
   Bot,
   ChevronRight,
@@ -32,7 +33,6 @@ import { memo, type ReactNode, useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Badge, Button, Card } from '@/components/atoms';
 import { StatusIndicator, type StatusState } from '@/components/molecules';
-import { EmptyState } from '@/components/molecules/EmptyState';
 import { QueryError } from '@/components/molecules/QueryError';
 import { ViewSkeleton } from '@/components/molecules/ViewSkeleton';
 import {
@@ -44,7 +44,6 @@ import {
 import { type BackendLogEntry, useBackendLogs } from '@/features/logs/hooks/useLogs';
 import type { Agent } from '@/shared/api/schemas';
 import { useViewTheme } from '@/shared/hooks/useViewTheme';
-import { cn } from '@/shared/utils/cn';
 import { AgentEditor } from './AgentEditor';
 
 // ============================================================================
@@ -316,9 +315,9 @@ function TerminalLogs() {
       </div>
       <div className="flex-1 overflow-y-auto p-4 space-y-1 font-mono text-[11px]">
         {logs.length === 0 && !isLoading && <div className="text-white/30 italic">Waiting for logs...</div>}
-        {logs.map((log: BackendLogEntry, idx: number) => (
+        {logs.map((log: BackendLogEntry) => (
           <div
-            key={`${log.timestamp}-${idx}`}
+            key={`${log.timestamp}-${log.level}-${log.message?.slice(0, 30)}`}
             className="flex items-start gap-2 text-white/70 hover:bg-white/5 px-1 rounded transition-colors"
           >
             <span className="text-white/40 flex-shrink-0">{formatTimestamp(log.timestamp)}</span>
@@ -446,7 +445,7 @@ export function AgentsView(): ReactNode {
         <div className={cn('flex-1 overflow-y-auto p-6 border-r', t.border, t.scrollbar)}>
           {filteredAgents.length === 0 ? (
             <EmptyState
-              icon={Bot}
+              icon={<Bot />}
               title={tr('agents.empty', 'No agents configured')}
               description={tr('agents.emptyDesc', 'Create your first agent to start building the swarm.')}
               action={

@@ -1,7 +1,7 @@
+import { EmptyState } from '@jaskier/ui';
 import { Code2, FileSearch, FolderTree, GitBranch, Globe, Image, MessageSquare } from 'lucide-react';
 import { memo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { EmptyState } from '@/components/molecules/EmptyState';
 import { type PromptSuggestion, PromptSuggestions } from '@/components/molecules/PromptSuggestions';
 
 const GH_SUGGESTIONS: PromptSuggestion[] = [
@@ -26,7 +26,7 @@ export const ChatEmptyState = memo<ChatEmptyStateProps>(({ onSuggestionSelect })
   return (
     <div className="h-full flex flex-col items-center justify-center">
       <EmptyState
-        icon={MessageSquare}
+        icon={<MessageSquare />}
         title={t('chat.emptyState', 'Start a conversation')}
         description={t('chat.emptyStateDesc', 'Type a message or drop a file to begin.')}
       />

@@ -1,11 +1,9 @@
 import { BaseChatInput, type BaseChatInputHandle } from '@jaskier/ui';
-import { AlertCircle, Network } from 'lucide-react';
-import { AnimatePresence, motion } from 'motion/react';
+import { Network } from 'lucide-react';
 import { memo, useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { Button } from '@/components/atoms';
-import { useViewTheme } from '@/shared/hooks/useViewTheme';
 import { ImagePreview } from './ImagePreview';
 import { useChatFileHandler } from './useChatFileHandler';
 import { WorkingFolderPicker } from './WorkingFolderPicker';
@@ -59,12 +57,10 @@ export const ChatInput = memo(
     sessionId,
     workingDirectory,
     onWorkingDirectoryChange,
-    initialValue,
-    initialValueKey,
+    initialValue: _initialValue,
+    initialValueKey: _initialValueKey,
   }: ChatInputProps) => {
     const { t } = useTranslation();
-    const _theme = useViewTheme();
-    const _fileInputRef = useRef<HTMLInputElement>(null);
     const baseInputRef = useRef<BaseChatInputHandle>(null);
     const [value, setValue] = useState('');
     // const [error, _setError] = useState<string | null>(null);
@@ -88,9 +84,8 @@ export const ChatInput = memo(
       [setInput],
     );
 
-    const handleSubmit = useCallback(
-      (e?: React.FormEvent) => {
-        e?.preventDefault();
+    const handleSend = useCallback(
+      (_val: string) => {
         if ((!value.trim() && !pendingImage && attachments.length === 0) || isStreaming) return;
         onSend(value, pendingImage ?? null);
         setValue('');
@@ -113,32 +108,18 @@ export const ChatInput = memo(
         className="p-4 flex flex-col relative transition-all duration-300 z-10 w-full"
         onDrop={handleDrop}
       >
-        <AnimatePresence>
-          {error && (
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
-              className="absolute -top-12 left-4 right-4 bg-red-500/10 border border-red-500/20 text-red-400 px-4 py-2 rounded-lg text-sm flex items-center gap-2 backdrop-blur-md"
-            >
-              <AlertCircle size={16} />
-              {error}
-            </motion.div>
-          )}
-        </AnimatePresence>
-
         <BaseChatInput
           ref={baseInputRef}
           value={value}
           onChange={handleChange}
-          onSubmit={handleSubmit}
+          onSend={handleSend}
           placeholder={t('chat.inputPlaceholder', 'Type a message...')}
           disabled={disabled || isStreaming}
           className={className}
           onPaste={handlePaste as unknown as React.ClipboardEventHandler<HTMLTextAreaElement>}
           topActions={
             <div className="flex flex-col gap-2">
-              {pendingImage && (
+              {pendingImage && onClearImage && (
                 <div className="flex w-full">
                   <ImagePreview
                     src={pendingImage.startsWith('data:') ? pendingImage : `data:image/jpeg;base64,${pendingImage}`}
@@ -147,7 +128,11 @@ export const ChatInput = memo(
                 </div>
               )}
               {sessionId && onWorkingDirectoryChange && (
-                <WorkingFolderPicker sessionId={sessionId} onFolderChange={onWorkingDirectoryChange} />
+                <WorkingFolderPicker
+                  sessionId={sessionId}
+                  workingDirectory={workingDirectory ?? ''}
+                  onFolderChange={onWorkingDirectoryChange}
+                />
               )}
             </div>
           }
@@ -156,7 +141,7 @@ export const ChatInput = memo(
               <div className="relative">
                 <Button
                   variant="ghost"
-                  size="icon"
+                  size="sm"
                   className="rounded-full text-white/50 hover:text-white/80 hover:bg-white/10"
                   onClick={(e) => {
                     e.preventDefault();

@@ -12,6 +12,7 @@
  * - motion animations
  */
 
+import { cn } from '@jaskier/ui';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { Check, ClipboardList, FileText, X } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
@@ -31,10 +32,9 @@ import { toast } from 'sonner';
 import { useSettingsQuery } from '@/features/settings/hooks/useSettings';
 import { useOnlineStatus } from '@/shared/hooks/useOnlineStatus';
 import { useViewTheme } from '@/shared/hooks/useViewTheme';
-import { cn } from '@/shared/utils/cn';
 import { type Message, useViewStore } from '@/stores/viewStore';
 import { useAgentStream } from '../hooks/useAgentStream';
-import { useFileReadMutation } from '../hooks/useFiles';
+// import { useFileReadMutation } from '../hooks/useFiles';
 import type { OrchestrationState } from '../hooks/useOrchestration';
 import { usePromptHistory } from '../hooks/usePromptHistory';
 import type { AgentActivity } from './AgentActivityPanel';
@@ -115,8 +115,8 @@ export const ChatContainer = memo<ChatContainerProps>(
       }
     }, [streamMessages, currentSessionId, appendAgentToolAction]);
 
-    // File read mutation
-    const fileReadMutation = useFileReadMutation();
+    // File read mutation — kept for future use
+    // const fileReadMutation = useFileReadMutation();
 
     // Online status (#25)
     const isOnline = useOnlineStatus();
@@ -184,33 +184,6 @@ export const ChatContainer = memo<ChatContainerProps>(
     }, []);
 
     const handlePasteImage = useCallback((base64: string) => handleImageDrop(base64), [handleImageDrop]);
-
-    // ----- Attach file by path ------------------------------------------
-
-    const handleAttachPath = useCallback(
-      (path: string) => {
-        fileReadMutation.mutate(
-          { path },
-          {
-            onSuccess: (data) => {
-              if ('error' in data) {
-                toast.error(`Cannot read file: ${(data as { error: string }).error}`);
-                return;
-              }
-              const filename = path.split(/[\\/]/).pop() ?? path;
-              setTextContext(
-                `[File: ${filename}]\n\`\`\`\n${data.content}\n\`\`\`\n\nAnalyze the contents of this file.`,
-              );
-              toast.success(`File "${filename}" loaded as context${data.truncated ? ' (truncated)' : ''}`);
-            },
-            onError: (err) => {
-              toast.error(`Failed to read file: ${err.message}`);
-            },
-          },
-        );
-      },
-      [fileReadMutation],
-    );
 
     // ----- Global paste handler -----------------------------------------
 
@@ -540,13 +513,12 @@ export const ChatContainer = memo<ChatContainerProps>(
             <ChatInput
               isStreaming={isStreaming}
               onSend={handleSubmit}
-              {...(onOrchestrate !== undefined && { onOrchestrate })}
+              {...(onOrchestrate !== undefined && { onOrchestrate: () => onOrchestrate('', 'auto') })}
               {...(onStop !== undefined && { onStop })}
               pendingImage={pendingImage}
               onClearImage={() => setPendingImage(null)}
               onPasteImage={handlePasteImage}
               onPasteFile={handleTextDrop}
-              onAttachPath={handleAttachPath}
               promptHistory={promptHistory}
               sessionId={currentSessionId ?? undefined}
               workingDirectory={currentSession?.workingDirectory}
