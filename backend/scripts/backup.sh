@@ -7,7 +7,7 @@
 #   ./backup.sh /path/to/backups      # Custom backup directory
 #
 # Cron example (daily at 2 AM):
-#   0 2 * * * /path/to/GeminiHydra-v15/backend/scripts/backup.sh >> /var/log/gh-backup.log 2>&1
+#   0 2 * * * /path/to/GeminiHydra/backend/scripts/backup.sh >> /var/log/gh-backup.log 2>&1
 #
 # Environment variables (override defaults):
 #   PGHOST       — PostgreSQL host (default: localhost)

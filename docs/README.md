@@ -14,8 +14,8 @@ A 12-agent AI swarm system themed around The Witcher universe. Each agent specia
 ### 1. Clone and install
 
 ```bash
-git clone <repo-url> GeminiHydra-v15
-cd GeminiHydra-v15
+git clone <repo-url> GeminiHydra
+cd GeminiHydra
 pnpm install
 ```
 
@@ -85,7 +85,7 @@ Agents are organized into three tiers: **Commander** (strategic leads), **Coordi
 ## Project Structure
 
 ```
-GeminiHydra-v15/
+GeminiHydra/
   backend/              # Rust/Axum backend
     src/
       main.rs           # Server entrypoint (port 8081)

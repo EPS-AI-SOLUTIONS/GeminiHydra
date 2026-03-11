@@ -605,18 +605,18 @@ mod tests {
 
     #[test]
     fn test_extract_windows_path() {
-        let prompt = r"Odczytaj plik C:\Users\BIURODOM\Desktop\GeminiHydra-v15\package.json";
+        let prompt = r"Odczytaj plik C:\Users\BIURODOM\Desktop\GeminiHydra\package.json";
         let paths = extract_file_paths(prompt);
         assert!(
-            paths.contains(&r"C:\Users\BIURODOM\Desktop\GeminiHydra-v15\package.json".to_string())
+            paths.contains(&r"C:\Users\BIURODOM\Desktop\GeminiHydra\package.json".to_string())
         );
     }
 
     #[test]
     fn test_extract_windows_directory() {
-        let prompt = r"C:\Users\BIURODOM\Desktop\GeminiHydra-v15";
+        let prompt = r"C:\Users\BIURODOM\Desktop\GeminiHydra";
         let paths = extract_file_paths(prompt);
-        assert!(paths.contains(&r"C:\Users\BIURODOM\Desktop\GeminiHydra-v15".to_string()));
+        assert!(paths.contains(&r"C:\Users\BIURODOM\Desktop\GeminiHydra".to_string()));
     }
 
     #[test]

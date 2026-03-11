@@ -13,8 +13,8 @@ Part of the **Jaskier App Family** — a suite of AI-powered tools sharing code 
 
 ```bash
 # 1. Clone
-git clone https://github.com/EPS-AI-SOLUTIONS/GeminiHydra-v15.git
-cd GeminiHydra-v15
+git clone https://github.com/EPS-AI-SOLUTIONS/GeminiHydra.git
+cd GeminiHydra
 
 # 2. Frontend
 pnpm install

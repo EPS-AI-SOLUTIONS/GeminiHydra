@@ -120,7 +120,7 @@ Keep the total agent count manageable (12 is the current sweet spot). Adding age
 ```bash
 # 1. Fork and clone
 git clone <your-fork>
-cd GeminiHydra-v15
+cd GeminiHydra
 
 # 2. Install dependencies
 pnpm install

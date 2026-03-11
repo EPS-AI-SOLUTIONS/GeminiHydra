@@ -6,7 +6,7 @@
  * Features: search/filter, keyboard navigation, outside-click close.
  * Generic typing for model options.
  *
- * GeminiHydra-v15: White/neutral accent with --matrix-* CSS variables.
+ * GeminiHydra: White/neutral accent with --matrix-* CSS variables.
  */
 
 import { cn } from '@jaskier/ui';

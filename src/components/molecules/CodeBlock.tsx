@@ -8,7 +8,7 @@
  * Uses `hljs` CSS classes for syntax highlighting — works with rehype-highlight
  * when rendered inside react-markdown, and displays cleanly as plain code standalone.
  *
- * GeminiHydra-v15: White/neutral accent with --matrix-* CSS variables.
+ * GeminiHydra: White/neutral accent with --matrix-* CSS variables.
  */
 
 import { cn } from '@jaskier/ui';

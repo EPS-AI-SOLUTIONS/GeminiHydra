@@ -83,7 +83,7 @@
 - `reset_settings` uses `get_model_id()` instead of hardcoded model name
 
 ## OAuth / Authentication (Anthropic Claude MAX Plan)
-- Ported from ClaudeHydra-v4 (identical PKCE flow, adapted table prefix `gh_`)
+- Ported from ClaudeHydra (identical PKCE flow, adapted table prefix `gh_`)
 - Backend module: `backend/src/oauth.rs` â€” handlers: `auth_status`, `auth_login`, `auth_callback`, `auth_logout`
 - State: `OAuthPkceState` in `state.rs` â†’ `AppState.oauth_pkce: Arc<RwLock<Option<OAuthPkceState>>>`
 - DB table: `gh_oauth_tokens` (singleton row with `id=1` CHECK constraint)

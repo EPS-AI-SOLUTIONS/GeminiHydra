@@ -1,5 +1,5 @@
 // Jaskier Shared Pattern — Google OAuth PKCE + API Key management
-// Ported from ClaudeHydra-v4. Adapted for GeminiHydra-v15.
+// Ported from ClaudeHydra. Adapted for GeminiHydra.
 // Table: gh_google_auth (singleton). Default port: 8081.
 
 use axum::Json;

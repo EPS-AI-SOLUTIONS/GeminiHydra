@@ -6,7 +6,7 @@
  * States: online (green), offline (red/gray), pending (yellow), error (red).
  * Size variants: sm, md.
  *
- * GeminiHydra-v15: White/neutral accent theme with --matrix-success/error/warning vars.
+ * GeminiHydra: White/neutral accent theme with --matrix-success/error/warning vars.
  */
 
 import { cn } from '@jaskier/ui';
