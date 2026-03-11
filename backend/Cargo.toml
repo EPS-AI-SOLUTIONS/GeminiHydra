@@ -44,7 +44,7 @@ aes-gcm = "0.10"
 hex = "0.4"
 pdf-extract = "0.10"
 scraper = "0.25"
-zip = { version = "2", default-features = false, features = ["deflate"] }
+zip = { version = "3", default-features = false, features = ["deflate"] }
 ego-tree = "0.11"
 utoipa = { version = "5", features = ["axum_extras", "uuid", "chrono"] }
 utoipa-swagger-ui = { version = "9", features = ["axum"] }
