@@ -1,4 +1,4 @@
-// Jaskier Shared Pattern — Vercel OAuth
+﻿// Jaskier Shared Pattern — Vercel OAuth
 // Stores Vercel OAuth access tokens with AES-256-GCM encryption.
 // Reuses encrypt_token/decrypt_token from oauth.rs.
 
@@ -56,7 +56,7 @@ pub async fn vercel_auth_login(State(state): State<AppState>) -> Json<Value> {
     }
 
     let redirect_uri = std::env::var("VERCEL_REDIRECT_URI")
-        .unwrap_or_else(|_| "http://localhost:5176/api/auth/vercel/callback".to_string());
+        .unwrap_or_else(|_| "http://localhost:5177/api/auth/vercel/callback".to_string());
 
     // Generate random state
     let oauth_state = random_base64url(32);
@@ -116,7 +116,7 @@ pub async fn vercel_auth_callback(
     let client_id = std::env::var("VERCEL_CLIENT_ID").unwrap_or_default();
     let client_secret = std::env::var("VERCEL_CLIENT_SECRET").unwrap_or_default();
     let redirect_uri = std::env::var("VERCEL_REDIRECT_URI")
-        .unwrap_or_else(|_| "http://localhost:5176/api/auth/vercel/callback".to_string());
+        .unwrap_or_else(|_| "http://localhost:5177/api/auth/vercel/callback".to_string());
 
     if client_id.is_empty() || client_secret.is_empty() {
         tracing::error!("vercel oauth config: VERCEL_CLIENT_ID or VERCEL_CLIENT_SECRET not set");
@@ -229,3 +229,4 @@ async fn get_vercel_token_row(state: &AppState) -> Option<VercelTokenRow> {
     .await
     .ok()?
 }
+

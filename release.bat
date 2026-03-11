@@ -1,7 +1,7 @@
 @echo off
 setlocal enabledelayedexpansion
 cd /d "%~dp0"
-set "LIB=C:\Users\BIURODOM\Desktop\ClaudeDesktop\jaskier-lib.bat"
+set "LIB=C:\Users\BIURODOM\Desktop\JaskierWorkspace\jaskier-lib.bat"
 
 :: Init colors
 call "%LIB%" :init_colors
@@ -17,7 +17,7 @@ set "_t0=%time%"
 call "%LIB%" :log_init "geminihydra" "release"
 if not "!LOGFILE!"=="" (
     echo !CYAN![LOG]!RESET! Output also logged to !LOGFILE!
-    >"!LOGFILE!" echo === GeminiHydra v15 Release — %date% %time% ===
+    >"!LOGFILE!" echo === GeminiHydra v15 Release â€” %date% %time% ===
 )
 
 :: [#5] Git changelog since last tag/release
@@ -45,13 +45,13 @@ call "%LIB%" :env_check "%~dp0backend\.env" "DATABASE_URL GOOGLE_API_KEY ANTHROP
 :: Docker DB check
 call "%LIB%" :docker_db_check "geminihydra-pg" "%~dp0backend"
 
-:: Kill old processes FIRST (before building — exe is locked while backend runs)
-:: Phase 1: Kill by image name — catches orphaned processes from cargo run, Claude sessions, etc.
+:: Kill old processes FIRST (before building â€” exe is locked while backend runs)
+:: Phase 1: Kill by image name â€” catches orphaned processes from cargo run, Claude sessions, etc.
 taskkill /F /IM geminihydra-backend.exe >nul 2>&1 && (
     echo !YELLOW![KILL]!RESET! Killed geminihydra-backend.exe by image name
     %SYSTEMROOT%\System32\timeout.exe /t 2 /nobreak >nul
 )
-:: Phase 2: Kill by port — catches anything else holding the port
+:: Phase 2: Kill by port â€” catches anything else holding the port
 call "%LIB%" :kill_port 8081 "backend"
 call "%LIB%" :wait_port_free 8081 30
 if errorlevel 1 goto :abort
@@ -73,11 +73,11 @@ call "%LIB%" :log_rotate "jaskier-geminihydra-backend"
 powershell -NoProfile -WindowStyle Hidden -Command "Start-Process cmd -ArgumentList '/c cd /d %~dp0backend && target\release\geminihydra-backend.exe > \"%TEMP%\jaskier-geminihydra-backend.log\" 2>&1' -WindowStyle Hidden"
 %SYSTEMROOT%\System32\timeout.exe /t 2 /nobreak >nul
 
-:: [#2] Health check — fatal on failure (abort if backend doesn't start)
+:: [#2] Health check â€” fatal on failure (abort if backend doesn't start)
 call :health_check_fatal 8081 20
 if errorlevel 1 goto :abort
 
-:: [#10] Smoke test — verify backend is fully functional
+:: [#10] Smoke test â€” verify backend is fully functional
 call :smoke_test
 >>"!LOGFILE!" echo [SMOKE] completed
 
@@ -89,7 +89,7 @@ if errorlevel 1 goto :abort
 call :elapsed_between "!_fe_t0!" "!time!" "_fe_dur"
 echo !GREEN![BUILD]!RESET! Frontend built in !_fe_dur!s
 
-:: Start preview (BEFORE Chrome — so port is ready)
+:: Start preview (BEFORE Chrome â€” so port is ready)
 echo !CYAN![PREVIEW]!RESET! Starting preview on port 4176...
 call "%LIB%" :log_rotate "jaskier-geminihydra-preview"
 powershell -NoProfile -WindowStyle Hidden -Command "Start-Process cmd -ArgumentList '/c cd /d %~dp0 && npm run preview > \"%TEMP%\jaskier-geminihydra-preview.log\" 2>&1' -WindowStyle Hidden"
@@ -142,16 +142,16 @@ goto :eof
 
 :abort
 call :elapsed_between "!_t0!" "!time!" "_total_dur"
-echo !RED![ABORT]!RESET! Release failed after !_total_dur!s — fix issues above and retry.
+echo !RED![ABORT]!RESET! Release failed after !_total_dur!s â€” fix issues above and retry.
 >>"!LOGFILE!" echo === ABORT: %date% %time% (after !_total_dur!s) ===
 endlocal
 exit /b 1
 
 :: ========================================================================
-:: LOCAL SUBROUTINES (not in jaskier-lib — GeminiHydra-specific)
+:: LOCAL SUBROUTINES (not in jaskier-lib â€” GeminiHydra-specific)
 :: ========================================================================
 
-:: -- [#2] Fatal health check — aborts on timeout -------------------------
+:: -- [#2] Fatal health check â€” aborts on timeout -------------------------
 :health_check_fatal
 set "_hcf_port=%~1"
 set "_hcf_max=%~2"
@@ -166,13 +166,13 @@ if not errorlevel 1 (
     exit /b 0
 )
 if !_hcf_tries! GEQ !_hcf_max! (
-    echo !RED![FAIL]!RESET! Backend not responding after !_hcf_max!s — aborting
+    echo !RED![FAIL]!RESET! Backend not responding after !_hcf_max!s â€” aborting
     exit /b 1
 )
 %SYSTEMROOT%\System32\timeout.exe /t 1 /nobreak >nul
 goto :_hcf_loop
 
-:: -- [#10] Smoke test — quick API verification ----------------------------
+:: -- [#10] Smoke test â€” quick API verification ----------------------------
 :smoke_test
 echo !CYAN![SMOKE]!RESET! Verifying backend...
 set "_smoke_ok=1"
@@ -212,7 +212,7 @@ if "!_smoke_ok!"=="1" (
 )
 exit /b 0
 
-:: -- [#7] HTTP ready check — verify port serves HTTP (not just LISTENING) -
+:: -- [#7] HTTP ready check â€” verify port serves HTTP (not just LISTENING) -
 :http_ready
 set "_hr_port=%~1"
 set "_hr_max=%~2"
@@ -249,3 +249,4 @@ set /a "_eb_diff=_eb_s1 - _eb_s0"
 if !_eb_diff! LSS 0 set /a "_eb_diff+=86400"
 set "%_eb_var%=!_eb_diff!"
 exit /b 0
+

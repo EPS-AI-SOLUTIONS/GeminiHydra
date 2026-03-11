@@ -1,5 +1,5 @@
-{
-    "name": "geminihydra-v15",
+﻿{
+    "name": "OpenAIHydra-v1",
     "private": true,
     "version": "15.0.0",
     "type": "module",
@@ -90,3 +90,4 @@
         }
     }
 }
+

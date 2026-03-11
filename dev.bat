@@ -1,7 +1,7 @@
 @echo off
 setlocal enabledelayedexpansion
 cd /d "%~dp0"
-set "LIB=C:\Users\BIURODOM\Desktop\ClaudeDesktop\jaskier-lib.bat"
+set "LIB=C:\Users\BIURODOM\Desktop\JaskierWorkspace\jaskier-lib.bat"
 
 :: Init colors
 call "%LIB%" :init_colors
@@ -17,7 +17,7 @@ set "_t0=%time%"
 call "%LIB%" :log_init "geminihydra" "dev"
 if not "!LOGFILE!"=="" (
     echo !CYAN![LOG]!RESET! Output also logged to !LOGFILE!
-    >"!LOGFILE!" echo === GeminiHydra v15 DEV — %date% %time% ===
+    >"!LOGFILE!" echo === GeminiHydra v15 DEV â€” %date% %time% ===
 )
 
 :: [#5] Git changelog since last tag/release
@@ -70,11 +70,11 @@ echo !CYAN![START]!RESET! Backend ^(cargo run^)...
 call "%LIB%" :log_rotate "jaskier-geminihydra-backend"
 powershell -NoProfile -WindowStyle Hidden -Command "Start-Process cmd -ArgumentList '/c cd /d %~dp0backend && cargo run > \"%TEMP%\jaskier-geminihydra-backend.log\" 2>&1' -WindowStyle Hidden"
 
-:: [#2] Health check — fatal on failure (abort if backend doesn't start)
+:: [#2] Health check â€” fatal on failure (abort if backend doesn't start)
 call :health_check_fatal 8081 60
 if errorlevel 1 goto :abort
 
-:: [#10] Smoke test — verify backend is fully functional
+:: [#10] Smoke test â€” verify backend is fully functional
 call :smoke_test
 >>"!LOGFILE!" echo [SMOKE] completed
 
@@ -98,23 +98,23 @@ echo !YELLOW!To stop backend:!RESET! In another terminal:
 echo   taskkill /F /IM geminihydra-backend.exe
 echo.
 
-:: Start frontend dev server (foreground — endlocal FIRST)
+:: Start frontend dev server (foreground â€” endlocal FIRST)
 echo !CYAN![DEV]!RESET! Starting frontend dev server on port 5176...
 endlocal && cd /d "%~dp0" && npm run dev
 goto :eof
 
 :abort
 call :elapsed_between "!_t0!" "!time!" "_total_dur"
-echo !RED![ABORT]!RESET! DEV launch failed after !_total_dur!s — fix issues above and retry.
+echo !RED![ABORT]!RESET! DEV launch failed after !_total_dur!s â€” fix issues above and retry.
 >>"!LOGFILE!" echo === ABORT: %date% %time% (after !_total_dur!s) ===
 endlocal
 exit /b 1
 
 :: ========================================================================
-:: LOCAL SUBROUTINES (not in jaskier-lib — GeminiHydra DEV-specific)
+:: LOCAL SUBROUTINES (not in jaskier-lib â€” GeminiHydra DEV-specific)
 :: ========================================================================
 
-:: -- [#2] Fatal health check — aborts on timeout -------------------------
+:: -- [#2] Fatal health check â€” aborts on timeout -------------------------
 :health_check_fatal
 set "_hcf_port=%~1"
 set "_hcf_max=%~2"
@@ -129,13 +129,13 @@ if not errorlevel 1 (
     exit /b 0
 )
 if !_hcf_tries! GEQ !_hcf_max! (
-    echo !RED![FAIL]!RESET! Backend not responding after !_hcf_max!s — aborting
+    echo !RED![FAIL]!RESET! Backend not responding after !_hcf_max!s â€” aborting
     exit /b 1
 )
 %SYSTEMROOT%\System32\timeout.exe /t 1 /nobreak >nul
 goto :_hcf_loop
 
-:: -- [#10] Smoke test — quick API verification ----------------------------
+:: -- [#10] Smoke test â€” quick API verification ----------------------------
 :smoke_test
 echo !CYAN![SMOKE]!RESET! Verifying backend...
 set "_smoke_ok=1"
@@ -189,3 +189,4 @@ set /a "_eb_diff=_eb_s1 - _eb_s0"
 if !_eb_diff! LSS 0 set /a "_eb_diff+=86400"
 set "%_eb_var%=!_eb_diff!"
 exit /b 0
+

@@ -1,6 +1,6 @@
-// Jaskier Shared Pattern — Google OAuth PKCE + API Key management
-// Ported from ClaudeHydra-v4. Adapted for GeminiHydra-v15.
-// Table: gh_google_auth (singleton). Default port: 8081.
+﻿// Jaskier Shared Pattern — Google OAuth PKCE + API Key management
+// Ported from ClaudeHydra-v4. Adapted for OpenAIHydra-v1.
+// Table: gh_google_auth (singleton). Default port: 8083.
 
 use axum::Json;
 use axum::extract::{Query, State};
@@ -32,7 +32,7 @@ fn google_oauth_credentials() -> Option<(String, String)> {
 
 /// Build the redirect URI based on backend port.
 fn redirect_uri() -> String {
-    let port = std::env::var("PORT").unwrap_or_else(|_| "8081".to_string());
+    let port = std::env::var("PORT").unwrap_or_else(|_| "8083".to_string());
     format!("http://localhost:{}/api/auth/google/redirect", port)
 }
 
@@ -421,3 +421,4 @@ async fn get_auth_row(state: &AppState) -> Option<GoogleAuthRow> {
         "SELECT auth_method, access_token, refresh_token, expires_at, api_key_encrypted, user_email, user_name FROM gh_google_auth WHERE id = 1",
     ).fetch_optional(&state.db).await.ok()?
 }
+
