@@ -9,8 +9,8 @@ import { resolve } from 'path';
 export default defineConfig(({ mode }) => {
   // Load ALL env vars (empty prefix = no VITE_ filter)
   const env = loadEnv(mode, process.cwd(), '');
-  const backendUrl = env.VITE_BACKEND_URL || 'http://localhost:8082';
-  const partnerBackendUrl = env.VITE_PARTNER_BACKEND_URL || 'http://localhost:8085';
+  const backendUrl = env.VITE_BACKEND_URL || 'http://localhost:8085';
+  const partnerBackendUrl = env.VITE_PARTNER_BACKEND_URL || 'http://localhost:8082';
 
   return {
     plugins: [
@@ -55,7 +55,7 @@ export default defineConfig(({ mode }) => {
       },
     },
     server: {
-      port: 5199,
+      port: 5185,
       proxy: {
         '/api': {
           target: backendUrl,
@@ -75,7 +75,7 @@ export default defineConfig(({ mode }) => {
       },
     },
     preview: {
-      port: 4199,
+      port: 4185,
       proxy: {
         '/api': {
           target: backendUrl,

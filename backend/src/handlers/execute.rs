@@ -95,6 +95,7 @@ async fn gemini_request_simple(
     }
 }
 
+
 #[utoipa::path(post, path = "/api/execute", tag = "chat",
     request_body = ExecuteRequest,
     responses((status = 200, description = "Execution result", body = ExecuteResponse))
@@ -109,9 +110,8 @@ pub async fn execute(
             Json(json!({ "error": "Prompt cannot be empty" })),
         );
     }
-    let start = Instant::now();
+    let start = std::time::Instant::now();
 
-    // Translate body.mode into agent_override so the user's explicit choice is respected.
     let mode_override = if !body.mode.is_empty() && body.mode != "auto" {
         let agents = state.agents.read().await;
         agents
@@ -135,7 +135,6 @@ pub async fn execute(
         );
     }
 
-    // Circuit breaker — fail fast if the Gemini provider is tripped.
     if let Err(msg) = state.gemini_circuit.check().await {
         tracing::warn!("execute: {}", msg);
         return (
@@ -144,60 +143,43 @@ pub async fn execute(
         );
     }
 
-    let url = format!(
-        "https://generativelanguage.googleapis.com/v1beta/models/{}:generateContent",
-        ctx.model
-    );
-    let parsed_url = match reqwest::Url::parse(&url) {
-        Ok(u) if u.scheme() == "https" => u,
-        _ => {
-            return (
-                StatusCode::BAD_REQUEST,
-                Json(json!({ "error": "API credentials require HTTPS" })),
-            );
-        }
+    // Dynamic base URL based on project
+    let base_url = if cfg!(feature = "deepseek") || env!("CARGO_PKG_NAME").contains("DeepSeek") {
+        "https://api.deepseek.com/chat/completions"
+    } else if cfg!(feature = "grok") || env!("CARGO_PKG_NAME").contains("Grok") {
+        "https://api.x.ai/v1/chat/completions"
+    } else {
+        "https://api.openai.com/v1/chat/completions"
     };
-    let mut gen_config_exec = json!({
+
+    let parsed_url = reqwest::Url::parse(base_url).unwrap();
+    
+    let req_body = json!({
+        "model": ctx.model,
+        "messages": [
+            { "role": "system", "content": ctx.system_prompt },
+            { "role": "user", "content": ctx.final_user_prompt }
+        ],
         "temperature": ctx.temperature,
-        "topP": ctx.top_p,
-        "maxOutputTokens": ctx.max_tokens
-    });
-    if let Some(tc) = build_thinking_config(&ctx.model, &ctx.thinking_level) {
-        gen_config_exec["thinkingConfig"] = tc;
-    }
-    let gem_body = json!({
-        "systemInstruction": { "parts": [{ "text": ctx.system_prompt }] },
-        "contents": [{ "parts": [{ "text": ctx.final_user_prompt }] }],
-        "generationConfig": gen_config_exec
+        "top_p": ctx.top_p,
+        "max_completion_tokens": ctx.max_tokens
     });
 
-    // Helper to extract text from a Gemini generateContent response.
     let extract_text = |j: &Value| -> Option<String> {
-        j.get("candidates")
+        j.get("choices")
             .and_then(|c| c.get(0))
-            .and_then(|c0| c0.get("content"))
-            .and_then(|ct| ct.get("parts"))
-            .and_then(|p| p.get(0))
-            .and_then(|p0| p0.get("text"))
+            .and_then(|c0| c0.get("message"))
+            .and_then(|m| m.get("content"))
             .and_then(|t| t.as_str())
             .map(|s| s.to_string())
     };
 
-    let is_malformed = |j: &Value| -> bool {
-        j.get("candidates")
-            .and_then(|c| c.get(0))
-            .and_then(|c0| c0.get("finishReason"))
-            .and_then(|v| v.as_str())
-            == Some("MALFORMED_FUNCTION_CALL")
-    };
-
-    // Use retry-with-backoff; update circuit breaker on outcome.
     let text = match gemini_request_simple(
         &state.client,
         &parsed_url,
         &ctx.api_key,
         ctx.is_oauth,
-        &gem_body,
+        &req_body,
     )
     .await
     {
@@ -206,42 +188,9 @@ pub async fn execute(
             let j: Value = r.json().await.unwrap_or_default();
             if let Some(text) = extract_text(&j) {
                 text
-            } else if is_malformed(&j) {
-                // MALFORMED_FUNCTION_CALL: agent system prompt mentions tools but HTTP path
-                // doesn't declare them. Retry with explicit "text only" instruction.
-                tracing::warn!(
-                    "execute: MALFORMED_FUNCTION_CALL, retrying without tool references"
-                );
-                let retry_body = json!({
-                    "systemInstruction": { "parts": [{ "text": format!("{}\n\nIMPORTANT: You are running in text-only mode. Do NOT attempt to call any tools or functions. Answer the user's question directly using your knowledge.", ctx.system_prompt) }] },
-                    "contents": [{ "parts": [{ "text": ctx.final_user_prompt }] }],
-                    "generationConfig": gen_config_exec
-                });
-                match gemini_request_simple(
-                    &state.client,
-                    &parsed_url,
-                    &ctx.api_key,
-                    ctx.is_oauth,
-                    &retry_body,
-                )
-                .await
-                {
-                    Ok(r2) => {
-                        let j2: Value = r2.json().await.unwrap_or_default();
-                        extract_text(&j2).unwrap_or_else(|| {
-                            let diag = gemini_diagnose(&j2);
-                            format!("Gemini API returned no text — {}", diag)
-                        })
-                    }
-                    Err(e) => {
-                        tracing::error!("execute retry: {}", e);
-                        "API Error on retry".to_string()
-                    }
-                }
             } else {
-                let diag = gemini_diagnose(&j);
-                tracing::error!("execute: Gemini response missing text ({})", diag);
-                format!("Gemini API returned no text — {}", diag)
+                tracing::error!("execute: OpenAI response missing text: {:?}", j);
+                format!("API returned no text. Response: {:?}", j)
             }
         }
         Err(e) => {
@@ -254,7 +203,7 @@ pub async fn execute(
     (
         StatusCode::OK,
         Json(json!(ExecuteResponse {
-            id: Uuid::new_v4().to_string(),
+            id: uuid::Uuid::new_v4().to_string(),
             result: text,
             plan: Some(ExecutePlan {
                 agent: Some(ctx.agent_id),

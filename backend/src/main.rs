@@ -6,9 +6,9 @@ use tower_http::limit::RequestBodyLimitLayer;
 use tower_http::set_header::SetResponseHeaderLayer;
 use tower_http::trace::TraceLayer;
 
-use DeepSeekHydra-v1_backend::model_registry;
-use DeepSeekHydra-v1_backend::state::{AppState, LogEntry, LogRingBuffer};
-use DeepSeekHydra-v1_backend::watchdog;
+use DeepSeekHydra_v1_backend::model_registry;
+use DeepSeekHydra_v1_backend::state::{AppState, LogEntry, LogRingBuffer};
+use DeepSeekHydra_v1_backend::watchdog;
 
 async fn build_app(log_buffer: std::sync::Arc<LogRingBuffer>) -> (axum::Router, AppState) {
     dotenvy::dotenv().ok();
@@ -31,7 +31,7 @@ async fn build_app(log_buffer: std::sync::Arc<LogRingBuffer>) -> (axum::Router, 
     let state = AppState::new(pool, log_buffer).await;
 
     // ── Spawn system monitor (CPU/memory stats, refreshed every 5s) ──
-    DeepSeekHydra-v1_backend::system_monitor::spawn(state.system_monitor.clone());
+    DeepSeekHydra_v1_backend::system_monitor::spawn(state.system_monitor.clone());
 
     // CORS — explicit allowlist for Vite dev servers + Vercel production
     let cors = CorsLayer::new()
@@ -89,7 +89,7 @@ async fn build_app(log_buffer: std::sync::Arc<LogRingBuffer>) -> (axum::Router, 
     // Rate limiting is now per-endpoint inside create_router() — see lib.rs
     // WS: 10/min, /api/execute: 30/min, other: 120/min
 
-    let app = DeepSeekHydra-v1_backend::create_router(state.clone())
+    let app = DeepSeekHydra_v1_backend::create_router(state.clone())
         .layer(RequestBodyLimitLayer::new(10 * 1024 * 1024))
         .layer(cors)
         .layer(nosniff)
@@ -112,7 +112,7 @@ async fn build_app(log_buffer: std::sync::Arc<LogRingBuffer>) -> (axum::Router, 
         )
         // Correlation ID middleware — assigns UUID and returns X-Request-Id header
         .layer(axum::middleware::from_fn(
-            DeepSeekHydra-v1_backend::request_id_middleware,
+            DeepSeekHydra_v1_backend::request_id_middleware,
         ))
         .layer(CompressionLayer::new());
 
@@ -207,10 +207,10 @@ async fn main() -> anyhow::Result<()> {
     let (app, state) = build_app(log_buffer).await;
 
     // ── Browser proxy mode logging ──
-    if DeepSeekHydra-v1_backend::browser_proxy::is_enabled() {
+    if DeepSeekHydra_v1_backend::browser_proxy::is_enabled() {
         let proxy_url = std::env::var("BROWSER_PROXY_URL")
             .unwrap_or_else(|_| "http://localhost:3001".to_string());
-        let auto_restart = DeepSeekHydra-v1_backend::browser_proxy::proxy_dir().is_some();
+        let auto_restart = DeepSeekHydra_v1_backend::browser_proxy::proxy_dir().is_some();
         tracing::info!(
             "BROWSER PROXY ENABLED — routing through {} (auto-restart: {})",
             proxy_url,
