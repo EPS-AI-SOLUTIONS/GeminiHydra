@@ -1,5 +1,5 @@
 ﻿{
-    "name": "OpenAIHydra-v1",
+    "name": "openaihydra-v1",
     "private": true,
     "version": "15.0.0",
     "type": "module",
