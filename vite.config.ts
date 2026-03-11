@@ -1,9 +1,9 @@
-/// <reference types="vitest/config" />
+﻿/// <reference types="vitest/config" />
 import { defineConfig, loadEnv } from 'vite';
 import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
 import { VitePWA } from 'vite-plugin-pwa';
-// import { visualizer } from 'rollup-plugin-visualizer';
+import { visualizer } from 'rollup-plugin-visualizer';
 import { resolve } from 'path';
 
 export default defineConfig(({ mode }) => {
@@ -42,11 +42,11 @@ export default defineConfig(({ mode }) => {
           ],
         },
       }),
-      // #38 — Bundle size tracking: always generate stats.html on build, auto-open in analyze mode
+      // #38 â€” Bundle size tracking: always generate stats.html on build, auto-open in analyze mode
       ...(mode === 'production'
-        ? [visualizer({ open: false, filename: 'dist/stats.html', gzipSize: true, brotliSize: true })]
+        ? [(visualizer as any)({ open: false, filename: 'dist/stats.html', gzipSize: true, brotliSize: true })]
         : mode === 'analyze'
-          ? [visualizer({ open: true, filename: 'dist/stats.html', gzipSize: true, brotliSize: true })]
+          ? [(visualizer as any)({ open: true, filename: 'dist/stats.html', gzipSize: true, brotliSize: true })]
           : []),
     ],
     resolve: {
@@ -118,3 +118,5 @@ export default defineConfig(({ mode }) => {
     },
   };
 });
+
+
