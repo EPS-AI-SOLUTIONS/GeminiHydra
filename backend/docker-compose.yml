@@ -1,18 +1,18 @@
-name: geminihydra
+name: deepseekhydra-v1
 
 services:
   db:
     image: postgres:17-alpine
     environment:
-      POSTGRES_DB: geminihydra
-      POSTGRES_USER: gemini
-      POSTGRES_PASSWORD: gemini_local
+      POSTGRES_DB: deepseekhydra-v1
+      POSTGRES_USER: deepseek
+      POSTGRES_PASSWORD: deepseek_local
     ports:
       - "5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U gemini -d geminihydra"]
+      test: ["CMD-SHELL", "pg_isready -U deepseek -d deepseekhydra-v1"]
       interval: 5s
       timeout: 3s
       retries: 5
@@ -22,7 +22,7 @@ services:
     ports:
       - "8081:8081"
     environment:
-      DATABASE_URL: postgres://gemini:gemini_local@db:5432/geminihydra
+      DATABASE_URL: postgres://deepseek:deepseek_local@db:5432/deepseekhydra-v1
       GOOGLE_API_KEY: ${GOOGLE_API_KEY}
       ADK_SIDECAR_URL: http://adk:8000
       PORT: "8081"
@@ -36,7 +36,7 @@ services:
       - "8000:8000"
     environment:
       GOOGLE_API_KEY: ${GOOGLE_API_KEY}
-      DATABASE_URL: postgres://gemini:gemini_local@db:5432/geminihydra
+      DATABASE_URL: postgres://deepseek:deepseek_local@db:5432/deepseekhydra-v1
       RUST_BACKEND_URL: http://backend:8081
       PORT: "8000"
     depends_on:
