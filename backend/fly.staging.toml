@@ -1,19 +1,19 @@
-# GeminiHydra v15 — Staging deployment config
+﻿# GrokHydra-v1 v15 — Staging deployment config
 # Usage: fly deploy --config fly.staging.toml
 #
 # This config targets a separate staging app with its own database.
 # Secrets must be configured separately for the staging app:
-#   fly secrets set DATABASE_URL=... --app geminihydra-v15-staging
-#   fly secrets set GOOGLE_API_KEY=... --app geminihydra-v15-staging
-#   fly secrets set ANTHROPIC_API_KEY=... --app geminihydra-v15-staging
+#   fly secrets set DATABASE_URL=... --app GrokHydra-v1-staging
+#   fly secrets set GOOGLE_API_KEY=... --app GrokHydra-v1-staging
+#   fly secrets set ANTHROPIC_API_KEY=... --app GrokHydra-v1-staging
 
-app = 'geminihydra-v15-staging'
+app = 'GrokHydra-v1-staging'
 primary_region = 'arn'
 
 [build]
 
 [http_service]
-  internal_port = 8081
+  internal_port = 8084
   force_https = true
   auto_stop_machines = 'stop'
   auto_start_machines = true
@@ -27,3 +27,4 @@ primary_region = 'arn'
   memory = '256mb'
   cpu_kind = 'shared'
   cpus = 1
+

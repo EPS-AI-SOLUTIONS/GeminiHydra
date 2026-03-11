@@ -1,4 +1,4 @@
-// GeminiHydra v15 — Google OAuth PKCE + API Key management
+﻿// GrokHydra-v1 v15 — Google OAuth PKCE + API Key management
 // Two auth methods: (1) Google API key stored encrypted in DB, (2) Google OAuth 2.0 PKCE
 // Priority: DB OAuth token → DB API key → GOOGLE_API_KEY env var
 
@@ -139,7 +139,7 @@ fn google_oauth_credentials() -> Option<(String, String)> {
 
 /// Build the redirect URI based on backend port.
 fn redirect_uri() -> String {
-    let port = std::env::var("PORT").unwrap_or_else(|_| "8081".to_string());
+    let port = std::env::var("PORT").unwrap_or_else(|_| "8084".to_string());
     format!("http://localhost:{}/api/auth/google/redirect", port)
 }
 
@@ -423,7 +423,7 @@ pub async fn google_redirect(
         <div style="text-align:center">
         <h2 style="font-size:2rem">&#10003; Connected</h2>
         <p>Signed in as <strong>{}</strong></p>
-        <p style="color:#888">You can close this tab and return to GeminiHydra.</p>
+        <p style="color:#888">You can close this tab and return to GrokHydra-v1.</p>
         </div></body></html>"#,
         html_escape(&user_email)
     ))
@@ -739,3 +739,4 @@ async fn get_auth_row(state: &AppState) -> Option<GoogleAuthRow> {
     .await
     .ok()?
 }
+

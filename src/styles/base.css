@@ -1,4 +1,4 @@
-/* Jaskier Design System — Shared Base */
+﻿/* Jaskier Design System — Shared Base */
 /* Identical across GeminiHydra, ClaudeHydra, Tissaia */
 /* Do NOT add app-specific styles here */
 
@@ -46,10 +46,10 @@
   --matrix-bg-primary: #0f1419;
   --matrix-bg-secondary: #0a0e13;
   --matrix-bg-tertiary: #141a21;
-  --matrix-accent: #ffffff;
-  --matrix-accent-dim: #d1d5db;
-  --matrix-accent-hover: #f3f4f6;
-  --matrix-accent-glow: #e5e7eb;
+  --matrix-accent: #ef4444;
+  --matrix-accent-dim: #dc2626;
+  --matrix-accent-hover: #f87171;
+  --matrix-accent-glow: #dc2626;
   --matrix-text: #e5e7eb;
   --matrix-text-primary: #e5e7eb;
   --matrix-text-secondary: #9ca3af;
@@ -100,10 +100,10 @@
   --matrix-bg-primary: #f5f8f5;
   --matrix-bg-secondary: #e8ede8;
   --matrix-bg-tertiary: #dce5dc;
-  --matrix-accent: #2d6a4f;
-  --matrix-accent-dim: #40916c;
-  --matrix-accent-hover: #1b4332;
-  --matrix-accent-glow: #2d6a4f;
+  --matrix-accent: #dc2626;
+  --matrix-accent-dim: #ef4444;
+  --matrix-accent-hover: #b91c1c;
+  --matrix-accent-glow: #dc2626;
   --matrix-text: #1a2a1a;
   --matrix-text-primary: #1a2a1a;
   --matrix-text-secondary: #2d3d2d;
@@ -827,3 +827,4 @@ pre,
   border-top: 1px solid var(--matrix-border);
   margin: 0.75rem 0;
 }
+

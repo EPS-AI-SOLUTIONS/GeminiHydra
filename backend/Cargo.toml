@@ -1,5 +1,5 @@
-[package]
-name = "geminihydra-backend"
+﻿[package]
+name = "GrokHydra-v1-backend"
 version = "15.0.0"
 edition = "2024"
 
@@ -69,3 +69,4 @@ http-body-util = "0.1"
 lto = "thin"
 strip = true
 opt-level = 3
+

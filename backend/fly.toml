@@ -1,10 +1,10 @@
-app = 'geminihydra-v15-backend'
+﻿app = 'GrokHydra-v1-backend'
 primary_region = 'arn'
 
 [build]
 
 [http_service]
-  internal_port = 8081
+  internal_port = 8084
   force_https = true
   auto_stop_machines = 'stop'
   auto_start_machines = true
@@ -18,3 +18,4 @@ primary_region = 'arn'
   memory = '512mb'
   cpu_kind = 'shared'
   cpus = 1
+

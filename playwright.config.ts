@@ -1,4 +1,4 @@
-import { defineConfig, devices } from '@playwright/test';
+﻿import { defineConfig, devices } from '@playwright/test';
 
 export default defineConfig({
   testDir: './e2e',
@@ -9,7 +9,7 @@ export default defineConfig({
   reporter: 'html',
   timeout: 30_000,
   use: {
-    baseURL: 'http://localhost:5176',
+    baseURL: 'http://localhost:5178',
     trace: 'on-first-retry',
     actionTimeout: 10_000,
     screenshot: 'only-on-failure',
@@ -22,7 +22,8 @@ export default defineConfig({
   ],
   webServer: {
     command: 'pnpm dev',
-    url: 'http://localhost:5176',
+    url: 'http://localhost:5178',
     reuseExistingServer: !process.env.CI,
   },
 });
+
