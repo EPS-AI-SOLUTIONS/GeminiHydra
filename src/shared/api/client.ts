@@ -1,9 +1,9 @@
-/** Jaskier Shared Pattern */
+﻿/** Jaskier Shared Pattern */
 // src/shared/api/client.ts
 /**
- * GeminiHydra v15 - Typed API Client
+ * DeepSeekHydra-v1 v15 - Typed API Client
  * ====================================
- * Fetch wrapper for the Rust/Axum backend on port 8081.
+ * Fetch wrapper for the Rust/Axum backend on port 8085.
  * Provides typed GET/POST/PATCH/DELETE with ApiError handling
  * and automatic retry with exponential backoff for network failures.
  */
@@ -15,7 +15,7 @@ const isLocalhost =
   typeof window !== 'undefined' &&
   (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
 export const BASE_URL =
-  env.VITE_BACKEND_URL ?? (import.meta.env.PROD && !isLocalhost ? 'https://geminihydra-v15-backend.fly.dev' : '');
+  env.VITE_BACKEND_URL ?? (import.meta.env.PROD && !isLocalhost ? 'https://DeepSeekHydra-v1-backend.fly.dev' : '');
 const AUTH_SECRET = env.VITE_AUTH_SECRET;
 
 const MAX_RETRIES = 3;
@@ -286,3 +286,4 @@ export async function checkHealth(): Promise<HealthStatus> {
     return { ready: false };
   }
 }
+
