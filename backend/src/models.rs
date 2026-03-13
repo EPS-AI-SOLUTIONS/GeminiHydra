@@ -19,8 +19,11 @@ pub use jaskier_core::handlers::system::{
 
 // ── Shared protocol types from jaskier-core models module ─────────────────
 pub use jaskier_core::models::{
-    AgentMessage, AgentProfile, ClassifyRequest, ClassifyResponse, CreateAgentProfile,
-    ExecutePlan, ExecuteRequest, ExecuteResponse, FileEntryResponse, FileListRequest,
-    FileListResponse, FileReadRequest, FileReadResponse, GeminiModelInfo, GeminiModelsResponse,
-    GeminiStreamRequest, ParallelAgentStatus, WitcherAgent, WsClientMessage, WsServerMessage,
+    AddMessageRequest, AgentMessage, AgentProfile, ApiKeyRequest, ChatRequest, ChatRequestMessage,
+    ChatResponse, ClassifyRequest, ClassifyResponse, CreateAgentProfile, ExecutePlan,
+    ExecuteRequest, ExecuteResponse, FileEntryResponse, FileListRequest, FileListResponse,
+    FileReadRequest, FileReadResponse, GeminiModelInfo, GeminiModelsResponse, GeminiStreamRequest,
+    HistoryEntry, MessageRow, MetricItem, NetworkMetric, ParallelAgentStatus,
+    SystemMetricsResponse, ToolDefinition, ToolInteractionInfo, ToolInteractionRow, UsageInfo,
+    WitcherAgent, WsClientMessage, WsServerMessage,
 };

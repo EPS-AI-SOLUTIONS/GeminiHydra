@@ -75,3 +75,4 @@ test-helpers = []
 tower = { workspace = true }
 http = { workspace = true }
 http-body-util = { workspace = true }
+wiremock = { workspace = true }
