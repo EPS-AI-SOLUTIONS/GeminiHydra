@@ -1,13 +1,8 @@
 // Jaskier Shared Pattern -- mcp
 //! MCP (Model Context Protocol) support — client + server.
 //!
-//! **Client** (`McpClientManager`): connects to external MCP servers, discovers
-//! their tools, and proxies `tools/call` requests so Gemini agents can use them.
-//!
-//! **Server** (`mcp_handler`): exposes GeminiHydra's 31+ native tools as an MCP
-//! endpoint that external clients can call via JSON-RPC 2.0 over HTTP.
-//!
-//! **Config** (`config`): CRUD for `gh_mcp_servers` + `gh_mcp_discovered_tools`.
+//! **Client** and **Config**: re-exported from `jaskier-core` shared crate.
+//! **Server** (`mcp_handler`): app-specific, lives in `server.rs`.
 //!
 //! Protocol: JSON-RPC 2.0 over HTTP (lightweight, no stdio transport needed).
 //! Spec: <https://spec.modelcontextprotocol.io/2024-11-05/>
@@ -26,24 +21,24 @@ pub fn mcp_router(state: AppState) -> Router<AppState> {
     Router::new()
         .route(
             "/api/mcp/servers",
-            get(config::mcp_server_list).post(config::mcp_server_create),
+            get(config::mcp_server_list::<AppState>).post(config::mcp_server_create::<AppState>),
         )
         .route(
             "/api/mcp/servers/{id}",
-            patch(config::mcp_server_update).delete(config::mcp_server_delete),
+            patch(config::mcp_server_update::<AppState>).delete(config::mcp_server_delete::<AppState>),
         )
         .route(
             "/api/mcp/servers/{id}/connect",
-            post(config::mcp_server_connect),
+            post(config::mcp_server_connect::<AppState>),
         )
         .route(
             "/api/mcp/servers/{id}/disconnect",
-            post(config::mcp_server_disconnect),
+            post(config::mcp_server_disconnect::<AppState>),
         )
-        .route("/api/mcp/servers/{id}/tools", get(config::mcp_server_tools))
-        .route("/api/mcp/tools", get(config::mcp_all_tools))
+        .route("/api/mcp/servers/{id}/tools", get(config::mcp_server_tools::<AppState>))
+        .route("/api/mcp/tools", get(config::mcp_all_tools::<AppState>))
         .route_layer(middleware::from_fn_with_state(
             state.clone(),
-            auth::require_auth,
+            auth::require_auth::<AppState>,
         ))
 }

@@ -1,108 +1,29 @@
 /**
- * viewStore — Zustand store for SPA view routing, sidebar, sessions & tabs.
- *
- * v2: Browser-style ChatTab system ported from GeminiHydra.
- * Each tab links to a session via sessionId. Supports pin, reorder,
- * context menu close, and per-session streaming isolation.
- * Refactored to use the Slice Pattern for better maintainability.
+ * viewStore — GeminiHydra thin shell
+ * ====================================
+ * Initializes @jaskier/hydra-app view store with GeminiHydra-specific config,
+ * then re-exports all store hooks/types. The single store instance is shared
+ * between app code and hydra-app components.
  */
 
-import { useCallback } from 'react';
-import { create } from 'zustand';
-import { devtools, persist } from 'zustand/middleware';
-import { useShallow } from 'zustand/react/shallow';
-import type { ChatSession, ChatTab } from '@/shared/types/store';
-import { type ChatSlice, createChatSlice } from './slices/chatSlice';
-import { createSessionSlice, type SessionSlice } from './slices/sessionSlice';
-import { createViewSlice, type ViewSlice } from './slices/viewSlice';
+import { initViewStore } from '@jaskier/hydra-app/stores';
 
-// Re-export shared types so existing imports from '@/stores/viewStore' keep working
-export type { ChatSession, ChatTab } from '@/shared/types/store';
+// Initialize the shared view store — MUST happen before any component renders
+initViewStore({
+  storageKey: 'geminihydra-view',
+  devtoolsName: 'GeminiHydra/ViewStore',
+});
 
-// ============================================================================
-// TYPES
-// ============================================================================
+// Re-export everything from hydra-app's stores (single source of truth)
+export {
+  useViewStore,
+  useCurrentSession,
+  useCurrentChatHistory,
+  useCurrentSessionId,
+} from '@jaskier/hydra-app/stores';
 
-export type ViewStoreState = ViewSlice &
-  SessionSlice &
-  ChatSlice & { _hasHydrated: boolean; setHasHydrated: (state: boolean) => void };
+export type { ViewStoreState, ChatSession, ChatTab } from '@jaskier/hydra-app/stores';
 
-// Re-export types for backward compatibility
+// Re-export types and utils for backward compatibility
 export * from './types';
 export * from './utils';
-
-// ============================================================================
-// STORE
-// ============================================================================
-
-export const useViewStore = create<ViewStoreState>()(
-  devtools(
-    persist(
-      (...a) => ({
-        ...createViewSlice(...a),
-        ...createSessionSlice(...a),
-        ...createChatSlice(...a),
-        _hasHydrated: false,
-        setHasHydrated: (state) => a[0]({ _hasHydrated: state }),
-      }),
-      {
-        name: 'claude-hydra-v4-view',
-        version: 2,
-        onRehydrateStorage: () => (state) => {
-          if (state) state.setHasHydrated(true);
-        },
-        migrate: (persisted: unknown, version: number) => {
-          const state = persisted as Record<string, unknown>;
-          if (version < 2) {
-            // Migrate openTabs: string[] → tabs: ChatTab[]
-            const openTabs = (state.openTabs as string[]) ?? [];
-            const chatSessions = (state.chatSessions as ChatSession[]) ?? [];
-            const activeSessionId = state.activeSessionId as string | null;
-
-            const tabs: ChatTab[] = openTabs.map((sessionId) => {
-              const session = chatSessions.find((s) => s.id === sessionId);
-              return {
-                id: crypto.randomUUID(),
-                sessionId,
-                title: session?.title ?? 'New Chat',
-                isPinned: false,
-              };
-            });
-
-            delete state.openTabs;
-            state.tabs = tabs;
-            state.activeTabId = tabs.find((t) => t.sessionId === activeSessionId)?.id ?? null;
-          }
-          return state;
-        },
-        partialize: (state) => ({
-          currentView: state.currentView,
-          sidebarCollapsed: state.sidebarCollapsed,
-          currentSessionId: state.currentSessionId,
-          sessions: state.sessions,
-          tabs: state.tabs,
-          activeTabId: state.activeTabId,
-        }),
-      },
-    ),
-    { name: 'ClaudeHydra/ViewStore', enabled: import.meta.env.DEV },
-  ),
-);
-
-// ============================================================================
-// MEMOIZED SELECTORS (#31)
-// ============================================================================
-
-/** Returns the currently active ChatSession (or undefined). Shallow-compared. */
-export function useCurrentSession(): ChatSession | undefined {
-  return useViewStore(useCallback((s: ViewStoreState) => s.sessions.find((cs) => cs.id === s.currentSessionId), []));
-}
-
-/** Returns the current chat sessions array with shallow equality. */
-export function useCurrentChatHistory(): ChatSession[] {
-  return useViewStore(useShallow((s) => s.sessions));
-}
-
-export function useCurrentSessionId(): string | null {
-  return useViewStore((s) => s.currentSessionId);
-}

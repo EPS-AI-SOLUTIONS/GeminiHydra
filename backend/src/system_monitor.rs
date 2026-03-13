@@ -6,7 +6,7 @@
 use std::sync::Arc;
 use tokio::sync::RwLock;
 
-use crate::state::SystemSnapshot;
+use jaskier_tools::system_monitor::SystemSnapshot;
 
 #[cfg(windows)]
 fn filetime_to_u64(ft: &windows::Win32::Foundation::FILETIME) -> u64 {
@@ -41,6 +41,7 @@ fn get_cpu_times() -> (u64, u64, u64) {
 pub fn spawn(system_monitor: Arc<RwLock<SystemSnapshot>>) {
     tokio::spawn(async move {
         let mut sys = sysinfo::System::new_all();
+        let mut networks = sysinfo::Networks::new_with_refreshed_list();
 
         // CPU: Windows-native GetSystemTimes
         #[cfg(windows)]
@@ -90,10 +91,17 @@ pub fn spawn(system_monitor: Arc<RwLock<SystemSnapshot>>) {
             // Memory via sysinfo (works correctly on all platforms)
             sys.refresh_memory();
 
+            // Network via sysinfo
+            networks.refresh(true);
+            let network_rx_bytes: u64 = networks.values().map(|data| data.received()).sum();
+            let network_tx_bytes: u64 = networks.values().map(|data| data.transmitted()).sum();
+
             let snap = SystemSnapshot {
                 cpu_usage_percent: cpu,
                 memory_used_mb: sys.used_memory() as f64 / 1_048_576.0,
                 memory_total_mb: sys.total_memory() as f64 / 1_048_576.0,
+                network_rx_bytes,
+                network_tx_bytes,
                 platform: std::env::consts::OS.to_string(),
             };
 

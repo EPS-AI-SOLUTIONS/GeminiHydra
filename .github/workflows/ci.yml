@@ -6,32 +6,195 @@ on:
   pull_request:
     branches: [master]
 
+# Cancel in-progress runs for the same ref
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
+  # ────────────────────────────────────────────────────────────────────────────
+  # Frontend: Biome lint (fast, no workspace deps needed)
+  # TypeScript type-checking is skipped in CI because tsc requires
+  # the @jaskier/ui workspace package, which lives in the parent monorepo
+  # and cannot be installed in a standalone app checkout.
+  # tsc is enforced locally via the post-commit hook.
+  # ────────────────────────────────────────────────────────────────────────────
   frontend:
     name: Frontend Checks
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
-      - uses: biomejs/setup-biome@v2
-      - name: Biome check
-        run: biome check --diagnostic-level=error src/
-      # tsc requires @jaskier/ui workspace package (parent Desktop workspace)
-      # TypeScript is enforced locally via pre-commit hook (conditional tsc)
+      - uses: actions/checkout@v4
 
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - uses: biomejs/setup-biome@v2
+        with:
+          version: latest
+
+      - name: Biome lint
+        run: biome check --diagnostic-level=error src/
+
+      # TypeScript check is intentionally skipped — requires @jaskier/ui from
+      # the parent monorepo. Run locally with: pnpm typecheck
+      # - name: Type check (skipped — requires monorepo workspace)
+      #   run: pnpm typecheck
+
+  # ────────────────────────────────────────────────────────────────────────────
+  # Backend: Rust checks with shared crate setup
+  #
+  # GeminiHydra's backend Cargo.toml references shared crates via relative paths:
+  #   jaskier-core = { path = "../../../crates/jaskier-core" }
+  #
+  # In GitHub Actions, the repo is checked out at:
+  #   /home/runner/work/GeminiHydra/GeminiHydra/
+  # So ../../../crates resolves to:
+  #   /home/runner/work/crates/
+  #
+  # We reconstruct this structure by sparse-cloning the JaskierWorkspace
+  # monorepo's crates/ directory into the expected location.
+  # ────────────────────────────────────────────────────────────────────────────
   backend:
     name: Backend Checks
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: backend
+    env:
+      # Sparse-clone source for shared crates.
+      # Override via repo secret CRATES_SOURCE_REPO if the monorepo is private.
+      CRATES_SOURCE_REPO: ${{ secrets.CRATES_SOURCE_REPO || 'https://github.com/EPS-AI-SOLUTIONS/JaskierWorkspace.git' }}
     steps:
-      - uses: actions/checkout@v6
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
         with:
           components: clippy, rustfmt
+
+      # ── Workspace crate setup ───────────────────────────────────────────────
+      # Sparse-clone the shared `crates/` directory from the monorepo into
+      # the directory that Cargo expects based on relative path resolution.
+      #
+      # Cargo.toml path: ../../../crates/<crate>
+      # From backend/: .. → GeminiHydra/  ../ → work/GeminiHydra/  ../../.. → work/
+      # So we clone crates/ into: /home/runner/work/crates/
+      - name: Set up shared workspace crates
+        run: |
+          PARENT_DIR="$(dirname "$GITHUB_WORKSPACE")"
+          CRATES_TARGET="$PARENT_DIR/crates"
+
+          echo "App checkout   : $GITHUB_WORKSPACE"
+          echo "Crates target  : $CRATES_TARGET"
+          echo "Crates source  : $CRATES_SOURCE_REPO"
+
+          if [ -d "$CRATES_TARGET/jaskier-core" ]; then
+            echo "✓ Crates already present — skipping"
+            exit 0
+          fi
+
+          git clone \
+            --filter=blob:none \
+            --no-checkout \
+            --depth=1 \
+            --branch master \
+            "$CRATES_SOURCE_REPO" \
+            "$PARENT_DIR/_ws_tmp"
+
+          cd "$PARENT_DIR/_ws_tmp"
+          git sparse-checkout init --cone
+          git sparse-checkout set crates
+          git checkout
+
+          mv "$PARENT_DIR/_ws_tmp/crates" "$CRATES_TARGET"
+          rm -rf "$PARENT_DIR/_ws_tmp"
+
+          # Workspace Cargo.toml stub so `{ workspace = true }` deps resolve.
+          # The stub only needs to declare workspace.dependencies matching
+          # the full monorepo Cargo.toml — it does NOT need to list all members.
+          if [ ! -f "$PARENT_DIR/Cargo.toml" ]; then
+            cat > "$PARENT_DIR/Cargo.toml" << 'CARGO_TOML'
+          [workspace]
+          resolver = "2"
+          members = ["crates/*"]
+
+          [workspace.dependencies]
+          axum            = "0.8"
+          axum-extra      = { version = "0.10", features = ["typed-header"] }
+          tokio           = { version = "1", features = ["full"] }
+          tower           = "0.5"
+          tower-http      = { version = "0.6", features = ["cors", "compression-gzip", "trace", "fs"] }
+          serde           = { version = "1.0", features = ["derive"] }
+          serde_json      = "1.0"
+          sqlx            = { version = "0.8", features = ["runtime-tokio-rustls", "postgres", "chrono", "uuid", "migrate"] }
+          tracing         = "0.1"
+          tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
+          reqwest         = { version = "0.13", features = ["json", "multipart", "query"] }
+          chrono          = { version = "0.4", features = ["serde"] }
+          uuid            = { version = "1", features = ["v4", "serde"] }
+          anyhow          = "1.0"
+          thiserror       = "2.0"
+          regex           = "1"
+          streaming-iterator = "0.1"
+          futures-util    = "0.3"
+          tokio-stream    = "0.1"
+          tree-sitter     = "0.26"
+          tree-sitter-rust       = "0.24"
+          tree-sitter-typescript = "0.23"
+          tree-sitter-javascript = "0.25"
+          tree-sitter-python     = "0.25"
+          tree-sitter-go         = "0.25"
+          CARGO_TOML
+            echo "✓ Workspace Cargo.toml stub created at $PARENT_DIR/Cargo.toml"
+          fi
+
+          echo "✓ Shared crates ready:"
+          ls "$CRATES_TARGET/"
+
+      # ── Rust cache (keyed per Cargo.lock) ───────────────────────────────────
       - uses: Swatinem/rust-cache@v2
         with:
           workspaces: backend
-      - run: cargo fmt --check
-      - run: cargo clippy -- -D warnings
-      - run: cargo test --no-run
+
+      # ── Rust checks ─────────────────────────────────────────────────────────
+      - name: cargo fmt
+        working-directory: backend
+        run: cargo fmt --check
+
+      - name: cargo clippy
+        working-directory: backend
+        run: cargo clippy -- -D warnings
+
+      - name: cargo test (compile only)
+        working-directory: backend
+        run: cargo test --no-run
+        # Tests require a live PostgreSQL instance (SQLx compile-time checks).
+        # We compile but don't run. Integration tests can be added as a
+        # separate job with a postgres service container when needed.
+
+  # ────────────────────────────────────────────────────────────────────────────
+  # Optional: full workspace check (runs only when dispatched manually or
+  # when the workspace root is somehow accessible — e.g. via act locally).
+  # This job is skipped on regular push/PR to avoid false positives.
+  # ────────────────────────────────────────────────────────────────────────────
+  workspace-hint:
+    name: Workspace Check Hint
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch'
+    steps:
+      - uses: actions/checkout@v4
+      - name: Remind about full workspace check
+        run: |
+          echo "For full workspace checks (all 13 crates), run locally:"
+          echo "  cd JaskierWorkspace && ./ci/rust-workspace-check.sh"
+          echo "  cd JaskierWorkspace && ./ci/frontend-check.sh"
+          echo "Or via Make:"
+          echo "  make check   # cargo check --workspace"
+          echo "  make lint    # cargo clippy --workspace + turbo lint"
+          echo "  make test    # cargo test --workspace + turbo test"

@@ -101,7 +101,7 @@ fn test_agents() -> Vec<WitcherAgent> {
 fn test_refactor_routes_to_yennefer() {
     let agents = test_agents();
     // "refactor this code" contains the keyword "refactor" (>= 4 chars → substring match)
-    let (agent, confidence, _) = classify_prompt("refactor this code please", &agents);
+    let (agent, confidence, _) = classify_prompt("refactor this code please", &agents, "eskel");
     assert_eq!(agent, "yennefer");
     assert!(confidence >= 0.8);
 }
@@ -109,7 +109,7 @@ fn test_refactor_routes_to_yennefer() {
 #[test]
 fn test_sql_routes_to_triss() {
     let agents = test_agents();
-    let (agent, confidence, _) = classify_prompt("query sql database", &agents);
+    let (agent, confidence, _) = classify_prompt("query sql database", &agents, "eskel");
     assert_eq!(agent, "triss");
     assert!(confidence >= 0.8);
 }
@@ -117,7 +117,7 @@ fn test_sql_routes_to_triss() {
 #[test]
 fn test_unknown_prompt_falls_back_to_eskel() {
     let agents = test_agents();
-    let (agent, _, _) = classify_prompt("what is the meaning of life", &agents);
+    let (agent, _, _) = classify_prompt("what is the meaning of life", &agents, "eskel");
     assert_eq!(agent, "eskel");
 }
 
@@ -125,7 +125,7 @@ fn test_unknown_prompt_falls_back_to_eskel() {
 fn test_backend_routes_to_eskel() {
     let agents = test_agents();
     let (agent, confidence, _) =
-        classify_prompt("add a new api endpoint for user registration", &agents);
+        classify_prompt("add a new api endpoint for user registration", &agents, "eskel");
     assert_eq!(agent, "eskel");
     assert!(confidence >= 0.7);
 }

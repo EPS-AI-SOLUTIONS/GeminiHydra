@@ -2,6 +2,11 @@ app = 'geminihydra-v15-backend'
 primary_region = 'arn'
 
 [build]
+  # Build context is the workspace root (required for shared crates/).
+  # Deploy command: flyctl deploy --config apps/GeminiHydra/backend/fly.toml --dockerfile apps/GeminiHydra/backend/Dockerfile
+  # Or use the workspace root deploy-fly.ps1 script.
+  dockerfile = "apps/GeminiHydra/backend/Dockerfile"
+  build_context = "."
 
 [http_service]
   internal_port = 8081

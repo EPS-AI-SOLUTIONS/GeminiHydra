@@ -29,13 +29,10 @@ pub mod tools;
 pub mod watchdog;
 
 use axum::Router;
-use axum::extract::{DefaultBodyLimit, State};
+use axum::extract::State;
 use axum::http::HeaderValue;
-use axum::middleware;
 use axum::routing::{delete, get, post};
-use tower_governor::{GovernorLayer, governor::GovernorConfigBuilder};
 use utoipa::OpenApi;
-use utoipa_swagger_ui::SwaggerUi;
 
 use state::AppState;
 
@@ -58,7 +55,7 @@ pub async fn request_id_middleware(
 
     let mut response = next.run(request).await;
 
-    // Attach as response header â€” infallible for valid UUID strings.
+    // Attach as response header -- infallible for valid UUID strings.
     if let Ok(val) = HeaderValue::from_str(&request_id) {
         response.headers_mut().insert("x-request-id", val);
     }
@@ -66,14 +63,14 @@ pub async fn request_id_middleware(
     response
 }
 
-// â”€â”€ OpenAPI documentation â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// -- OpenAPI documentation ----------------------------------------------------
 
 #[derive(OpenApi)]
 #[openapi(
     info(
         title = "GeminiHydra v15 API",
         version = "15.0.0",
-        description = "Multi-Agent AI Swarm â€” Backend API",
+        description = "Multi-Agent AI Swarm -- Backend API",
         license(name = "MIT")
     ),
     paths(
@@ -84,14 +81,6 @@ pub async fn request_id_middleware(
         handlers::auth_mode,
         handlers::system_stats,
         handlers::browser_proxy_history,
-        // Agents
-        handlers::list_agents,
-        handlers::classify_agent,
-        handlers::create_agent,
-        handlers::update_agent,
-        handlers::delete_agent,
-        handlers::list_profiles,
-        handlers::create_profile,
         // Execute / Chat
         handlers::execute,
         handlers::gemini_models,
@@ -196,294 +185,95 @@ pub async fn request_id_middleware(
 )]
 pub struct ApiDoc;
 
+// ---------------------------------------------------------------------------
+// Router construction -- delegates to jaskier-core shared builder
+// ---------------------------------------------------------------------------
+
 /// Build the application router with the given state.
-/// Extracted from `main()` so integration tests can construct the app
-/// without binding to a network port.
 pub fn create_router(state: AppState) -> Router {
-    create_router_inner(state, true)
+    jaskier_core::router_builder::build_hydra_router(state.clone(), build_config(state))
 }
 
-/// Build router without rate-limiting layers (for integration tests where
-/// `ConnectInfo` is not available from a real TCP listener).
+/// Build router without rate-limiting layers (for integration tests).
 pub fn create_test_router(state: AppState) -> Router {
-    create_router_inner(state, false)
+    jaskier_core::router_builder::build_hydra_test_router(state.clone(), build_config(state))
 }
 
-fn create_router_inner(state: AppState, rate_limit: bool) -> Router {
-    // â”€â”€ Per-endpoint rate limiting â€” Jaskier Shared Pattern â”€â”€â”€â”€â”€â”€
-    let rl_ws = GovernorConfigBuilder::default()
-        .per_second(6)
-        .burst_size(10)
-        .use_headers()
-        .finish()
-        .expect("rate limiter config: ws");
+/// Construct the app-specific `HydraRouterConfig` with local handler fragments.
+fn build_config(state: AppState) -> jaskier_core::router_builder::HydraRouterConfig<AppState> {
+    jaskier_core::router_builder::HydraRouterConfig {
+        // WebSocket streaming (Gemini-native)
+        ws_route: Router::new()
+            .route("/ws/execute", get(handlers::ws_execute::<AppState>)),
 
-    let rl_execute = GovernorConfigBuilder::default()
-        .per_second(2)
-        .burst_size(30)
-        .use_headers()
-        .finish()
-        .expect("rate limiter config: execute");
-
-    let rl_a2a = GovernorConfigBuilder::default()
-        .per_second(6) // ~10 requests per minute
-        .burst_size(3)
-        .use_headers()
-        .finish()
-        .expect("rate limiter config: a2a");
-
-    let rl_default = GovernorConfigBuilder::default()
-        .per_millisecond(100) // Much faster limit
-        .burst_size(500) // Massive burst
-        .use_headers()
-        .finish()
-        .expect("rate limiter config: default");
-
-    // â”€â”€ Public routes (no auth) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-    let public_health = Router::new()
-        .route("/api/health", get(handlers::health))
-        .route("/api/health/ready", get(handlers::readiness))
-        .route("/api/health/detailed", get(handlers::health_detailed))
-        .route("/api/auth/status", get(oauth::auth_status))
-        .route("/api/auth/login", post(oauth::auth_login))
-        .route("/api/auth/logout", post(oauth::auth_logout))
-        .route(
-            "/api/auth/apikey",
-            post(oauth::save_api_key).delete(oauth::delete_api_key),
-        )
-        .route("/api/auth/mode", get(handlers::auth_mode))
-        // Google OAuth
-        .route(
-            "/api/auth/google/status",
-            get(oauth_google::google_auth_status),
-        )
-        .route(
-            "/api/auth/google/login",
-            post(oauth_google::google_auth_login),
-        )
-        .route(
-            "/api/auth/google/redirect",
-            get(oauth_google::google_redirect),
-        )
-        .route(
-            "/api/auth/google/logout",
-            post(oauth_google::google_auth_logout),
-        )
-        .route(
-            "/api/auth/google/apikey",
-            post(oauth_google::google_save_api_key).delete(oauth_google::google_delete_api_key),
-        )
-        // A2A v0.3 â€” Agent Card discovery (public, no auth)
-        .route("/.well-known/agent-card.json", get(a2a::agent_card))
-        // ADK sidecar internal tool bridge (localhost only, no auth)
-        .route("/api/internal/tool", post(handlers::internal_tool_execute))
-        // GitHub OAuth (public â€” must be accessible to complete the auth flow)
-        .route(
-            "/api/auth/github/status",
-            get(oauth_github::github_auth_status),
-        )
-        .route(
-            "/api/auth/github/login",
-            post(oauth_github::github_auth_login),
-        )
-        .route(
-            "/api/auth/github/callback",
-            post(oauth_github::github_auth_callback),
-        )
-        .route(
-            "/api/auth/github/logout",
-            post(oauth_github::github_auth_logout),
-        )
-        // Vercel OAuth (public â€” must be accessible to complete the auth flow)
-        .route(
-            "/api/auth/vercel/status",
-            get(oauth_vercel::vercel_auth_status),
-        )
-        .route(
-            "/api/auth/vercel/login",
-            post(oauth_vercel::vercel_auth_login),
-        )
-        .route(
-            "/api/auth/vercel/callback",
-            post(oauth_vercel::vercel_auth_callback),
-        )
-        .route(
-            "/api/auth/vercel/logout",
-            post(oauth_vercel::vercel_auth_logout),
-        )
-        // Browser proxy management (public â€” no auth, proxy handles its own state)
-        .route(
-            "/api/browser-proxy/status",
-            get(browser_proxy::proxy_status),
-        )
-        .route("/api/browser-proxy/login", post(browser_proxy::proxy_login))
-        .route(
-            "/api/browser-proxy/login/status",
-            get(browser_proxy::proxy_login_status),
-        )
-        .route(
-            "/api/browser-proxy/reinit",
-            post(browser_proxy::proxy_reinit),
-        )
-        .route(
-            "/api/browser-proxy/logout",
-            delete(browser_proxy::proxy_logout),
-        )
-        .route(
-            "/api/browser-proxy/history",
-            get(handlers::browser_proxy_history),
-        );
-
-    // WebSocket â€” rate-limited only in production (requires ConnectInfo)
-    let ws_routes = if rate_limit {
-        Router::new()
-            .route("/ws/execute", get(handlers::ws_execute))
-            .layer(GovernorLayer::new(rl_ws))
-    } else {
-        Router::new().route("/ws/execute", get(handlers::ws_execute))
-    };
-
-    // Execute endpoint â€” auth always, rate-limit only in production
-    let execute_routes = if rate_limit {
-        Router::new()
+        // Execute endpoints
+        execute_routes: Router::new()
             .route("/api/execute", post(handlers::execute))
             .route(
                 "/api/v1/swarm/stream",
-                get(handlers::streaming::swarm_sse_handler),
-            )
-            .route_layer(middleware::from_fn_with_state(
-                state.clone(),
-                auth::require_auth,
-            ))
-            .layer(GovernorLayer::new(rl_execute))
-    } else {
-        Router::new()
-            .route("/api/execute", post(handlers::execute))
+                get(handlers::streaming::swarm_sse_handler::<AppState>),
+            ),
+
+        // Sub-routers (already have auth middleware)
+        agents_router: handlers::agents_router(state.clone()),
+        files_router: handlers::files_router(state.clone()),
+        system_router: handlers::system_router(state.clone()),
+
+        // Browser proxy routes (from jaskier-browser, circular dep prevention)
+        browser_proxy_routes: Router::new()
             .route(
-                "/api/v1/swarm/stream",
-                get(handlers::streaming::swarm_sse_handler),
+                "/api/browser-proxy/status",
+                get(browser_proxy::proxy_status::<AppState>),
             )
-            .route_layer(middleware::from_fn_with_state(
-                state.clone(),
-                auth::require_auth,
-            ))
-    };
+            .route(
+                "/api/browser-proxy/login",
+                post(browser_proxy::proxy_login::<AppState>),
+            )
+            .route(
+                "/api/browser-proxy/login/status",
+                get(browser_proxy::proxy_login_status::<AppState>),
+            )
+            .route(
+                "/api/browser-proxy/reinit",
+                post(browser_proxy::proxy_reinit::<AppState>),
+            )
+            .route(
+                "/api/browser-proxy/logout",
+                delete(browser_proxy::proxy_logout::<AppState>),
+            ),
 
-    // A2A v0.3 — rate-limited, auth-protected (separate from other protected routes)
-    let a2a_routes = if rate_limit {
-        Router::new()
-            .route("/a2a/message/send", post(a2a::message_send))
-            .route("/a2a/message/stream", post(a2a::message_stream))
-            .route("/a2a/tasks/{id}", get(a2a::tasks_get))
-            .route("/a2a/tasks/{id}/cancel", post(a2a::tasks_cancel))
-            .route_layer(middleware::from_fn_with_state(
-                state.clone(),
-                auth::require_auth,
-            ))
-            .layer(GovernorLayer::new(rl_a2a))
-    } else {
-        Router::new()
-            .route("/a2a/message/send", post(a2a::message_send))
-            .route("/a2a/message/stream", post(a2a::message_stream))
-            .route("/a2a/tasks/{id}", get(a2a::tasks_get))
-            .route("/a2a/tasks/{id}/cancel", post(a2a::tasks_cancel))
-            .route_layer(middleware::from_fn_with_state(
-                state.clone(),
-                auth::require_auth,
-            ))
-    };
+        // OCR routes (from jaskier-tools, circular dep prevention)
+        ocr_routes: Router::new()
+            .route("/api/ocr", post(ocr::ocr::<AppState>))
+            .route("/api/ocr/stream", post(ocr::ocr_stream::<AppState>))
+            .route("/api/ocr/batch/stream", post(ocr::ocr_batch_stream::<AppState>))
+            .route("/api/ocr/history", get(ocr::ocr_history::<AppState>))
+            .route(
+                "/api/ocr/history/{id}",
+                get(ocr::ocr_history_item::<AppState>)
+                    .delete(ocr::ocr_history_delete::<AppState>),
+            ),
 
-    // â”€â”€ Protected routes (require auth when AUTH_SECRET is set) â”€â”€â”€â”€â”€â”€
-    let protected = Router::new()
-        .route("/api/gemini/models", get(handlers::gemini_models))
-        .route("/api/models", get(model_registry::list_models))
-        .route("/api/models/refresh", post(model_registry::refresh_models))
-        .route("/api/models/pin", post(model_registry::pin_model))
-        .route(
-            "/api/models/pin/{use_case}",
-            delete(model_registry::unpin_model),
-        )
-        .route("/api/models/pins", get(model_registry::list_pins))
-        // Logs â€” backend log ring buffer
-        .route(
-            "/api/logs/backend",
-            get(logs::backend_logs).delete(logs::clear_backend_logs),
-        )
-        // OCR â€” text extraction from images and PDFs
-        .route("/api/ocr", post(ocr::ocr))
-        .route("/api/ocr/stream", post(ocr::ocr_stream))
-        .route("/api/ocr/batch/stream", post(ocr::ocr_batch_stream))
-        .route("/api/ocr/history", get(ocr::ocr_history))
-        .route(
-            "/api/ocr/history/{id}",
-            get(ocr::ocr_history_item).delete(ocr::ocr_history_delete),
-        )
-        // Service tokens (encrypted PAT storage for Fly.io etc.)
-        .route(
-            "/api/tokens",
-            get(service_tokens::list_tokens).post(service_tokens::store_token),
-        )
-        .route(
-            "/api/tokens/{service}",
-            delete(service_tokens::delete_token),
-        )
-        // MCP server endpoint (auth-protected â€" exposes tool execution including shell)
-        .route("/mcp", post(mcp::server::mcp_handler))
-        .route_layer(middleware::from_fn_with_state(
-            state.clone(),
-            auth::require_auth,
-        ));
+        // App-specific protected routes
+        app_protected_routes: Router::new()
+            .route("/api/gemini/models", get(handlers::gemini_models)),
 
-    // â”€â”€ Metrics endpoint (public, no auth) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-    let metrics = Router::new().route("/api/metrics", get(metrics_handler));
+        // ADK sidecar internal tool bridge
+        internal_tool_route: Router::new()
+            .route("/api/internal/tool", post(handlers::internal_tool_execute)),
 
-    // â”€â”€ API v1 prefix alias (mirrors /api routes for forward compat) â”€
-    let v1_public = Router::new()
-        .route("/api/v1/health", get(handlers::health))
-        .route("/api/v1/health/ready", get(handlers::readiness))
-        .route("/api/v1/auth/mode", get(handlers::auth_mode));
+        // Prometheus metrics
+        metrics_router: Router::new()
+            .route("/api/metrics", get(metrics_handler)),
 
-    // Combine all route groups
-    let combined = public_health
-        .merge(ws_routes)
-        .merge(execute_routes)
-        .merge(a2a_routes)
-        .merge(protected)
-        .merge(handlers::agents_router(state.clone()))
-        .merge(handlers::files_router(state.clone()))
-        .merge(handlers::system_router(state.clone()))
-        .merge(mcp::mcp_router(state.clone()))
-        .merge(metrics)
-        .merge(v1_public)
-        // Sessions routes merged separately â€” they need auth too
-        .merge(
-            sessions::session_routes().route_layer(middleware::from_fn_with_state(
-                state.clone(),
-                auth::require_auth,
-            )),
-        )
-        // Swagger UI â€” no auth required
-        .merge(SwaggerUi::new("/swagger-ui").url("/api-docs/openapi.json", ApiDoc::openapi()));
-
-    // Apply global layers and rate limit
-    if rate_limit {
-        combined
-            .layer(GovernorLayer::new(rl_default))
-            // 60 MB body limit — must be before .with_state() for Json extractor
-            .layer(DefaultBodyLimit::max(60 * 1024 * 1024))
-            .with_state(state)
-    } else {
-        combined
-            // 60 MB body limit — must be before .with_state() for Json extractor
-            .layer(DefaultBodyLimit::max(60 * 1024 * 1024))
-            .with_state(state)
+        // OpenAPI spec
+        openapi: ApiDoc::openapi(),
     }
 }
 
-// â”€â”€ Prometheus-compatible metrics endpoint â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// -- Prometheus-compatible metrics endpoint -----------------------------------
 
 /// Sanitize a string for use as a Prometheus label value.
-/// Only allows alphanumeric, underscore, hyphen, dot. Truncates to 64 chars.
 fn sanitize_prom_label(s: &str) -> String {
     s.chars()
         .filter(|c| c.is_alphanumeric() || *c == '_' || *c == '-' || *c == '.')

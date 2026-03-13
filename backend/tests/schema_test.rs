@@ -5,14 +5,14 @@ use utoipa::OpenApi;
 
 #[test]
 fn openapi_schema_is_valid_json() {
-    let schema = serde_json::to_string_pretty(&geminihydra_backend::ApiDoc::openapi())
+    let schema = serde_json::to_string_pretty(&gemini_hydra_backend::ApiDoc::openapi())
         .expect("OpenAPI schema should serialize to JSON");
     assert!(!schema.is_empty(), "Schema should not be empty");
 }
 
 #[test]
 fn openapi_schema_contains_required_fields() {
-    let schema = serde_json::to_string_pretty(&geminihydra_backend::ApiDoc::openapi())
+    let schema = serde_json::to_string_pretty(&gemini_hydra_backend::ApiDoc::openapi())
         .expect("OpenAPI schema should serialize to JSON");
     assert!(
         schema.contains("openapi"),
@@ -30,12 +30,10 @@ fn openapi_schema_contains_required_fields() {
 
 #[test]
 fn openapi_schema_documents_key_endpoints() {
-    let schema = serde_json::to_string_pretty(&geminihydra_backend::ApiDoc::openapi())
+    let schema = serde_json::to_string_pretty(&gemini_hydra_backend::ApiDoc::openapi())
         .expect("OpenAPI schema should serialize to JSON");
-    assert!(
-        schema.contains("/api/agents"),
-        "Schema should document /api/agents"
-    );
+    // Agent endpoints use generic handlers not compatible with utoipa,
+    // so they are omitted from OpenAPI spec.
     assert!(
         schema.contains("/api/execute"),
         "Schema should document /api/execute"
@@ -52,7 +50,7 @@ fn openapi_schema_documents_key_endpoints() {
 
 #[test]
 fn openapi_schema_parses_to_valid_structure() {
-    let doc = geminihydra_backend::ApiDoc::openapi();
+    let doc = gemini_hydra_backend::ApiDoc::openapi();
     let value = serde_json::to_value(&doc).expect("Schema should convert to Value");
     assert!(value.is_object(), "Schema root should be an object");
     assert!(

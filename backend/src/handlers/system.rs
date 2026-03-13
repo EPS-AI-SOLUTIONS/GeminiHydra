@@ -1,163 +1,69 @@
 // ---------------------------------------------------------------------------
 // handlers/system.rs — Health, readiness, system stats, auth mode, models, admin
+//
+// Generic health/system handlers are delegated to the shared jaskier-core
+// crate via HasHealthState. Only app-specific endpoints remain here.
 // ---------------------------------------------------------------------------
 
 use axum::Json;
 use axum::extract::State;
-use axum::response::IntoResponse;
 use serde_json::{Value, json};
 
-use crate::models::{
-    DetailedHealthResponse, GeminiModelInfo, GeminiModelsResponse, HealthResponse, SystemStats,
-};
+use crate::error::ApiError;
+use crate::models::{GeminiModelInfo, GeminiModelsResponse};
 use crate::state::AppState;
 
-use crate::error::ApiError;
+// ── Re-exports of shared response types ──────────────────────────────────────
 
-use super::build_providers;
+pub use jaskier_core::handlers::system::{
+    DetailedHealthResponse, HealthResponse, ProxyHistoryParams, ProxyHistoryResponse,
+    SystemStats,
+};
 
-// ---------------------------------------------------------------------------
-// Health Endpoints
-// ---------------------------------------------------------------------------
+// ── Shared handler wrappers (concrete AppState) ───────────────────────────────
 
 #[utoipa::path(get, path = "/api/health", tag = "health",
     responses((status = 200, description = "Health check with provider status", body = HealthResponse))
 )]
-pub async fn health(State(state): State<AppState>) -> Json<HealthResponse> {
-    let rt = state.runtime.read().await;
-    let cache = state.model_cache.read().await;
-    let google = cache.models.get("google").cloned().unwrap_or_default();
-    drop(cache);
-
-    let browser_proxy = if crate::browser_proxy::is_enabled() {
-        Some(state.browser_proxy_status.read().await.clone())
-    } else {
-        None
-    };
-
-    Json(HealthResponse {
-        status: if state.is_ready() { "ok" } else { "starting" }.to_string(),
-        version: "15.0.0".to_string(),
-        app: "GeminiHydra".to_string(),
-        uptime_seconds: state.start_time.elapsed().as_secs(),
-        providers: build_providers(&rt.api_keys, &google),
-        browser_proxy,
-    })
+pub async fn health(state: State<AppState>) -> Json<HealthResponse> {
+    jaskier_core::handlers::system::health(state).await
 }
 
-/// GET /api/health/ready — lightweight readiness probe (no locks, no DB).
 #[utoipa::path(get, path = "/api/health/ready", tag = "health",
     responses(
         (status = 200, description = "Service ready", body = Value),
         (status = 503, description = "Service not ready", body = Value)
     )
 )]
-pub async fn readiness(State(state): State<AppState>) -> axum::response::Response {
-    use axum::http::StatusCode;
-
-    let ready = state.is_ready();
-    let uptime = state.start_time.elapsed().as_secs();
-    let body = json!({ "ready": ready, "uptime_seconds": uptime });
-
-    if ready {
-        (StatusCode::OK, Json(body)).into_response()
-    } else {
-        (StatusCode::SERVICE_UNAVAILABLE, Json(body)).into_response()
-    }
+pub async fn readiness(state: State<AppState>) -> axum::response::Response {
+    jaskier_core::handlers::system::readiness(state).await
 }
 
-/// GET /api/auth/mode — returns whether auth is required (public endpoint).
 #[utoipa::path(get, path = "/api/auth/mode", tag = "auth",
     responses((status = 200, description = "Auth mode info", body = Value))
 )]
-pub async fn auth_mode(State(state): State<AppState>) -> Json<Value> {
-    Json(json!({
-        "auth_required": state.auth_secret.is_some()
-    }))
+pub async fn auth_mode(state: State<AppState>) -> Json<Value> {
+    jaskier_core::handlers::system::auth_mode(state).await
 }
 
 #[utoipa::path(get, path = "/api/health/detailed", tag = "health",
     responses((status = 200, description = "Detailed health with system metrics", body = DetailedHealthResponse))
 )]
-pub async fn health_detailed(State(state): State<AppState>) -> Json<DetailedHealthResponse> {
-    let rt = state.runtime.read().await;
-    let cache = state.model_cache.read().await;
-    let google = cache.models.get("google").cloned().unwrap_or_default();
-    drop(cache);
-    let snap = state.system_monitor.read().await;
-
-    Json(DetailedHealthResponse {
-        status: "ok".to_string(),
-        version: "15.0.0".to_string(),
-        app: "GeminiHydra".to_string(),
-        uptime_seconds: state.start_time.elapsed().as_secs(),
-        providers: build_providers(&rt.api_keys, &google),
-        memory_usage_mb: snap.memory_used_mb,
-        cpu_usage_percent: snap.cpu_usage_percent,
-        platform: snap.platform.clone(),
-    })
+pub async fn health_detailed(state: State<AppState>) -> Json<DetailedHealthResponse> {
+    jaskier_core::handlers::system::health_detailed(state).await
 }
 
 #[utoipa::path(get, path = "/api/system/stats", tag = "system",
     responses((status = 200, description = "System resource usage", body = SystemStats))
 )]
-pub async fn system_stats(State(state): State<AppState>) -> Json<SystemStats> {
-    let snap = state.system_monitor.read().await;
-    Json(SystemStats {
-        cpu_usage_percent: snap.cpu_usage_percent,
-        memory_used_mb: snap.memory_used_mb,
-        memory_total_mb: snap.memory_total_mb,
-        platform: snap.platform.clone(),
-    })
+pub async fn system_stats(state: State<AppState>) -> Json<SystemStats> {
+    jaskier_core::handlers::system::system_stats(state).await
 }
-
-// ---------------------------------------------------------------------------
-// Cargo Audit
-// ---------------------------------------------------------------------------
 
 pub async fn system_audit() -> Json<Value> {
-    let output = std::process::Command::new("cargo")
-        .arg("audit")
-        .arg("--json")
-        .output();
-
-    match output {
-        Ok(out) => {
-            let stdout_str = String::from_utf8_lossy(&out.stdout);
-            match serde_json::from_str::<Value>(&stdout_str) {
-                Ok(json) => Json(json),
-                Err(_) => Json(json!({
-                    "error": "Failed to parse cargo audit JSON",
-                    "stdout": stdout_str.into_owned()
-                })),
-            }
-        }
-        Err(e) => {
-            tracing::error!("cargo audit failed: {}", e);
-            Json(json!({ "error": "Failed to run cargo audit" }))
-        }
-    }
+    jaskier_core::handlers::system::system_audit().await
 }
 
-// ---------------------------------------------------------------------------
-// Browser Proxy History
-// ---------------------------------------------------------------------------
-
-/// Query parameters for the browser proxy history endpoint.
-#[derive(Debug, serde::Deserialize)]
-pub struct ProxyHistoryParams {
-    /// Maximum number of events to return (default 50, max 50).
-    pub limit: Option<usize>,
-}
-
-/// Response wrapper for browser proxy history events.
-#[derive(Debug, serde::Serialize, utoipa::ToSchema)]
-pub struct ProxyHistoryResponse {
-    pub events: Vec<crate::browser_proxy::ProxyHealthEvent>,
-    pub total: usize,
-}
-
-/// Returns the most recent browser proxy status change events.
 #[utoipa::path(
     get,
     path = "/api/browser-proxy/history",
@@ -170,17 +76,23 @@ pub struct ProxyHistoryResponse {
     )
 )]
 pub async fn browser_proxy_history(
-    State(state): State<AppState>,
-    axum::extract::Query(params): axum::extract::Query<ProxyHistoryParams>,
+    state: State<AppState>,
+    query: axum::extract::Query<ProxyHistoryParams>,
 ) -> Json<ProxyHistoryResponse> {
-    let limit = params.limit.unwrap_or(50).min(50);
-    let events = state.browser_proxy_history.recent(limit);
-    let total = state.browser_proxy_history.len();
-    Json(ProxyHistoryResponse { events, total })
+    jaskier_core::handlers::system::browser_proxy_history(state, query).await
+}
+
+// ── Admin — Key Rotation (shared generic handler) ────────────────────────────
+
+pub async fn rotate_key(
+    state: State<AppState>,
+    body: Json<Value>,
+) -> Result<Json<Value>, ApiError> {
+    jaskier_core::handlers::system::rotate_key(state, body).await
 }
 
 // ---------------------------------------------------------------------------
-// Gemini Models
+// Gemini Models — app-specific (uses local OAuth helpers)
 // ---------------------------------------------------------------------------
 
 #[utoipa::path(get, path = "/api/gemini/models", tag = "models",
@@ -189,7 +101,6 @@ pub async fn browser_proxy_history(
 pub async fn gemini_models(State(state): State<AppState>) -> Json<Value> {
     let mut models = Vec::new();
 
-    // 1. Fetch Gemini models
     let google_cred = crate::oauth::get_google_credential(&state).await;
     if let Some((key, is_oauth)) = google_cred {
         let url = "https://generativelanguage.googleapis.com/v1beta/models";
@@ -217,46 +128,4 @@ pub async fn gemini_models(State(state): State<AppState>) -> Json<Value> {
     }
 
     Json(json!(GeminiModelsResponse { models }))
-}
-
-// ---------------------------------------------------------------------------
-// Admin — Key Rotation
-// ---------------------------------------------------------------------------
-
-/// Hot-reload an API key for a provider without restarting the backend.
-/// Protected — requires auth when AUTH_SECRET is set.
-pub async fn rotate_key(
-    State(state): State<AppState>,
-    Json(body): Json<Value>,
-) -> Result<Json<Value>, ApiError> {
-    let provider = body
-        .get("provider")
-        .and_then(|v| v.as_str())
-        .ok_or_else(|| ApiError::BadRequest("missing 'provider' field".into()))?;
-    let key = body
-        .get("key")
-        .and_then(|v| v.as_str())
-        .ok_or_else(|| ApiError::BadRequest("missing 'key' field".into()))?;
-
-    match provider {
-        "google" | "anthropic" => {}
-        _ => {
-            return Err(ApiError::BadRequest(format!(
-                "unknown provider '{}' — expected google or anthropic",
-                provider
-            )));
-        }
-    }
-
-    let mut rt = state.runtime.write().await;
-    rt.api_keys.insert(provider.to_string(), key.to_string());
-    drop(rt);
-
-    tracing::info!("API key rotated for provider '{}'", provider);
-
-    Ok(Json(json!({
-        "ok": true,
-        "provider": provider,
-        "message": format!("API key for '{}' updated successfully", provider),
-    })))
 }

@@ -1,464 +1,379 @@
 // Jaskier Shared Pattern — state
 // GeminiHydra v15 - Application state
+//
+// Uses BaseHydraState from jaskier-hydra-state shared crate for all common
+// fields, constructor, and mechanical trait implementations.
 
-use std::collections::{HashMap, VecDeque};
-use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
-use std::sync::{Arc, OnceLock};
+use std::collections::HashMap;
+use std::ops::Deref;
+use std::sync::Arc;
 use std::time::Instant;
 
-use reqwest::Client;
-use sqlx::PgPool;
 use tokio::sync::RwLock;
-use tokio::sync::broadcast;
-use tokio_util::sync::CancellationToken;
 
-use crate::mcp::client::McpClientManager;
-use crate::model_registry::ModelCache;
-use crate::models::WitcherAgent;
+use jaskier_hydra_state::{BaseHydraConfig, BaseHydraState};
 
-// ── Log Ring Buffer — Jaskier Shared Pattern ────────────────────────────────
-/// In-memory ring buffer for backend log entries (last N events).
-/// Uses `std::sync::Mutex` because writes happen in the tracing Layer
-/// (sync context — not inside a tokio runtime poll).
+// ── Re-exports for backward compatibility ───────────────────────────────────
+// Existing code (main.rs, handlers, streaming.rs, etc.) imports these from crate::state.
+pub use jaskier_hydra_state::{
+    CircuitBreaker, LogEntry, LogRingBuffer, ModelCache, OAuthPkceState,
+    RuntimeState, SystemSnapshot, OAUTH_STATE_TTL,
+};
 
-#[derive(Clone, serde::Serialize)]
-pub struct LogEntry {
-    pub timestamp: String,
-    pub level: String,
-    pub target: String,
-    pub message: String,
-}
-
-pub struct LogRingBuffer {
-    entries: std::sync::Mutex<VecDeque<LogEntry>>,
-    capacity: usize,
-}
-
-impl LogRingBuffer {
-    pub fn new(capacity: usize) -> Self {
-        Self {
-            entries: std::sync::Mutex::new(VecDeque::with_capacity(capacity)),
-            capacity,
-        }
-    }
-
-    pub fn push(&self, entry: LogEntry) {
-        let mut buf = self.entries.lock().unwrap_or_else(|p| p.into_inner());
-        if buf.len() >= self.capacity {
-            buf.pop_front();
-        }
-        buf.push_back(entry);
-    }
-
-    pub fn clear(&self) {
-        let mut buf = self.entries.lock().unwrap_or_else(|p| p.into_inner());
-        buf.clear();
-    }
-
-    pub fn recent(
-        &self,
-        limit: usize,
-        min_level: Option<&str>,
-        search: Option<&str>,
-    ) -> Vec<LogEntry> {
-        let buf = self.entries.lock().unwrap_or_else(|p| p.into_inner());
-        buf.iter()
-            .rev()
-            .filter(|e| min_level.is_none_or(|lvl| level_ord(&e.level) >= level_ord(lvl)))
-            .filter(|e| {
-                search.is_none_or(|s| {
-                    let s_lower = s.to_lowercase();
-                    e.message.to_lowercase().contains(&s_lower)
-                        || e.target.to_lowercase().contains(&s_lower)
-                })
-            })
-            .take(limit)
-            .cloned()
-            .collect()
-    }
-}
-
-fn level_ord(level: &str) -> u8 {
-    match level.to_uppercase().as_str() {
-        "ERROR" => 5,
-        "WARN" => 4,
-        "INFO" => 3,
-        "DEBUG" => 2,
-        "TRACE" => 1,
-        _ => 0,
-    }
-}
-
-// ── Circuit Breaker ─────────────────────────────────────────────────────────
-// Jaskier Shared Pattern -- circuit_breaker
-//
-// Simple circuit breaker for external API providers.
-// After `FAILURE_THRESHOLD` consecutive failures the circuit trips (OPEN) and
-// all requests fail fast for `RECOVERY_TIMEOUT` seconds. Once that window
-// elapses the breaker moves to HALF-OPEN: the next call is allowed through
-// and either resets the breaker (on success) or trips it again.
-
-const FAILURE_THRESHOLD: u32 = 3;
-const RECOVERY_TIMEOUT_SECS: u64 = 60;
-
-/// Circuit states (encoded as u32 for lock-free atomic access).
-/// 0 = CLOSED (healthy), 1 = OPEN (tripped), 2 = HALF_OPEN (probing).
-const STATE_CLOSED: u32 = 0;
-const STATE_OPEN: u32 = 1;
-const STATE_HALF_OPEN: u32 = 2;
-
-#[derive(Debug)]
-pub struct CircuitBreaker {
-    /// Current state: CLOSED / OPEN / HALF_OPEN.
-    state: AtomicU32,
-    /// Consecutive failure count.
-    consecutive_failures: AtomicU32,
-    /// Instant when the circuit was last tripped (OPEN). Protected by RwLock
-    /// because `Instant` is not atomic but writes are rare (only on state change).
-    last_failure_time: RwLock<Option<Instant>>,
-    /// Human-readable label for log messages.
-    provider: String,
-}
-
-impl CircuitBreaker {
-    pub fn new(provider: &str) -> Self {
-        Self {
-            state: AtomicU32::new(STATE_CLOSED),
-            consecutive_failures: AtomicU32::new(0),
-            last_failure_time: RwLock::new(None),
-            provider: provider.to_string(),
-        }
-    }
-
-    /// Check whether a request is allowed through.
-    /// Returns `Ok(())` if the circuit is CLOSED or HALF_OPEN, or
-    /// `Err(message)` if OPEN and the recovery window hasn't elapsed.
-    pub async fn check(&self) -> Result<(), String> {
-        let current = self.state.load(Ordering::Acquire);
-
-        if current == STATE_CLOSED {
-            return Ok(());
-        }
-
-        // OPEN — check if recovery timeout has elapsed.
-        if current == STATE_OPEN {
-            let lock = self.last_failure_time.read().await;
-            if let Some(t) = *lock
-                && t.elapsed().as_secs() >= RECOVERY_TIMEOUT_SECS
-            {
-                drop(lock);
-                // Transition to HALF_OPEN so the next request is a probe.
-                self.state.store(STATE_HALF_OPEN, Ordering::Release);
-                tracing::info!(
-                    "circuit_breaker[{}]: OPEN -> HALF_OPEN (recovery window elapsed)",
-                    self.provider
-                );
-                return Ok(());
-            }
-            let remaining = lock
-                .map(|t| RECOVERY_TIMEOUT_SECS.saturating_sub(t.elapsed().as_secs()))
-                .unwrap_or(RECOVERY_TIMEOUT_SECS);
-            return Err(format!(
-                "Circuit breaker OPEN for provider '{}' — failing fast (retry in ~{}s)",
-                self.provider, remaining
-            ));
-        }
-
-        // HALF_OPEN — allow the probe request through.
-        Ok(())
-    }
-
-    /// Record a successful call. Resets failures and closes the circuit.
-    pub async fn record_success(&self) {
-        let prev = self.state.swap(STATE_CLOSED, Ordering::Release);
-        self.consecutive_failures.store(0, Ordering::Release);
-        if prev != STATE_CLOSED {
-            tracing::info!(
-                "circuit_breaker[{}]: {} -> CLOSED (success)",
-                self.provider,
-                match prev {
-                    STATE_OPEN => "OPEN",
-                    STATE_HALF_OPEN => "HALF_OPEN",
-                    _ => "?",
-                }
-            );
-        }
-    }
-
-    /// Record a failed call. If the threshold is breached, trip the circuit.
-    pub async fn record_failure(&self) {
-        let count = self.consecutive_failures.fetch_add(1, Ordering::AcqRel) + 1;
-
-        if count >= FAILURE_THRESHOLD {
-            let prev = self.state.swap(STATE_OPEN, Ordering::Release);
-            *self.last_failure_time.write().await = Some(Instant::now());
-            if prev != STATE_OPEN {
-                tracing::warn!(
-                    "circuit_breaker[{}]: TRIPPED after {} consecutive failures — \
-                     failing fast for {}s",
-                    self.provider,
-                    count,
-                    RECOVERY_TIMEOUT_SECS
-                );
-            }
-        }
-    }
-}
-
-// ── Shared: SystemSnapshot ───────────────────────────────────────────────────
-/// Cached system statistics snapshot, refreshed every 5s by background task.
-#[derive(Clone)]
-pub struct SystemSnapshot {
-    pub cpu_usage_percent: f32,
-    pub memory_used_mb: f64,
-    pub memory_total_mb: f64,
-    pub platform: String,
-}
-
-impl Default for SystemSnapshot {
-    fn default() -> Self {
-        Self {
-            cpu_usage_percent: 0.0,
-            memory_used_mb: 0.0,
-            memory_total_mb: 0.0,
-            platform: std::env::consts::OS.to_string(),
-        }
-    }
-}
-
-// ── Shared: RuntimeState ────────────────────────────────────────────────────
-/// Mutable runtime state (not persisted — lost on restart).
-pub struct RuntimeState {
-    pub api_keys: HashMap<String, String>,
-}
-
-/// Temporary PKCE state for an in-progress OAuth flow.
-pub struct OAuthPkceState {
-    pub code_verifier: String,
-    pub created_at: tokio::time::Instant,
-}
-
-/// TTL for OAuth CSRF state entries (10 minutes).
-pub const OAUTH_STATE_TTL: std::time::Duration = std::time::Duration::from_secs(600);
-
-// ── Shared: AppState (project-specific fields vary) ─────────────────────────
-/// Central application state. Clone-friendly — PgPool and Arc are both Clone.
+// ── AppState ────────────────────────────────────────────────────────────────
 #[derive(Clone)]
 pub struct AppState {
-    pub db: PgPool,
-    pub agents: Arc<RwLock<Vec<WitcherAgent>>>,
-    pub runtime: Arc<RwLock<RuntimeState>>,
-    pub model_cache: Arc<RwLock<ModelCache>>,
-    pub start_time: Instant,
-    pub client: Client,
-    /// Google OAuth PKCE states keyed by state param (concurrent-safe, TTL 10min).
-    pub oauth_pkce: Arc<RwLock<HashMap<String, OAuthPkceState>>>,
-    /// Cached system stats (CPU, memory) refreshed every 5s by background task.
-    pub system_monitor: Arc<RwLock<SystemSnapshot>>,
-    /// `true` once startup_sync completes (or times out).
-    pub ready: Arc<AtomicBool>,
-    /// Optional auth secret from AUTH_SECRET env. None = dev mode (no auth).
-    pub auth_secret: Option<String>,
-    /// Circuit breaker for the Gemini API provider.
-    pub gemini_circuit: Arc<CircuitBreaker>,
-    /// Cached system prompts keyed by "agent_id:language:model".
-    /// Cleared on agent refresh for byte-identical Gemini API requests.
-    pub prompt_cache: Arc<RwLock<HashMap<String, String>>>,
-    /// A2A — cancellation tokens for running tasks (task_id → token).
-    pub a2a_cancel_tokens: Arc<RwLock<HashMap<String, CancellationToken>>>,
-    /// `false` when OAuth token was rejected by Gemini API (401/403).
-    /// Causes credential resolution to skip OAuth and use API key.
-    /// Reset to `true` on new OAuth login.
-    pub oauth_gemini_valid: Arc<AtomicBool>,
-    /// In-memory ring buffer for backend log entries (last 1000).
-    pub log_buffer: Arc<LogRingBuffer>,
-    /// Cached native tool definitions (computed once, reused across all requests).
-    /// MCP tools are merged at request time since they can change dynamically.
-    pub tool_defs_cache: Arc<OnceLock<serde_json::Value>>,
-    /// MCP client manager — connects to external MCP servers, discovers tools.
-    pub mcp_client: Arc<McpClientManager>,
-    /// Google OAuth PKCE states keyed by state param (concurrent-safe, TTL 10min).
-    pub google_oauth_pkce: Arc<RwLock<HashMap<String, OAuthPkceState>>>,
-    /// GitHub OAuth states keyed by state param (concurrent-safe, TTL 10min).
-    pub github_oauth_states: Arc<RwLock<HashMap<String, tokio::time::Instant>>>,
-    /// Vercel OAuth states keyed by state param (concurrent-safe, TTL 10min).
-    pub vercel_oauth_states: Arc<RwLock<HashMap<String, tokio::time::Instant>>>,
-    /// Optional Jaskier Knowledge API URL (e.g. http://jaskier-knowledge.internal:8083).
-    pub knowledge_api_url: Option<String>,
-    /// Optional auth secret for the Knowledge API.
-    pub knowledge_auth_secret: Option<String>,
-    /// Swarm SSE multi-agent broadcasting channel.
-    pub swarm_tx: broadcast::Sender<crate::handlers::streaming::AgentMessage>,
-    /// A2A Task SSE broadcasting channel.
-    pub a2a_task_tx: broadcast::Sender<()>,
-    /// Cached browser proxy health status, updated by watchdog every 30s.
-    pub browser_proxy_status: Arc<RwLock<crate::browser_proxy::BrowserProxyStatus>>,
-    /// Ring buffer of proxy health status change events (last 50).
-    pub browser_proxy_history: Arc<crate::browser_proxy::ProxyHealthHistory>,
-    /// Semaphore limiting concurrent A2A delegations (max 5 system-wide).
-    pub a2a_semaphore: Arc<tokio::sync::Semaphore>,
-    /// Semaphore limiting concurrent WebSocket connections (max 20 system-wide).
-    pub ws_semaphore: Arc<tokio::sync::Semaphore>,
+    pub base: BaseHydraState,
 }
 
-// ── Shared: readiness helpers ───────────────────────────────────────────────
-impl AppState {
-    pub fn is_ready(&self) -> bool {
-        self.ready.load(Ordering::Relaxed)
-    }
-
-    pub fn mark_ready(&self) {
-        self.ready.store(true, Ordering::Relaxed);
-        tracing::info!("Backend marked as READY");
+impl Deref for AppState {
+    type Target = BaseHydraState;
+    fn deref(&self) -> &BaseHydraState {
+        &self.base
     }
 }
 
+// ── Constructor ─────────────────────────────────────────────────────────────
+
 impl AppState {
-    pub async fn new(db: PgPool, log_buffer: Arc<LogRingBuffer>) -> Self {
-        // ── API keys from environment ──────────────────────────────────
-        let mut api_keys = HashMap::new();
+    pub async fn new(db: sqlx::PgPool, log_buffer: Arc<LogRingBuffer>) -> Self {
+        let base = BaseHydraState::new(db, log_buffer, BaseHydraConfig {
+            app_name: "GeminiHydra",
+            google_auth_table: "gh_google_auth",
+            agents_table: "gh_agents",
+            circuit_provider: "gemini",
+        }).await;
+        Self { base }
+    }
 
-        if let Ok(key) =
-            std::env::var("GOOGLE_API_KEY").or_else(|_| std::env::var("GEMINI_API_KEY"))
-        {
-            api_keys.insert("google".to_string(), key);
-        }
+    pub fn is_ready(&self) -> bool { self.base.is_ready() }
+    pub fn mark_ready(&self) { self.base.mark_ready(); }
 
-        if let Ok(key) = std::env::var("ANTHROPIC_API_KEY") {
-            api_keys.insert("anthropic".to_string(), key);
-        }
+    pub async fn refresh_agents(&self) {
+        self.base.refresh_agents("gh_agents").await;
+    }
+}
 
-        // ── Parallel: DB queries + HTTP client build ─────────────────
-        // These three operations are independent — run them concurrently.
-        let (api_key_result, agents_result, client) = tokio::join!(
-            // Load stored API key from DB (encrypted)
-            // Priority: DB key overrides env var (user explicitly saved it)
-            async {
-                sqlx::query_as::<_, (String, String)>(
-                    "SELECT auth_method, api_key_encrypted FROM gh_google_auth WHERE id = 1",
-                )
-                .fetch_optional(&db)
-                .await
+// ── Mechanical trait delegations (identical across all Quad apps) ────────────
+jaskier_hydra_state::delegate_base_traits!(AppState, "8081", "gh");
+
+// ── HasExecutionContext — shared prepare_execution logic ─────────────────────
+
+impl jaskier_core::context::HasExecutionContext for AppState {
+    fn agents(&self) -> &Arc<RwLock<Vec<jaskier_core::models::WitcherAgent>>> {
+        &self.base.agents
+    }
+
+    fn prompt_cache(&self) -> &Arc<RwLock<HashMap<String, String>>> {
+        &self.base.prompt_cache
+    }
+
+    fn mcp_client(&self) -> &Arc<jaskier_core::mcp::client::McpClientManager> {
+        &self.base.mcp_client
+    }
+
+    async fn resolve_api_credential(&self) -> (String, bool) {
+        crate::oauth::get_google_credential(self)
+            .await
+            .unwrap_or_default()
+    }
+
+    fn extract_file_paths_from_prompt(&self, prompt: &str) -> Vec<String> {
+        jaskier_tools::files::extract_file_paths(prompt)
+    }
+
+    async fn build_file_context_from_paths(&self, paths: &[String]) -> (String, usize) {
+        let (ctx, errors) = jaskier_tools::files::build_file_context(paths).await;
+        (ctx, errors.len())
+    }
+}
+
+// ── App-specific trait implementations ──────────────────────────────────────
+
+impl jaskier_core::handlers::system::HasHealthState for AppState {
+    fn version(&self) -> &'static str { "15.0.0" }
+    fn app_name(&self) -> &'static str { "GeminiHydra" }
+    fn start_time(&self) -> Instant { self.base.start_time }
+    fn is_ready(&self) -> bool { self.base.is_ready() }
+    fn has_auth_secret(&self) -> bool { self.base.auth_secret.is_some() }
+
+    fn api_keys_snapshot(&self) -> HashMap<String, String> {
+        self.base.api_keys.try_read().map(|g| g.clone()).unwrap_or_default()
+    }
+
+    fn google_models_snapshot(&self) -> Vec<jaskier_core::model_registry::ModelInfo> {
+        self.base.model_cache
+            .try_read()
+            .map(|c| c.models.get("google").cloned().unwrap_or_default())
+            .unwrap_or_default()
+    }
+
+    fn system_stats_snapshot(&self) -> jaskier_core::handlers::system::SystemStatsSnapshot {
+        let snap = self.base.system_monitor.try_read();
+        match snap {
+            Ok(s) => jaskier_core::handlers::system::SystemStatsSnapshot {
+                cpu_usage_percent: s.cpu_usage_percent,
+                memory_used_mb: s.memory_used_mb,
+                memory_total_mb: s.memory_total_mb,
+                platform: s.platform.clone(),
             },
-            // Load agents from DB
-            async {
-                sqlx::query_as::<_, WitcherAgent>("SELECT * FROM gh_agents ORDER BY created_at ASC")
-                    .fetch_all(&db)
-                    .await
+            Err(_) => jaskier_core::handlers::system::SystemStatsSnapshot {
+                cpu_usage_percent: 0.0,
+                memory_used_mb: 0.0,
+                memory_total_mb: 0.0,
+                platform: std::env::consts::OS.to_string(),
             },
-            // Build HTTP client
-            async {
-                Client::builder()
-                    .pool_max_idle_per_host(10)
-                    .timeout(std::time::Duration::from_secs(120))
-                    .connect_timeout(std::time::Duration::from_secs(5))
-                    .build()
-                    .expect("Failed to build HTTP client")
-            }
+        }
+    }
+
+    async fn browser_proxy_json(&self) -> Option<serde_json::Value> {
+        if !jaskier_browser::browser_proxy::is_enabled() {
+            return None;
+        }
+        let status = self.base.browser_proxy_status.read().await.clone();
+        serde_json::to_value(status).ok()
+    }
+
+    fn browser_proxy_history_snapshot(&self, limit: usize) -> (Vec<serde_json::Value>, usize) {
+        let events = self.base.browser_proxy_history.recent(limit);
+        let total = self.base.browser_proxy_history.len();
+        let json_events = events
+            .into_iter()
+            .filter_map(|e| serde_json::to_value(e).ok())
+            .collect();
+        (json_events, total)
+    }
+}
+
+impl jaskier_core::handlers::system::HasApiKeyRotation for AppState {
+    fn api_keys_lock(&self) -> &Arc<RwLock<HashMap<String, String>>> {
+        &self.base.api_keys
+    }
+}
+
+impl jaskier_core::sessions::HasSessionsState for AppState {
+    fn db(&self) -> &sqlx::PgPool { &self.base.db }
+    fn sessions_table(&self) -> &'static str { "gh_sessions" }
+    fn messages_table(&self) -> &'static str { "gh_chat_messages" }
+    fn settings_table(&self) -> &'static str { "gh_settings" }
+    fn memory_table(&self) -> &'static str { "gh_memories" }
+    fn knowledge_nodes_table(&self) -> &'static str { "gh_knowledge_nodes" }
+    fn knowledge_edges_table(&self) -> &'static str { "gh_knowledge_edges" }
+    fn prompt_history_table(&self) -> &'static str { "gh_prompt_history" }
+    fn ratings_table(&self) -> &'static str { "gh_ratings" }
+    fn audit_log_table(&self) -> &'static str { "gh_audit_log" }
+
+    async fn log_audit_entry(&self, action: &str, data: serde_json::Value, ip: Option<&str>) {
+        crate::audit::log_audit(&self.base.db, action, data, ip).await;
+    }
+
+    async fn get_best_model_id(&self, use_case: &str) -> String {
+        crate::model_registry::get_model_id(self, use_case).await
+    }
+
+    async fn generate_title_with_ai(&self, first_message: &str) -> Option<String> {
+        // Truncate to ~500 chars for the prompt (safe UTF-8 boundary)
+        let snippet: &str = if first_message.len() > 500 {
+            let end = first_message
+                .char_indices()
+                .take_while(|(i, _)| *i < 500)
+                .last()
+                .map(|(i, c)| i + c.len_utf8())
+                .unwrap_or(500.min(first_message.len()));
+            &first_message[..end]
+        } else {
+            first_message
+        };
+        let prompt = format!(
+            "Generate a concise 3-7 word title for a chat that starts with this message. \
+             Return ONLY the title text, no quotes, no explanation.\n\nMessage: {}",
+            snippet
         );
 
-        // Process API key result
-        if let Ok(Some(row)) = api_key_result {
-            let (method, encrypted_key) = row;
-            if method == "api_key" && !encrypted_key.is_empty() {
-                match crate::oauth::decrypt_token(&encrypted_key) {
-                    Ok(decrypted) if !decrypted.is_empty() => {
-                        api_keys.insert("google".to_string(), decrypted);
-                        tracing::info!("Loaded Google API key from DB (encrypted)");
-                    }
-                    Ok(_) => {}
-                    Err(e) => tracing::warn!("Failed to decrypt stored API key: {}", e),
-                }
-            }
-        }
+        let (api_key, is_oauth) = crate::oauth_google::get_google_credential(self).await?;
 
-        // Process agents result
-        let agents_vec = agents_result.unwrap_or_else(|e| {
-            tracing::error!("Failed to load agents from DB: {}", e);
-            vec![]
+        let model = "gemini-2.0-flash";
+        let url = format!(
+            "https://generativelanguage.googleapis.com/v1beta/models/{}:generateContent",
+            model
+        );
+        let parsed_url = reqwest::Url::parse(&url).ok().filter(|u| u.scheme() == "https")?;
+
+        let body = serde_json::json!({
+            "contents": [{ "parts": [{ "text": prompt }] }],
+            "generationConfig": { "temperature": 1.0, "maxOutputTokens": 256 }
         });
 
-        if agents_vec.is_empty() {
-            tracing::warn!(
-                "No agents loaded from DB — agent routing will fail. Check gh_agents table."
-            );
+        let res = jaskier_oauth::google::apply_google_auth(
+            self.base.client.post(parsed_url),
+            &api_key,
+            is_oauth,
+        )
+        .json(&body)
+        .timeout(std::time::Duration::from_secs(15))
+        .send()
+        .await
+        .ok()?;
+
+        if !res.status().is_success() {
+            tracing::error!("generate_title_with_ai: API returned {}", res.status());
+            return None;
         }
 
-        let auth_secret = std::env::var("AUTH_SECRET").ok().filter(|s| !s.is_empty());
-        if auth_secret.is_some() {
-            tracing::info!("AUTH_SECRET configured — authentication enabled");
-        } else {
-            tracing::info!("AUTH_SECRET not set — authentication disabled (dev mode)");
+        let json_resp: serde_json::Value = res.json().await.ok()?;
+        let raw_title = json_resp
+            .get("candidates")
+            .and_then(|c| c.get(0))
+            .and_then(|c0| c0.get("content"))
+            .and_then(|ct| ct.get("parts"))
+            .and_then(|p| p.get(0))
+            .and_then(|p0| p0.get("text"))
+            .and_then(|t| t.as_str())
+            .unwrap_or("")
+            .trim()
+            .trim_matches('"')
+            .trim()
+            .to_string();
+
+        if raw_title.is_empty() { None } else { Some(raw_title) }
+    }
+}
+
+// ── jaskier-core::prompt + handlers::agents trait implementations ─────────
+
+impl jaskier_core::handlers::agents::HasAgentState for AppState {
+    fn db(&self) -> &sqlx::PgPool { &self.base.db }
+    fn agents(&self) -> &Arc<tokio::sync::RwLock<Vec<jaskier_core::models::WitcherAgent>>> {
+        &self.base.agents
+    }
+    fn a2a_task_tx(&self) -> &tokio::sync::broadcast::Sender<()> {
+        &self.base.a2a_task_tx
+    }
+    fn agent_table_prefix(&self) -> &'static str { "gh" }
+    async fn refresh_agents(&self) {
+        self.refresh_agents().await;
+    }
+}
+
+// ── jaskier-core::mcp::server::HasMcpServerState ────────────────────────────
+
+impl jaskier_core::mcp::server::HasMcpServerState for AppState {
+    fn mcp_server_name(&self) -> &'static str { "GeminiHydra" }
+    fn mcp_server_version(&self) -> &'static str { "15.0.0" }
+    fn mcp_server_instructions(&self) -> &'static str {
+        "GeminiHydra v15 \u{2014} Multi-Agent AI Swarm with native tools for code analysis, file operations, web scraping, OCR, image analysis, and MCP integration."
+    }
+    fn mcp_uri_scheme(&self) -> &'static str { "geminihydra" }
+    fn mcp_settings_table(&self) -> &'static str { "gh_settings" }
+    fn mcp_sessions_table(&self) -> &'static str { "gh_sessions" }
+    fn mcp_agents(&self) -> &Arc<RwLock<Vec<jaskier_core::models::WitcherAgent>>> { &self.base.agents }
+    fn mcp_model_cache(&self) -> &Arc<RwLock<ModelCache>> { &self.base.model_cache }
+    fn mcp_start_time(&self) -> Instant { self.base.start_time }
+    fn mcp_is_ready(&self) -> bool { self.base.is_ready() }
+
+    async fn mcp_system_snapshot_json(&self) -> serde_json::Value {
+        let snap = self.base.system_monitor.read().await;
+        serde_json::json!({
+            "cpu_usage_percent": snap.cpu_usage_percent,
+            "memory_used_mb": snap.memory_used_mb,
+            "memory_total_mb": snap.memory_total_mb,
+            "platform": snap.platform,
+        })
+    }
+
+    async fn mcp_execute_tool(
+        &self,
+        name: &str,
+        args: &serde_json::Value,
+        working_directory: &str,
+    ) -> Result<(String, Option<serde_json::Value>), String> {
+        match crate::tools::execute_tool(name, args, self, working_directory).await {
+            Ok(output) => {
+                let inline = output.inline_data.map(|d| serde_json::json!({
+                    "data": d.data,
+                    "mime_type": d.mime_type,
+                }));
+                Ok((output.text, inline))
+            }
+            Err(e) => Err(e),
         }
+    }
+}
 
-        let knowledge_api_url = std::env::var("KNOWLEDGE_API_URL")
-            .ok()
-            .filter(|s| !s.is_empty());
-        let knowledge_auth_secret = std::env::var("KNOWLEDGE_AUTH_SECRET")
-            .ok()
-            .filter(|s| !s.is_empty());
-        if knowledge_api_url.is_some() {
-            tracing::info!(
-                "Knowledge API configured: {}",
-                knowledge_api_url.as_deref().unwrap_or("")
-            );
-        }
+// ── jaskier-ai-modules::a2a::HasA2aState ────────────────────────────────────
 
-        tracing::info!(
-            "AppState initialised — {} agents loaded, keys: {:?}",
-            agents_vec.len(),
-            api_keys.keys().collect::<Vec<_>>()
-        );
+impl jaskier_ai_modules::a2a::HasA2aState for AppState {
+    type Agent = jaskier_core::models::WitcherAgent;
 
-        let mcp_client = Arc::new(McpClientManager::new(db.clone(), client.clone()));
+    fn agents(&self) -> &Arc<RwLock<Vec<jaskier_core::models::WitcherAgent>>> {
+        &self.base.agents
+    }
 
-        Self {
-            db,
-            agents: Arc::new(RwLock::new(agents_vec)),
-            runtime: Arc::new(RwLock::new(RuntimeState { api_keys })),
-            model_cache: Arc::new(RwLock::new(ModelCache::new())),
-            start_time: Instant::now(),
-            client,
-            oauth_pkce: Arc::new(RwLock::new(HashMap::new())),
-            system_monitor: Arc::new(RwLock::new(SystemSnapshot::default())),
-            ready: Arc::new(AtomicBool::new(false)),
-            auth_secret,
-            gemini_circuit: Arc::new(CircuitBreaker::new("gemini")),
-            prompt_cache: Arc::new(RwLock::new(HashMap::new())),
-            a2a_cancel_tokens: Arc::new(RwLock::new(HashMap::new())),
-            oauth_gemini_valid: Arc::new(AtomicBool::new(true)),
-            log_buffer,
-            tool_defs_cache: Arc::new(OnceLock::new()),
-            mcp_client,
-            google_oauth_pkce: Arc::new(RwLock::new(HashMap::new())),
-            github_oauth_states: Arc::new(RwLock::new(HashMap::new())),
-            vercel_oauth_states: Arc::new(RwLock::new(HashMap::new())),
-            knowledge_api_url,
-            knowledge_auth_secret,
-            swarm_tx: tokio::sync::broadcast::channel(100).0,
-            a2a_task_tx: tokio::sync::broadcast::channel(100).0,
-            browser_proxy_status: Arc::new(RwLock::new(
-                crate::browser_proxy::BrowserProxyStatus::default(),
-            )),
-            browser_proxy_history: Arc::new(crate::browser_proxy::ProxyHealthHistory::new(50)),
-            a2a_semaphore: Arc::new(tokio::sync::Semaphore::new(5)),
-            ws_semaphore: Arc::new(tokio::sync::Semaphore::new(20)),
+    fn a2a_app_name(&self) -> &str { "GeminiHydra" }
+    fn a2a_app_url(&self) -> &str { "http://localhost:8081" }
+    fn a2a_app_version(&self) -> &str { "15.0.0" }
+
+    fn a2a_semaphore(&self) -> &Arc<tokio::sync::Semaphore> { &self.base.a2a_semaphore }
+    fn a2a_task_tx(&self) -> &tokio::sync::broadcast::Sender<()> { &self.base.a2a_task_tx }
+    fn a2a_cancel_tokens(&self) -> &Arc<RwLock<HashMap<String, tokio_util::sync::CancellationToken>>> {
+        &self.base.a2a_cancel_tokens
+    }
+
+    fn send_swarm_notification(&self, agent_id: &str, content: String) {
+        let _ = self.base.swarm_tx.send(jaskier_core::models::AgentMessage {
+            agent_id: agent_id.to_string(),
+            content,
+            is_final: false,
+        });
+    }
+
+    async fn circuit_check(&self) -> Result<(), String> {
+        self.base.gemini_circuit.check().await
+    }
+    async fn circuit_success(&self) { self.base.gemini_circuit.record_success().await; }
+    async fn circuit_failure(&self) { self.base.gemini_circuit.record_failure().await; }
+
+    async fn prepare_a2a_context(
+        &self,
+        prompt: &str,
+        model_override: Option<String>,
+        agent_override: Option<(String, f64, String)>,
+        session_wd: &str,
+    ) -> jaskier_ai_modules::a2a::A2aContext {
+        let ctx = crate::context::prepare_execution(self, prompt, model_override, agent_override, session_wd).await;
+        jaskier_ai_modules::a2a::A2aContext {
+            agent_id: ctx.agent_id,
+            model: ctx.model,
+            api_key: ctx.api_key,
+            is_oauth: ctx.is_oauth,
+            system_prompt: ctx.system_prompt,
+            final_user_prompt: ctx.final_user_prompt,
+            temperature: ctx.temperature,
+            top_p: ctx.top_p,
+            max_tokens: ctx.max_tokens,
+            max_iterations: ctx.max_iterations,
+            thinking_level: ctx.thinking_level,
+            working_directory: ctx.working_directory,
+            call_depth: ctx.call_depth,
         }
     }
 
-    /// Refresh agents cache from DB
-    pub async fn refresh_agents(&self) {
-        if let Ok(new_list) =
-            sqlx::query_as::<_, WitcherAgent>("SELECT * FROM gh_agents ORDER BY created_at ASC")
-                .fetch_all(&self.db)
-                .await
-        {
-            let mut lock = self.agents.write().await;
-            *lock = new_list;
-        }
-        // Invalidate system prompt cache — agent roster changed
-        // Use std::mem::take to release the write lock before dropping the old data
-        let old_cache = std::mem::take(&mut *self.prompt_cache.write().await);
-        drop(old_cache);
+    async fn build_a2a_tools(&self) -> serde_json::Value {
+        crate::tool_defs::build_tools_with_mcp(self).await
+    }
+
+    async fn execute_a2a_tool(
+        &self,
+        name: &str,
+        args: &serde_json::Value,
+        working_dir: &str,
+    ) -> Result<String, String> {
+        crate::tools::execute_tool(name, args, self, working_dir)
+            .await
+            .map(|out| out.text)
+    }
+
+    fn build_a2a_thinking_config(&self, model: &str, thinking_level: &str) -> Option<serde_json::Value> {
+        crate::prompt::build_thinking_config(model, thinking_level)
     }
 }

@@ -7,6 +7,7 @@
  * ThemeProvider hoisted above AppShell so LoginView (outside AppShell) has access to theme.
  */
 
+import { ApiClientProvider } from '@jaskier/core/api';
 import { ErrorBoundary } from '@jaskier/ui';
 import { QueryClientProvider, QueryErrorResetBoundary } from '@tanstack/react-query';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
@@ -19,6 +20,7 @@ import { ViewSkeleton } from '@/components/molecules/ViewSkeleton';
 import { AppShell } from '@/components/organisms/AppShell';
 import { ThemeProvider } from '@/contexts/ThemeContext';
 import { ChatViewWrapper } from '@/features/chat/components/ChatViewWrapper';
+import { apiGet, apiGetPolling, apiPost, apiPatch, apiDelete, apiPostFormData, BASE_URL } from '@/shared/api/client';
 import { queryClient } from '@/shared/api/queryClient';
 import { useAuthGate } from '@/shared/hooks/useAuthGate';
 import { useViewStore } from '@/stores/viewStore';
@@ -153,19 +155,23 @@ function AuthGate() {
 // APP
 // ============================================================================
 
+const apiClient = { apiGet, apiGetPolling, apiPost, apiPatch, apiDelete, apiPostFormData, BASE_URL };
+
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <ThemeProvider defaultTheme="dark">
-        <QueryErrorResetBoundary>
-          {() => (
-            <ErrorBoundary fallback={<ViewSkeleton />}>
-              <AuthGate />
-            </ErrorBoundary>
-          )}
-        </QueryErrorResetBoundary>
-        <Toaster position="bottom-right" theme="dark" richColors />
-      </ThemeProvider>
+      <ApiClientProvider client={apiClient}>
+        <ThemeProvider defaultTheme="dark">
+          <QueryErrorResetBoundary>
+            {() => (
+              <ErrorBoundary fallback={<ViewSkeleton />}>
+                <AuthGate />
+              </ErrorBoundary>
+            )}
+          </QueryErrorResetBoundary>
+          <Toaster position="bottom-right" theme="dark" richColors />
+        </ThemeProvider>
+      </ApiClientProvider>
       <ReactQueryDevtools initialIsOpen={false} />
     </QueryClientProvider>
   );
