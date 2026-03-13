@@ -69,7 +69,7 @@ jobs:
     env:
       # Sparse-clone source for shared crates.
       # Override via repo secret CRATES_SOURCE_REPO if the monorepo is private.
-      CRATES_SOURCE_REPO: ${{ secrets.CRATES_SOURCE_REPO || 'https://github.com/EPS-AI-SOLUTIONS/JaskierWorkspace.git' }}
+      CRATES_SOURCE_REPO: https://x-access-token:${{ secrets.GH_PAT }}@github.com/EPS-AI-SOLUTIONS/JaskierWorkspace.git
     steps:
       - uses: actions/checkout@v4
 
