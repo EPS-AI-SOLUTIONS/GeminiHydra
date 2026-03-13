@@ -4,7 +4,7 @@
 
 use crate::classify::{classify_agent_score, classify_prompt, keyword_match, strip_diacritics};
 use crate::models::WitcherAgent;
-use crate::models::{ExecuteRequest, ExecuteResponse, ExecutePlan, WsClientMessage, WsServerMessage};
+use crate::models::{ExecuteRequest, ExecuteResponse, ExecutePlan, WsServerMessage};
 use serde_json::json;
 
 /// Build a minimal set of test agents with keywords matching the DB seed.

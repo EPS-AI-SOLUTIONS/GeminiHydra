@@ -182,7 +182,10 @@ impl jaskier_core::mcp::server::HasMcpServerState for AppState {
     fn mcp_uri_scheme(&self) -> &'static str { "geminihydra" }
     fn mcp_settings_table(&self) -> &'static str { "gh_settings" }
     fn mcp_sessions_table(&self) -> &'static str { "gh_sessions" }
-    fn mcp_agents(&self) -> &Arc<RwLock<Vec<jaskier_core::models::WitcherAgent>>> { &self.base.agents }
+    async fn mcp_agents_json(&self) -> serde_json::Value {
+        let agents = self.base.agents.read().await;
+        serde_json::to_value(&*agents).unwrap_or_else(|_| serde_json::json!([]))
+    }
     fn mcp_model_cache(&self) -> &Arc<RwLock<ModelCache>> { &self.base.model_cache }
     fn mcp_start_time(&self) -> Instant { self.base.start_time }
     fn mcp_is_ready(&self) -> bool { self.base.is_ready() }

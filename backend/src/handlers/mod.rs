@@ -95,7 +95,3 @@ pub use system::{
 };
 
 pub use crate::error::{ApiError, ApiErrorWithDetails, StructuredApiError};
-
-/// Extract diagnostic info from a Gemini API response that's missing expected parts.
-/// Delegated to jaskier-core shared implementation.
-pub(crate) use jaskier_core::handlers::gemini_diagnose;
