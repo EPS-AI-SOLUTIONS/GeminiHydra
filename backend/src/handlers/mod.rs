@@ -4,7 +4,6 @@
 // so that `crate::handlers::*` paths remain unchanged.
 // ---------------------------------------------------------------------------
 
-use jaskier_core::auth;
 use crate::state::AppState;
 use axum::{
     Router, middleware,

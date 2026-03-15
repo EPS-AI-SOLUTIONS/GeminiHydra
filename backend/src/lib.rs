@@ -25,7 +25,6 @@ pub mod tool_defs;
 pub mod tools;
 pub mod watchdog;
 
-use jaskier_core::{logs, error, auth};
 use axum::Router;
 use axum::extract::State;
 use axum::http::HeaderValue;

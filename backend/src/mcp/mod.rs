@@ -11,7 +11,7 @@ pub mod client;
 pub mod config;
 pub mod server;
 
-use crate::{auth, state::AppState};
+use crate::state::AppState;
 use axum::{
     Router, middleware,
     routing::{get, patch, post},
