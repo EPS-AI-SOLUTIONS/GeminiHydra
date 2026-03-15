@@ -39,6 +39,10 @@ impl HasGeminiStreamingState for AppState {
         self.ws_semaphore.clone()
     }
 
+    fn rate_limiter(&self) -> &Arc<jaskier_core::rate_limiter::GlobalRateLimiter> {
+        &self.global_rate_limiter
+    }
+
     async fn circuit_check(&self) -> Result<(), String> {
         self.gemini_circuit.check().await
     }

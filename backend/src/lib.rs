@@ -3,14 +3,11 @@
 pub mod a2a;
 pub mod analysis;
 pub mod audit;
-pub mod auth;
 pub mod browser_proxy;
 pub mod classify;
 pub mod context;
-pub mod error;
 pub mod files;
 pub mod handlers;
-pub mod logs;
 pub mod mcp;
 pub mod model_registry;
 pub mod models;
@@ -28,6 +25,7 @@ pub mod tool_defs;
 pub mod tools;
 pub mod watchdog;
 
+use jaskier_core::{logs, error, auth};
 use axum::Router;
 use axum::extract::State;
 use axum::http::HeaderValue;
@@ -268,6 +266,7 @@ fn build_config(state: AppState) -> jaskier_core::router_builder::HydraRouterCon
 
         // OpenAPI spec
         openapi: ApiDoc::openapi(),
+        primary_auth_override: None,
     }
 }
 

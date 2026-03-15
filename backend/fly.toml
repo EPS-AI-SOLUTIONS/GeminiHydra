@@ -1,12 +1,15 @@
 app = 'geminihydra-v15-backend'
 primary_region = 'arn'
 
+# Multi-region: arn (Stockholm, primary), fra (Frankfurt), waw (Warsaw)
+# Additional regions added via: fly machine clone --region fra/waw
+
 [build]
-  # Build context is the workspace root (required for shared crates/).
-  # Deploy command: flyctl deploy --config apps/GeminiHydra/backend/fly.toml --dockerfile apps/GeminiHydra/backend/Dockerfile
-  # Or use the workspace root deploy-fly.ps1 script.
   dockerfile = "apps/GeminiHydra/backend/Dockerfile"
   build_context = "."
+
+[deploy]
+  strategy = "rolling"
 
 [http_service]
   internal_port = 8081
@@ -14,6 +17,14 @@ primary_region = 'arn'
   auto_stop_machines = 'stop'
   auto_start_machines = true
   min_machines_running = 0
+
+  [http_service.checks]
+    [http_service.checks.health]
+      interval = "30s"
+      timeout = "5s"
+      grace_period = "10s"
+      method = "GET"
+      path = "/api/health"
 
 [env]
   RUST_LOG = "info"

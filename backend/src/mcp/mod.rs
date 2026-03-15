@@ -39,6 +39,6 @@ pub fn mcp_router(state: AppState) -> Router<AppState> {
         .route("/api/mcp/tools", get(config::mcp_all_tools::<AppState>))
         .route_layer(middleware::from_fn_with_state(
             state.clone(),
-            auth::require_auth::<AppState>,
+            jaskier_core::auth::require_auth::<AppState>,
         ))
 }

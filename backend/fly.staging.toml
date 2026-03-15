@@ -1,16 +1,15 @@
 # GeminiHydra v15 — Staging deployment config
 # Usage: fly deploy --config fly.staging.toml
 #
-# This config targets a separate staging app with its own database.
-# Secrets must be configured separately for the staging app:
-#   fly secrets set DATABASE_URL=... --app geminihydra-v15-staging
-#   fly secrets set GOOGLE_API_KEY=... --app geminihydra-v15-staging
-#   fly secrets set ANTHROPIC_API_KEY=... --app geminihydra-v15-staging
+# Secrets: fly secrets set DATABASE_URL=... --app geminihydra-v15-staging
 
 app = 'geminihydra-v15-staging'
 primary_region = 'arn'
 
 [build]
+
+[deploy]
+  strategy = "rolling"
 
 [http_service]
   internal_port = 8081
@@ -18,6 +17,14 @@ primary_region = 'arn'
   auto_stop_machines = 'stop'
   auto_start_machines = true
   min_machines_running = 0
+
+  [http_service.checks]
+    [http_service.checks.health]
+      interval = "30s"
+      timeout = "5s"
+      grace_period = "10s"
+      method = "GET"
+      path = "/api/health"
 
 [env]
   RUST_LOG = "debug"

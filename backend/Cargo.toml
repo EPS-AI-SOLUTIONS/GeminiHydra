@@ -8,7 +8,7 @@ publish = false
 workspace = true
 
 [dependencies]
-jaskier-core = { path = "../../../crates/jaskier-core" }
+jaskier-core = { path = "../../../crates/jaskier-core", features = ["otel"] }
 jaskier-oauth = { path = "../../../crates/jaskier-oauth" }
 jaskier-ai-modules = { path = "../../../crates/jaskier-ai-modules" }
 jaskier-browser = { path = "../../../crates/jaskier-browser" }

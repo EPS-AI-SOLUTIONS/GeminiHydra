@@ -4,7 +4,7 @@
 // so that `crate::handlers::*` paths remain unchanged.
 // ---------------------------------------------------------------------------
 
-use crate::auth;
+use jaskier_core::auth;
 use crate::state::AppState;
 use axum::{
     Router, middleware,
@@ -43,7 +43,7 @@ pub fn agents_router(state: AppState) -> Router<AppState> {
         )
         .route_layer(middleware::from_fn_with_state(
             state.clone(),
-            auth::require_auth::<AppState>,
+            jaskier_core::auth::require_auth::<AppState>,
         ))
 }
 
@@ -54,7 +54,7 @@ pub fn system_router(state: AppState) -> Router<AppState> {
         .route("/api/admin/rotate-key", post(system::rotate_key))
         .route_layer(middleware::from_fn_with_state(
             state.clone(),
-            auth::require_auth::<AppState>,
+            jaskier_core::auth::require_auth::<AppState>,
         ))
 }
 
@@ -65,7 +65,7 @@ pub fn files_router(state: AppState) -> Router<AppState> {
         .route("/api/files/browse", post(files_handlers::browse_directory))
         .route_layer(middleware::from_fn_with_state(
             state.clone(),
-            auth::require_auth::<AppState>,
+            jaskier_core::auth::require_auth::<AppState>,
         ))
 }
 
@@ -94,4 +94,4 @@ pub use system::{
     __path_health_detailed, __path_readiness, __path_system_stats,
 };
 
-pub use crate::error::{ApiError, ApiErrorWithDetails, StructuredApiError};
+pub use jaskier_core::error::{ApiError, ApiErrorWithDetails, StructuredApiError};

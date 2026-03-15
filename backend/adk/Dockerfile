@@ -16,4 +16,5 @@ EXPOSE 8000
 HEALTHCHECK --interval=10s --timeout=5s --retries=3 \
     CMD curl -f http://localhost:8000/list-apps || exit 1
 
+USER 1000
 CMD ["python", "-m", "uvicorn", "adk.server:app", "--host", "0.0.0.0", "--port", "8000"]

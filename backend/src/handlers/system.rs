@@ -9,7 +9,7 @@ use axum::Json;
 use axum::extract::State;
 use serde_json::{Value, json};
 
-use crate::error::ApiError;
+use jaskier_core::error::ApiError;
 use crate::models::{GeminiModelInfo, GeminiModelsResponse};
 use crate::state::AppState;
 
