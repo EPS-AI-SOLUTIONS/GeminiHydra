@@ -44,6 +44,8 @@ impl AppState {
             circuit_provider: "gemini",
             // GeminiHydra uses Google OAuth (get_google_credential) — not env vars.
             api_key_env_vars: &[],
+            mcp_servers_table: "gh_mcp_servers",
+            mcp_tools_table: "gh_mcp_discovered_tools",
         }).await;
         Self { base }
     }
