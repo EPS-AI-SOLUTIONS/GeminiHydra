@@ -1,5 +1,5 @@
-// Jaskier Shared Pattern — audit (re-export stub)
-// Delegates to jaskier_core::audit with app-specific table name.
+// Jaskier Shared Pattern — audit (re-export module)
+// Delegates to jaskier_core::audit with app-specific table name `gh_audit_log`.
 
 use serde_json::Value;
 use sqlx::PgPool;

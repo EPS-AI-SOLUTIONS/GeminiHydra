@@ -1,4 +1,4 @@
-// Jaskier Shared Pattern -- mcp/server (re-export stub)
+// Jaskier Shared Pattern — mcp/server (re-export module)
 //! MCP Server — re-exports the shared generic handler from jaskier-core.
 //!
 //! The full implementation lives in `jaskier_core::mcp::server`.

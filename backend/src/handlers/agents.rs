@@ -1,6 +1,6 @@
 // ---------------------------------------------------------------------------
-// handlers/agents.rs — Agent CRUD + classification handlers now live in jaskier-core.
-// This stub re-exports all public items so existing router code compiles unchanged.
+// handlers/agents.rs — Agent CRUD + classification (delegated to jaskier-core)
+// Re-exports all public items so existing router code compiles unchanged.
 // HasAgentState is implemented for AppState in state.rs.
 // ---------------------------------------------------------------------------
 

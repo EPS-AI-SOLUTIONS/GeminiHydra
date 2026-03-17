@@ -1,4 +1,4 @@
-// Re-export stub — Google OAuth is now provided by the shared `jaskier-oauth` crate.
+// Google OAuth — re-exports from shared `jaskier-oauth` crate.
 pub use jaskier_oauth::google::{
     GoogleRedirectParams, SaveApiKeyRequest,
     apply_google_auth, auth_login as google_auth_login, auth_logout as google_auth_logout,

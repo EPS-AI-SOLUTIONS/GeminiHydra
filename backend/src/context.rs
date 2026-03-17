@@ -2,9 +2,9 @@
 // context.rs — Execution context preparation (delegated to jaskier-core)
 // ---------------------------------------------------------------------------
 //
-// All logic now lives in jaskier_core::context::prepare_execution.
-// This stub re-exports types so existing `use crate::context::*` callers
-// continue to resolve. The HasExecutionContext trait is impl'd in state.rs.
+// All logic lives in jaskier_core::context::prepare_execution.
+// Re-exports types so `use crate::context::*` callers continue to resolve.
+// The HasExecutionContext trait is impl'd in state.rs.
 // ---------------------------------------------------------------------------
 
 pub use jaskier_core::context::{

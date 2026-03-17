@@ -1,5 +1,5 @@
 // ---------------------------------------------------------------------------
-// handlers/files_handlers.rs — Re-export stub
+// handlers/files_handlers.rs — Delegation layer
 // Delegates to jaskier_tools::handlers::files_handlers shared implementation.
 // Thin wrappers retain #[utoipa::path] for OpenAPI generation.
 // ---------------------------------------------------------------------------

@@ -133,7 +133,7 @@ async fn main() -> shuttle_axum::ShuttleAxum {
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     app_builder::enable_ansi();
-    let log_buffer = app_builder::init_tracing(1000);
+    let log_buffer = app_builder::init_tracing_with_service_name(1000, "geminihydra");
 
     let (app, state) = build_app(log_buffer).await;
 

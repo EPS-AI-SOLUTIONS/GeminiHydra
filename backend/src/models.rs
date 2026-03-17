@@ -1,7 +1,9 @@
 // ---------------------------------------------------------------------------
-// models.rs — All protocol types now live in jaskier-core.
-// This stub re-exports everything so existing `use crate::models::*` code
-// keeps compiling unchanged.
+// models.rs — Protocol types (delegated to jaskier-core)
+// ---------------------------------------------------------------------------
+//
+// All protocol types live in jaskier-core. Re-exports for backward
+// compatibility with `use crate::models::*` callers.
 // ---------------------------------------------------------------------------
 
 // ── Session/settings types from jaskier-core sessions module ──────────────

@@ -1,6 +1,6 @@
 // ---------------------------------------------------------------------------
 // handlers/execute.rs — Legacy HTTP execute + internal tool bridge
-// Thin stub — delegates to jaskier_core::handlers::execute (shared crate)
+// Delegation layer — delegates to jaskier_core::handlers::execute
 // ---------------------------------------------------------------------------
 
 use axum::Json;
