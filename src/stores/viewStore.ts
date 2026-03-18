@@ -14,15 +14,14 @@ initViewStore({
   devtoolsName: 'GeminiHydra/ViewStore',
 });
 
+export type { ChatSession, ChatTab, ViewStoreState } from '@jaskier/hydra-app/stores';
 // Re-export everything from hydra-app's stores (single source of truth)
 export {
-  useViewStore,
-  useCurrentSession,
   useCurrentChatHistory,
+  useCurrentSession,
   useCurrentSessionId,
+  useViewStore,
 } from '@jaskier/hydra-app/stores';
-
-export type { ViewStoreState, ChatSession, ChatTab } from '@jaskier/hydra-app/stores';
 
 // Re-export types and utils for backward compatibility
 export * from './types';

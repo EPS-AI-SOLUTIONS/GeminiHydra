@@ -20,7 +20,7 @@ import { ViewSkeleton } from '@/components/molecules/ViewSkeleton';
 import { AppShell } from '@/components/organisms/AppShell';
 import { ThemeProvider } from '@/contexts/ThemeContext';
 import { ChatViewWrapper } from '@/features/chat/components/ChatViewWrapper';
-import { apiGet, apiGetPolling, apiPost, apiPatch, apiDelete, apiPostFormData, BASE_URL } from '@/shared/api/client';
+import { apiDelete, apiGet, apiGetPolling, apiPatch, apiPost, apiPostFormData, BASE_URL } from '@/shared/api/client';
 import { queryClient } from '@/shared/api/queryClient';
 import { useAuthGate } from '@/shared/hooks/useAuthGate';
 import { useViewStore } from '@/stores/viewStore';

@@ -18,17 +18,17 @@ initApiClient({
   authSecret: env.VITE_AUTH_SECRET,
 });
 
+export type { ApiClientConfig, HealthStatus } from '@jaskier/hydra-app/shared/api';
 // Re-export everything from hydra-app's client (single source of truth)
 export {
-  BASE_URL,
-  getBaseUrl,
+  ApiError,
+  apiDelete,
   apiGet,
   apiGetPolling,
-  apiPost,
   apiPatch,
-  apiDelete,
+  apiPost,
   apiPostFormData,
+  BASE_URL,
   checkHealth,
-  ApiError,
+  getBaseUrl,
 } from '@jaskier/hydra-app/shared/api';
-export type { HealthStatus, ApiClientConfig } from '@jaskier/hydra-app/shared/api';
