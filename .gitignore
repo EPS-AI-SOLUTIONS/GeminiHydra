@@ -46,3 +46,6 @@ structure_analysis.txt
 
 # Windows artifacts
 nul
+
+# Stale .js build artifacts that shadow .tsx/.ts source files
+src/**/*.js
