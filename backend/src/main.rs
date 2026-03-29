@@ -1,6 +1,5 @@
-use axum::http::{HeaderValue, Method, header};
+use axum::http::{HeaderValue, header};
 use tower_http::compression::CompressionLayer;
-use tower_http::cors::CorsLayer;
 use tower_http::limit::RequestBodyLimitLayer;
 use tower_http::set_header::SetResponseHeaderLayer;
 use tower_http::trace::TraceLayer;
@@ -20,9 +19,7 @@ async fn build_app(log_buffer: std::sync::Arc<LogRingBuffer>) -> (axum::Router, 
         .expect("Failed to connect to Postgres");
 
     // Skip migrations if schema already exists (avoids checksum mismatch)
-    if let Err(e) =
-        jaskier_db::pool::run_migrations(&pool, sqlx::migrate!("./migrations")).await
-    {
+    if let Err(e) = jaskier_db::pool::run_migrations(&pool, sqlx::migrate!("./migrations")).await {
         tracing::warn!("Migration skipped (schema likely exists): {}", e);
     }
 
@@ -32,24 +29,7 @@ async fn build_app(log_buffer: std::sync::Arc<LogRingBuffer>) -> (axum::Router, 
     gemini_hydra_backend::system_monitor::spawn(state.system_monitor.clone());
 
     // CORS â€” explicit allowlist for Vite dev servers + Vercel production
-    let cors = CorsLayer::new()
-        .allow_origin([
-            "http://localhost:5176".parse().expect("valid static CORS origin"),
-            "http://127.0.0.1:5176".parse().expect("valid static CORS origin"),
-            // ClaudeHydra frontend (partner app cross-session access)
-            "http://localhost:5199".parse().expect("valid static CORS origin"),
-            "http://127.0.0.1:5199".parse().expect("valid static CORS origin"),
-            "https://geminihydra-v15.vercel.app".parse().expect("valid static CORS origin"),
-        ])
-        .allow_methods([
-            Method::GET,
-            Method::POST,
-            Method::PATCH,
-            Method::DELETE,
-            Method::OPTIONS,
-        ])
-        .allow_headers([header::CONTENT_TYPE, header::AUTHORIZATION])
-        .max_age(std::time::Duration::from_secs(86_400));
+    let cors = jaskier_auth::build_cors_layer(&["https://geminihydra-v15.vercel.app"]);
 
     // Security headers
     let nosniff: SetResponseHeaderLayer<HeaderValue> = SetResponseHeaderLayer::overriding(
