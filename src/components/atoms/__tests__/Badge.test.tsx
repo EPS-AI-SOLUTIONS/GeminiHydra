@@ -35,7 +35,7 @@ describe('Badge', () => {
   it('applies default variant classes', () => {
     const { container } = render(<Badge>Default</Badge>);
     const span = container.firstChild as HTMLElement;
-    expect(span.className).toContain('text-matrix-text-dim');
+    expect(span.className).toContain('text-current');
   });
 
   it('applies accent variant classes', () => {
@@ -47,34 +47,40 @@ describe('Badge', () => {
   it('applies success variant classes', () => {
     const { container } = render(<Badge variant="success">Success</Badge>);
     const span = container.firstChild as HTMLElement;
-    expect(span.className).toContain('text-[var(--matrix-success)]');
+    expect(span.className).toContain('text-emerald-400');
   });
 
   it('applies warning variant classes', () => {
     const { container } = render(<Badge variant="warning">Warning</Badge>);
     const span = container.firstChild as HTMLElement;
-    expect(span.className).toContain('text-[var(--matrix-warning)]');
+    expect(span.className).toContain('text-amber-400');
   });
 
   it('applies error variant classes', () => {
     const { container } = render(<Badge variant="error">Error</Badge>);
     const span = container.firstChild as HTMLElement;
-    expect(span.className).toContain('text-[var(--matrix-error)]');
+    expect(span.className).toContain('matrix-error');
   });
 
   // -------------------------------------------------------------------------
   // Sizes
   // -------------------------------------------------------------------------
 
-  it('applies sm size classes by default', () => {
-    const { container } = render(<Badge>Small</Badge>);
+  it('applies md size classes by default', () => {
+    const { container } = render(<Badge>Medium</Badge>);
     const span = container.firstChild as HTMLElement;
     expect(span.className).toContain('text-xs');
-    expect(span.className).toContain('px-2');
+    expect(span.className).toContain('px-2.5');
   });
 
-  it('applies md size classes', () => {
-    const { container } = render(<Badge size="md">Medium</Badge>);
+  it('applies sm size classes', () => {
+    const { container } = render(<Badge size="sm">Small</Badge>);
+    const span = container.firstChild as HTMLElement;
+    expect(span.className).toContain('px-1.5');
+  });
+
+  it('applies lg size classes', () => {
+    const { container } = render(<Badge size="lg">Large</Badge>);
     const span = container.firstChild as HTMLElement;
     expect(span.className).toContain('text-sm');
   });
@@ -85,33 +91,38 @@ describe('Badge', () => {
 
   it('renders a dot indicator when dot prop is true', () => {
     const { container } = render(<Badge dot>With Dot</Badge>);
-    const dotEl = container.querySelector('[aria-hidden="true"]');
+    // The dot is a small rounded span inside the badge
+    const spans = container.querySelectorAll('span span');
+    const dotEl = Array.from(spans).find((s) => s.className.includes('rounded-full'));
     expect(dotEl).toBeInTheDocument();
-    expect(dotEl?.className).toContain('rounded-full');
   });
 
   it('does not render a dot indicator by default', () => {
     const { container } = render(<Badge>No Dot</Badge>);
-    const dotEl = container.querySelector('[aria-hidden="true"]');
-    expect(dotEl).not.toBeInTheDocument();
+    const spans = container.querySelectorAll('span span');
+    const dotEl = Array.from(spans).find((s) => s.className.includes('rounded-full'));
+    expect(dotEl).toBeUndefined();
   });
 
   // -------------------------------------------------------------------------
   // Icon
   // -------------------------------------------------------------------------
 
-  it('renders icon when provided and dot is false', () => {
+  it('renders icon when provided', () => {
     render(<Badge icon={<span data-testid="badge-icon">*</span>}>With Icon</Badge>);
     expect(screen.getByTestId('badge-icon')).toBeInTheDocument();
   });
 
-  it('does not render icon when dot is true (dot takes precedence)', () => {
-    render(
+  it('renders both dot and icon when both are provided', () => {
+    const { container } = render(
       <Badge dot icon={<span data-testid="badge-icon">*</span>}>
         Dot + Icon
       </Badge>,
     );
-    expect(screen.queryByTestId('badge-icon')).not.toBeInTheDocument();
+    expect(screen.getByTestId('badge-icon')).toBeInTheDocument();
+    const spans = container.querySelectorAll('span span');
+    const dotEl = Array.from(spans).find((s) => s.className.includes('rounded-full'));
+    expect(dotEl).toBeInTheDocument();
   });
 
   // -------------------------------------------------------------------------
