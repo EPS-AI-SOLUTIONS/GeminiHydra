@@ -16,5 +16,11 @@ export default defineConfig({
     include: ['src/**/*.{test,spec}.{ts,tsx}'],
     css: false,
     restoreMocks: true,
+    server: {
+      deps: {
+        // Inline workspace packages so vi.mock intercepts their imports
+        inline: [/@jaskier\//],
+      },
+    },
   },
 });

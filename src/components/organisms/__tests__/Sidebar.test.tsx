@@ -122,6 +122,25 @@ vi.mock('@/features/chat/components/PartnerChatModal', () => ({
   default: () => <div data-testid="partner-chat-modal" />,
 }));
 
+// Mock hydra-app resolved paths
+vi.mock('../../../../../../packages/hydra-app/src/shared/hooks/useViewTheme', () => ({
+  useViewTheme: () => ({
+    accent: '#00ff41',
+    bg: 'rgba(0,10,0,0.95)',
+    text: '#00ff41',
+    border: 'rgba(0,255,65,0.3)',
+    isLight: false,
+  }),
+}));
+
+vi.mock('../../../../../../packages/hydra-app/src/contexts/HydraAppConfig', () => ({
+  useHydraAppConfig: () => ({ appName: 'GeminiHydra', logoSrc: '', appVersion: '1.0.0' }),
+}));
+
+vi.mock('../../../../../../packages/hydra-app/src/contexts/ThemeContext', () => ({
+  useTheme: () => ({ theme: 'dark', setTheme: () => {}, resolvedTheme: 'dark' }),
+}));
+
 describe('Sidebar', () => {
   beforeEach(() => {
     vi.clearAllMocks();
