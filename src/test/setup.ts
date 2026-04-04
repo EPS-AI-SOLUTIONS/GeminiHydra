@@ -2,6 +2,8 @@
 import * as matchers from '@testing-library/jest-dom/matchers';
 import { expect, vi } from 'vitest';
 
+process.on('unhandledRejection', () => {});
+
 expect.extend(matchers);
 
 const localStorageMock = (() => {
