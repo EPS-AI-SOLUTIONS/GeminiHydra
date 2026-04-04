@@ -82,31 +82,20 @@
 - Health check (`/api/health`) shows dynamic provider list from cache (not static)
 - `reset_settings` uses `get_model_id()` instead of hardcoded model name
 
-## OAuth / Authentication (Anthropic Claude MAX Plan)
-- Ported from ClaudeHydra (identical PKCE flow, adapted table prefix `gh_`)
-- Backend module: `backend/src/oauth.rs` â€” handlers: `auth_status`, `auth_login`, `auth_callback`, `auth_logout`
-- State: `OAuthPkceState` in `state.rs` â†’ `AppState.oauth_pkce: Arc<RwLock<Option<OAuthPkceState>>>`
-- DB table: `gh_oauth_tokens` (singleton row with `id=1` CHECK constraint)
-- Token auto-refresh: `get_valid_access_token()` refreshes expired tokens automatically
-- API endpoints: `GET /api/auth/status`, `POST /api/auth/login`, `POST /api/auth/callback`, `POST /api/auth/logout`
-- Frontend: `src/features/settings/components/OAuthSection.tsx` â€” 3-step PKCE flow (idle â†’ waiting_code â†’ exchanging)
-- Integrated in `SettingsView.tsx` as "Authentication" Card section
-- Cargo deps: `sha2`, `base64`, `rand`, `url`
+## Authentication (B13 Unified Auth)
+- **System**: jaskier-auth (shared across all Jaskier apps)
+- **Backend**: `handlers/extractor.rs` → `RequireAuth` extractor (JWT from Bearer header / cookie / query param)
+- **State**: `AppState.auth: Arc<jaskier_auth::AuthState>` + `HasAuthState` trait impl
+- **Routes**: `/api/auth/*` mounted via `jaskier_auth::auth_router()`
+- **JWT**: HMAC-SHA256, 15min access token, 30d refresh token, HTTP-only cookies
+- **Methods**: Email/password, Google OAuth, WebAuthn/Passkeys, TOTP 2FA
+- **Frontend**: `@jaskier/auth` package (AuthProvider, useAuth hook)
+- **Provider credentials**: Via environment variables (Vault)
 
-## OAuth / Authentication (Google OAuth PKCE + API Key)
-- Backend module: `backend/src/oauth_google.rs` â€” Google OAuth 2.0 redirect-based PKCE flow + API key management
-- DB table: `gh_google_auth` (singleton row, id=1 CHECK) â€” stores auth_method, access_token, refresh_token, expires_at, api_key_encrypted, user_email, user_name
-- `get_google_credential(state)` â†’ credential resolution: DB OAuth token â†’ DB API key â†’ env var (`GOOGLE_API_KEY`/`GEMINI_API_KEY`)
-- `apply_google_auth(builder, credential, is_oauth)` â€” sets `Authorization: Bearer` (OAuth) or `x-goog-api-key` (API key)
-- API endpoints: `GET /api/auth/status` (includes `oauth_available`), `POST /api/auth/login`, `GET /api/auth/google/redirect`, `POST /api/auth/logout`, `POST/DELETE /api/auth/apikey`
-- Env vars: `GOOGLE_OAUTH_CLIENT_ID`, `GOOGLE_OAUTH_CLIENT_SECRET` (optional â€” OAuth button hidden if not set)
-- Google Cloud Console: app "Jaskier", redirect URI: `http://localhost:8081/api/auth/google/redirect`
-- Frontend: `OAuthSection.tsx` + `useAuthStatus.ts` â€” polling-based (2s interval during OAuth pending), API key input + Google OAuth button
-
-## OAuth â€” GitHub + Vercel + Fly.io
-- `oauth_github.rs` â€” GitHub OAuth code exchange, DB table `gh_oauth_github`, endpoints `/api/auth/github/*`
-- `oauth_vercel.rs` â€” Vercel OAuth code exchange, DB table `gh_oauth_vercel`, endpoints `/api/auth/vercel/*`
-- `service_tokens.rs` â€” encrypted PAT storage (AES-256-GCM), DB table `gh_service_tokens`, endpoints `/api/tokens`
+## OAuth — GitHub + Vercel + Fly.io (service tools)
+- `oauth_github.rs` — GitHub OAuth code exchange, DB table `gh_oauth_github`, endpoints `/api/auth/github/*`
+- `oauth_vercel.rs` — Vercel OAuth code exchange, DB table `gh_oauth_vercel`, endpoints `/api/auth/vercel/*`
+- `service_tokens.rs` — encrypted PAT storage (AES-256-GCM), DB table `gh_service_tokens`, endpoints `/api/tokens`
 - Used by: `github_tools.rs`, `vercel_tools.rs`, `fly_tools.rs`
 
 ## Agent System Prompt

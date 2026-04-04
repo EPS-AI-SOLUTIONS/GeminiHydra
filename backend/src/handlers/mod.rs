@@ -12,6 +12,7 @@ use axum::{
 
 pub(crate) mod agents;
 pub(crate) mod execute;
+pub mod extractor;
 pub(crate) mod files_handlers;
 pub(crate) mod streaming;
 pub(crate) mod system;
@@ -30,8 +31,14 @@ pub fn agents_router(state: AppState) -> Router<AppState> {
             "/api/agents/profiles",
             get(agents::list_profiles::<AppState>).post(agents::create_profile::<AppState>),
         )
-        .route("/api/agents/classify", post(agents::classify_agent::<AppState>))
-        .route("/api/agents/delegations", get(agents::list_delegations::<AppState>))
+        .route(
+            "/api/agents/classify",
+            post(agents::classify_agent::<AppState>),
+        )
+        .route(
+            "/api/agents/delegations",
+            get(agents::list_delegations::<AppState>),
+        )
         .route(
             "/api/agents/delegations/stream",
             get(agents::stream_delegations::<AppState>),

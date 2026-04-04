@@ -11,13 +11,8 @@ pub mod handlers;
 pub mod mcp;
 pub mod model_registry;
 pub mod models;
-pub mod oauth;
-pub mod oauth_github;
-pub mod oauth_google;
-pub mod oauth_vercel;
 pub mod ocr;
 pub mod prompt;
-pub mod service_tokens;
 pub mod sessions;
 pub mod state;
 pub mod system_monitor;
@@ -200,8 +195,7 @@ pub fn create_test_router(state: AppState) -> Router {
 fn build_config(state: AppState) -> jaskier_core::router_builder::HydraRouterConfig<AppState> {
     jaskier_core::router_builder::HydraRouterConfig {
         // WebSocket streaming (Gemini-native)
-        ws_route: Router::new()
-            .route("/ws/execute", get(handlers::ws_execute::<AppState>)),
+        ws_route: Router::new().route("/ws/execute", get(handlers::ws_execute::<AppState>)),
 
         // Execute endpoints
         execute_routes: Router::new()
@@ -243,12 +237,14 @@ fn build_config(state: AppState) -> jaskier_core::router_builder::HydraRouterCon
         ocr_routes: Router::new()
             .route("/api/ocr", post(ocr::ocr::<AppState>))
             .route("/api/ocr/stream", post(ocr::ocr_stream::<AppState>))
-            .route("/api/ocr/batch/stream", post(ocr::ocr_batch_stream::<AppState>))
+            .route(
+                "/api/ocr/batch/stream",
+                post(ocr::ocr_batch_stream::<AppState>),
+            )
             .route("/api/ocr/history", get(ocr::ocr_history::<AppState>))
             .route(
                 "/api/ocr/history/{id}",
-                get(ocr::ocr_history_item::<AppState>)
-                    .delete(ocr::ocr_history_delete::<AppState>),
+                get(ocr::ocr_history_item::<AppState>).delete(ocr::ocr_history_delete::<AppState>),
             ),
 
         // App-specific protected routes
@@ -260,12 +256,14 @@ fn build_config(state: AppState) -> jaskier_core::router_builder::HydraRouterCon
             .route("/api/internal/tool", post(handlers::internal_tool_execute)),
 
         // Prometheus metrics
-        metrics_router: Router::new()
-            .route("/api/metrics", get(metrics_handler)),
+        metrics_router: Router::new().route("/api/metrics", get(metrics_handler)),
 
         // OpenAPI spec
         openapi: ApiDoc::openapi(),
-        primary_auth_override: None,
+        // B13: Override primary auth with jaskier-auth routes
+        primary_auth_override: Some(
+            Router::new().nest("/api/auth", jaskier_auth::auth_router::<AppState>()),
+        ),
     }
 }
 

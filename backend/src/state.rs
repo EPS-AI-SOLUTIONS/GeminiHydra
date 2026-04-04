@@ -16,14 +16,16 @@ use jaskier_hydra_state::{BaseHydraConfig, BaseHydraState};
 // ── Re-exports for backward compatibility ───────────────────────────────────
 // Existing code (main.rs, handlers, streaming.rs, etc.) imports these from crate::state.
 pub use jaskier_hydra_state::{
-    CircuitBreaker, LogEntry, LogRingBuffer, ModelCache, OAuthPkceState,
-    RuntimeState, SystemSnapshot, OAUTH_STATE_TTL,
+    CircuitBreaker, LogEntry, LogRingBuffer, ModelCache, OAUTH_STATE_TTL, OAuthPkceState,
+    RuntimeState, SystemSnapshot,
 };
 
 // ── AppState ────────────────────────────────────────────────────────────────
 #[derive(Clone)]
 pub struct AppState {
     pub base: BaseHydraState,
+    /// Shared auth state for jaskier-auth integration (B13 Unified Auth).
+    pub auth: Arc<jaskier_auth::AuthState>,
 }
 
 impl Deref for AppState {
@@ -37,21 +39,35 @@ impl Deref for AppState {
 
 impl AppState {
     pub async fn new(db: sqlx::PgPool, log_buffer: Arc<LogRingBuffer>) -> Self {
-        let base = BaseHydraState::new(db, log_buffer, BaseHydraConfig {
-            app_name: "GeminiHydra",
-            google_auth_table: "gh_google_auth",
-            agents_table: "gh_agents",
-            circuit_provider: "gemini",
-            // GeminiHydra uses Google OAuth (get_google_credential) — not env vars.
-            api_key_env_vars: &[],
-            mcp_servers_table: "gh_mcp_servers",
-            mcp_tools_table: "gh_mcp_discovered_tools",
-        }).await;
-        Self { base }
+        let db_for_auth = db.clone();
+        let base = BaseHydraState::new(
+            db,
+            log_buffer,
+            BaseHydraConfig {
+                app_name: "GeminiHydra",
+                google_auth_table: "gh_google_auth",
+                agents_table: "gh_agents",
+                circuit_provider: "gemini",
+                // B13: credentials resolved from env vars (Vault sets these).
+                api_key_env_vars: &["GOOGLE_API_KEY", "GEMINI_API_KEY"],
+                mcp_servers_table: "gh_mcp_servers",
+                mcp_tools_table: "gh_mcp_discovered_tools",
+            },
+        )
+        .await;
+
+        let auth_config = jaskier_auth::AuthConfig::from_env();
+        let auth = jaskier_auth::AuthState::new(db_for_auth, auth_config);
+
+        Self { base, auth }
     }
 
-    pub fn is_ready(&self) -> bool { self.base.is_ready() }
-    pub fn mark_ready(&self) { self.base.mark_ready(); }
+    pub fn is_ready(&self) -> bool {
+        self.base.is_ready()
+    }
+    pub fn mark_ready(&self) {
+        self.base.mark_ready();
+    }
 
     pub async fn refresh_agents(&self) {
         self.base.refresh_agents("gh_agents").await;
@@ -77,9 +93,11 @@ impl jaskier_core::context::HasExecutionContext for AppState {
     }
 
     async fn resolve_api_credential(&self) -> (String, bool) {
-        crate::oauth::get_google_credential(self)
-            .await
-            .unwrap_or_default()
+        // B13: Credentials from env vars (Vault sets these)
+        let key = std::env::var("GOOGLE_API_KEY")
+            .or_else(|_| std::env::var("GEMINI_API_KEY"))
+            .unwrap_or_default();
+        (key, false)
     }
 
     fn extract_file_paths_from_prompt(&self, prompt: &str) -> Vec<String> {
@@ -95,18 +113,33 @@ impl jaskier_core::context::HasExecutionContext for AppState {
 // ── App-specific trait implementations ──────────────────────────────────────
 
 impl jaskier_core::handlers::system::HasHealthState for AppState {
-    fn version(&self) -> &'static str { "15.0.0" }
-    fn app_name(&self) -> &'static str { "GeminiHydra" }
-    fn start_time(&self) -> Instant { self.base.start_time }
-    fn is_ready(&self) -> bool { self.base.is_ready() }
-    fn has_auth_secret(&self) -> bool { self.base.auth_secret.is_some() }
+    fn version(&self) -> &'static str {
+        "15.0.0"
+    }
+    fn app_name(&self) -> &'static str {
+        "GeminiHydra"
+    }
+    fn start_time(&self) -> Instant {
+        self.base.start_time
+    }
+    fn is_ready(&self) -> bool {
+        self.base.is_ready()
+    }
+    fn has_auth_secret(&self) -> bool {
+        self.base.auth_secret.is_some()
+    }
 
     fn api_keys_snapshot(&self) -> HashMap<String, String> {
-        self.base.api_keys.try_read().map(|g| g.clone()).unwrap_or_default()
+        self.base
+            .api_keys
+            .try_read()
+            .map(|g| g.clone())
+            .unwrap_or_default()
     }
 
     fn google_models_snapshot(&self) -> Vec<jaskier_core::model_registry::ModelInfo> {
-        self.base.model_cache
+        self.base
+            .model_cache
             .try_read()
             .map(|c| c.models.get("google").cloned().unwrap_or_default())
             .unwrap_or_default()
@@ -160,14 +193,18 @@ impl jaskier_core::handlers::system::HasApiKeyRotation for AppState {
 // ── jaskier-core::prompt + handlers::agents trait implementations ─────────
 
 impl jaskier_core::handlers::agents::HasAgentState for AppState {
-    fn db(&self) -> &sqlx::PgPool { &self.base.db }
+    fn db(&self) -> &sqlx::PgPool {
+        &self.base.db
+    }
     fn agents(&self) -> &Arc<tokio::sync::RwLock<Vec<jaskier_core::models::WitcherAgent>>> {
         &self.base.agents
     }
     fn a2a_task_tx(&self) -> &tokio::sync::broadcast::Sender<()> {
         &self.base.a2a_task_tx
     }
-    fn agent_table_prefix(&self) -> &'static str { "gh" }
+    fn agent_table_prefix(&self) -> &'static str {
+        "gh"
+    }
     async fn refresh_agents(&self) {
         self.refresh_agents().await;
     }
@@ -176,21 +213,37 @@ impl jaskier_core::handlers::agents::HasAgentState for AppState {
 // ── jaskier-core::mcp::server::HasMcpServerState ────────────────────────────
 
 impl jaskier_core::mcp::server::HasMcpServerState for AppState {
-    fn mcp_server_name(&self) -> &'static str { "GeminiHydra" }
-    fn mcp_server_version(&self) -> &'static str { "15.0.0" }
+    fn mcp_server_name(&self) -> &'static str {
+        "GeminiHydra"
+    }
+    fn mcp_server_version(&self) -> &'static str {
+        "15.0.0"
+    }
     fn mcp_server_instructions(&self) -> &'static str {
         "GeminiHydra v15 \u{2014} Multi-Agent AI Swarm with native tools for code analysis, file operations, web scraping, OCR, image analysis, and MCP integration."
     }
-    fn mcp_uri_scheme(&self) -> &'static str { "geminihydra" }
-    fn mcp_settings_table(&self) -> &'static str { "gh_settings" }
-    fn mcp_sessions_table(&self) -> &'static str { "gh_sessions" }
+    fn mcp_uri_scheme(&self) -> &'static str {
+        "geminihydra"
+    }
+    fn mcp_settings_table(&self) -> &'static str {
+        "gh_settings"
+    }
+    fn mcp_sessions_table(&self) -> &'static str {
+        "gh_sessions"
+    }
     async fn mcp_agents_json(&self) -> serde_json::Value {
         let agents = self.base.agents.read().await;
         serde_json::to_value(&*agents).unwrap_or_else(|_| serde_json::json!([]))
     }
-    fn mcp_model_cache(&self) -> &Arc<RwLock<ModelCache>> { &self.base.model_cache }
-    fn mcp_start_time(&self) -> Instant { self.base.start_time }
-    fn mcp_is_ready(&self) -> bool { self.base.is_ready() }
+    fn mcp_model_cache(&self) -> &Arc<RwLock<ModelCache>> {
+        &self.base.model_cache
+    }
+    fn mcp_start_time(&self) -> Instant {
+        self.base.start_time
+    }
+    fn mcp_is_ready(&self) -> bool {
+        self.base.is_ready()
+    }
 
     async fn mcp_system_snapshot_json(&self) -> serde_json::Value {
         let snap = self.base.system_monitor.read().await;
@@ -210,10 +263,12 @@ impl jaskier_core::mcp::server::HasMcpServerState for AppState {
     ) -> Result<(String, Option<serde_json::Value>), String> {
         match crate::tools::execute_tool(name, args, self, working_directory).await {
             Ok(output) => {
-                let inline = output.inline_data.map(|d| serde_json::json!({
-                    "data": d.data,
-                    "mime_type": d.mime_type,
-                }));
+                let inline = output.inline_data.map(|d| {
+                    serde_json::json!({
+                        "data": d.data,
+                        "mime_type": d.mime_type,
+                    })
+                });
                 Ok((output.text, inline))
             }
             Err(e) => Err(e),
@@ -230,13 +285,25 @@ impl jaskier_ai_modules::a2a::HasA2aState for AppState {
         &self.base.agents
     }
 
-    fn a2a_app_name(&self) -> &str { "GeminiHydra" }
-    fn a2a_app_url(&self) -> &str { "http://localhost:8081" }
-    fn a2a_app_version(&self) -> &str { "15.0.0" }
+    fn a2a_app_name(&self) -> &str {
+        "GeminiHydra"
+    }
+    fn a2a_app_url(&self) -> &str {
+        "http://localhost:8081"
+    }
+    fn a2a_app_version(&self) -> &str {
+        "15.0.0"
+    }
 
-    fn a2a_semaphore(&self) -> &Arc<tokio::sync::Semaphore> { &self.base.a2a_semaphore }
-    fn a2a_task_tx(&self) -> &tokio::sync::broadcast::Sender<()> { &self.base.a2a_task_tx }
-    fn a2a_cancel_tokens(&self) -> &Arc<RwLock<HashMap<String, tokio_util::sync::CancellationToken>>> {
+    fn a2a_semaphore(&self) -> &Arc<tokio::sync::Semaphore> {
+        &self.base.a2a_semaphore
+    }
+    fn a2a_task_tx(&self) -> &tokio::sync::broadcast::Sender<()> {
+        &self.base.a2a_task_tx
+    }
+    fn a2a_cancel_tokens(
+        &self,
+    ) -> &Arc<RwLock<HashMap<String, tokio_util::sync::CancellationToken>>> {
         &self.base.a2a_cancel_tokens
     }
 
@@ -251,8 +318,12 @@ impl jaskier_ai_modules::a2a::HasA2aState for AppState {
     async fn circuit_check(&self) -> Result<(), String> {
         self.base.gemini_circuit.check().await
     }
-    async fn circuit_success(&self) { self.base.gemini_circuit.record_success().await; }
-    async fn circuit_failure(&self) { self.base.gemini_circuit.record_failure().await; }
+    async fn circuit_success(&self) {
+        self.base.gemini_circuit.record_success().await;
+    }
+    async fn circuit_failure(&self) {
+        self.base.gemini_circuit.record_failure().await;
+    }
 
     async fn prepare_a2a_context(
         &self,
@@ -261,7 +332,14 @@ impl jaskier_ai_modules::a2a::HasA2aState for AppState {
         agent_override: Option<(String, f64, String)>,
         session_wd: &str,
     ) -> jaskier_ai_modules::a2a::A2aContext {
-        let ctx = crate::context::prepare_execution(self, prompt, model_override, agent_override, session_wd).await;
+        let ctx = crate::context::prepare_execution(
+            self,
+            prompt,
+            model_override,
+            agent_override,
+            session_wd,
+        )
+        .await;
         jaskier_ai_modules::a2a::A2aContext {
             agent_id: ctx.agent_id,
             model: ctx.model,
@@ -294,7 +372,11 @@ impl jaskier_ai_modules::a2a::HasA2aState for AppState {
             .map(|out| out.text)
     }
 
-    fn build_a2a_thinking_config(&self, model: &str, thinking_level: &str) -> Option<serde_json::Value> {
+    fn build_a2a_thinking_config(
+        &self,
+        model: &str,
+        thinking_level: &str,
+    ) -> Option<serde_json::Value> {
         crate::prompt::build_thinking_config(model, thinking_level)
     }
 }
@@ -345,7 +427,7 @@ impl jaskier_core::handlers::execute::HasExecuteState for AppState {
             .and_then(|p| p.get(0))
             .and_then(|p0| p0.get("text"))
             .and_then(|t| t.as_str())
-            .map(|s| s.to_string())
+            .map(std::string::ToString::to_string)
     }
 
     fn is_malformed_response(&self, j: &serde_json::Value) -> bool {
@@ -356,7 +438,10 @@ impl jaskier_core::handlers::execute::HasExecuteState for AppState {
             == Some("MALFORMED_FUNCTION_CALL")
     }
 
-    fn build_retry_body_for_malformed(&self, ctx: &jaskier_core::context::ExecuteContext) -> Option<serde_json::Value> {
+    fn build_retry_body_for_malformed(
+        &self,
+        ctx: &jaskier_core::context::ExecuteContext,
+    ) -> Option<serde_json::Value> {
         let mut gen_config = serde_json::json!({
             "temperature": ctx.temperature,
             "topP": ctx.top_p,
@@ -385,5 +470,37 @@ impl jaskier_core::handlers::execute::HasExecuteState for AppState {
         crate::tools::execute_tool(name, args, self, working_directory)
             .await
             .map(|o| o.text)
+    }
+}
+
+// ── HasAuthState — jaskier-auth integration ──────────────────────────────
+
+impl jaskier_auth::HasAuthState for AppState {
+    fn auth_state(&self) -> &jaskier_auth::AuthState {
+        &self.auth
+    }
+
+    fn jwt_secret(&self) -> &[u8] {
+        self.base
+            .auth_secret
+            .as_deref()
+            .unwrap_or("geminihydra-default-dev-secret-change-me")
+            .as_bytes()
+    }
+
+    fn db(&self) -> &sqlx::PgPool {
+        &self.base.db
+    }
+
+    fn google_client_id(&self) -> &str {
+        self.auth
+            .config
+            .google_oauth_client_id
+            .as_deref()
+            .unwrap_or("")
+    }
+
+    fn app_id(&self) -> &str {
+        "geminihydra"
     }
 }

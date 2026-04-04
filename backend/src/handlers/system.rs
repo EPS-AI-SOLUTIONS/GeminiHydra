@@ -9,15 +9,14 @@ use axum::Json;
 use axum::extract::State;
 use serde_json::{Value, json};
 
-use jaskier_core::error::ApiError;
 use crate::models::{GeminiModelInfo, GeminiModelsResponse};
 use crate::state::AppState;
+use jaskier_core::error::ApiError;
 
 // ── Re-exports of shared response types ──────────────────────────────────────
 
 pub use jaskier_core::handlers::system::{
-    DetailedHealthResponse, HealthResponse, ProxyHistoryParams, ProxyHistoryResponse,
-    SystemStats,
+    DetailedHealthResponse, HealthResponse, ProxyHistoryParams, ProxyHistoryResponse, SystemStats,
 };
 
 // ── Shared handler wrappers (concrete AppState) ───────────────────────────────
@@ -101,14 +100,20 @@ pub async fn rotate_key(
 pub async fn gemini_models(State(state): State<AppState>) -> Json<Value> {
     let mut models = Vec::new();
 
-    let google_cred = crate::oauth::get_google_credential(&state).await;
-    if let Some((key, is_oauth)) = google_cred {
+    // B13: credentials from env vars (Vault sets these)
+    let api_key = std::env::var("GOOGLE_API_KEY")
+        .or_else(|_| std::env::var("GEMINI_API_KEY"))
+        .ok()
+        .filter(|k| !k.is_empty());
+
+    if let Some(key) = api_key {
         let url = "https://generativelanguage.googleapis.com/v1beta/models";
-        if let Ok(parsed) = reqwest::Url::parse(url)
-            && let Ok(res) =
-                crate::oauth::apply_google_auth(state.client.get(parsed), &key, is_oauth)
-                    .send()
-                    .await
+        if let Ok(res) = state
+            .client
+            .get(url)
+            .header("x-goog-api-key", &key)
+            .send()
+            .await
             && res.status().is_success()
             && let Ok(body) = res.json::<Value>().await
             && let Some(list) = body["models"].as_array()

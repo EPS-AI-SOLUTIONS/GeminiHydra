@@ -37,13 +37,9 @@ pub fn spawn(state: AppState) -> tokio::task::JoinHandle<()> {
 
 /// Check Google Generative Language API reachability.
 /// Uses a lightweight HEAD request to generativelanguage.googleapis.com (no tokens consumed).
-/// Skips if no credential is available (OAuth, DB API key, or env var).
+/// Skips if no credential is available (env var — Vault sets these).
 async fn check_google_api(state: &AppState) -> bool {
-    // Check if we have a credential configured from ANY source:
-    // 1. Google OAuth token from DB + 2. DB-stored API key + 3. env var (GOOGLE_API_KEY/GEMINI_API_KEY)
-    let has_google_cred = crate::oauth::get_google_credential(state).await.is_some();
-
-    // 4. Direct env var check as fallback (in case OAuth module doesn't surface it)
+    // B13: credentials come from env vars (Vault sets these)
     let has_env_key = std::env::var("GOOGLE_API_KEY")
         .ok()
         .filter(|k| !k.is_empty())
@@ -53,8 +49,8 @@ async fn check_google_api(state: &AppState) -> bool {
             .filter(|k| !k.is_empty())
             .is_some();
 
-    if !has_google_cred && !has_env_key {
-        // No credential from any source — skip check (not an error)
+    if !has_env_key {
+        // No credential — skip check (not an error)
         tracing::debug!(
             "watchdog: no Google API credential configured, skipping reachability check"
         );
