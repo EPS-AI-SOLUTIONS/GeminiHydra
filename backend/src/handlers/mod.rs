@@ -49,7 +49,7 @@ pub fn agents_router(state: AppState) -> Router<AppState> {
         )
         .route_layer(middleware::from_fn_with_state(
             state.clone(),
-            jaskier_core::auth::require_auth::<AppState>,
+            jaskier_core::auth::jaskier_auth_require_auth::<AppState>,
         ))
 }
 
@@ -60,7 +60,7 @@ pub fn system_router(state: AppState) -> Router<AppState> {
         .route("/api/admin/rotate-key", post(system::rotate_key))
         .route_layer(middleware::from_fn_with_state(
             state.clone(),
-            jaskier_core::auth::require_auth::<AppState>,
+            jaskier_core::auth::jaskier_auth_require_auth::<AppState>,
         ))
 }
 
@@ -71,7 +71,7 @@ pub fn files_router(state: AppState) -> Router<AppState> {
         .route("/api/files/browse", post(files_handlers::browse_directory))
         .route_layer(middleware::from_fn_with_state(
             state.clone(),
-            jaskier_core::auth::require_auth::<AppState>,
+            jaskier_core::auth::jaskier_auth_require_auth::<AppState>,
         ))
 }
 
