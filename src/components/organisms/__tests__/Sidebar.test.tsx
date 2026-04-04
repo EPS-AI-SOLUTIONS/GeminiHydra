@@ -8,11 +8,21 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 const queryClient = new QueryClient();
 
 // Mock dependencies before importing Sidebar
+vi.mock('@jaskier/chat-module', () => ({
+  usePartnerSessions: () => ({ data: [], isLoading: false }),
+  usePartnerSession: () => ({ data: null, isLoading: false }),
+}));
+
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({
     t: (key: string) => key,
     i18n: { language: 'en', changeLanguage: vi.fn() },
   }),
+}));
+
+vi.mock('@jaskier/chat-module', () => ({
+  usePartnerSessions: () => ({ data: [], isLoading: false }),
+  usePartnerSession: () => ({ data: null, isLoading: false }),
 }));
 
 vi.mock('@/contexts/ThemeContext', () => ({
@@ -23,11 +33,21 @@ vi.mock('@/contexts/ThemeContext', () => ({
   }),
 }));
 
+vi.mock('@jaskier/chat-module', () => ({
+  usePartnerSessions: () => ({ data: [], isLoading: false }),
+  usePartnerSession: () => ({ data: null, isLoading: false }),
+}));
+
 vi.mock('@/features/chat/hooks/usePartnerSessions', () => ({
   usePartnerSessions: () => ({
     data: [],
     isLoading: false,
   }),
+}));
+
+vi.mock('@jaskier/chat-module', () => ({
+  usePartnerSessions: () => ({ data: [], isLoading: false }),
+  usePartnerSession: () => ({ data: null, isLoading: false }),
 }));
 
 vi.mock('@/features/chat/hooks/useSessionSync', () => ({
@@ -47,6 +67,11 @@ const mockSetView = vi.fn();
 const mockSelectSession = vi.fn();
 const mockCreateSession = vi.fn();
 
+vi.mock('@jaskier/chat-module', () => ({
+  usePartnerSessions: () => ({ data: [], isLoading: false }),
+  usePartnerSession: () => ({ data: null, isLoading: false }),
+}));
+
 vi.mock('@/stores/viewStore', () => ({
   useViewStore: (selector: (state: Record<string, unknown>) => unknown) =>
     selector({
@@ -64,6 +89,11 @@ vi.mock('@/stores/viewStore', () => ({
     }),
 }));
 
+vi.mock('@jaskier/chat-module', () => ({
+  usePartnerSessions: () => ({ data: [], isLoading: false }),
+  usePartnerSession: () => ({ data: null, isLoading: false }),
+}));
+
 vi.mock('@/shared/hooks/useViewTheme', () => ({
   useViewTheme: () => ({
     accent: '#00ff41',
@@ -73,11 +103,21 @@ vi.mock('@/shared/hooks/useViewTheme', () => ({
   }),
 }));
 
+vi.mock('@jaskier/chat-module', () => ({
+  usePartnerSessions: () => ({ data: [], isLoading: false }),
+  usePartnerSession: () => ({ data: null, isLoading: false }),
+}));
+
 vi.mock('@/shared/utils/cn', () => ({
   cn: (...args: unknown[]) => args.filter(Boolean).join(' '),
 }));
 
 // Lazy-loaded component mock
+vi.mock('@jaskier/chat-module', () => ({
+  usePartnerSessions: () => ({ data: [], isLoading: false }),
+  usePartnerSession: () => ({ data: null, isLoading: false }),
+}));
+
 vi.mock('@/features/chat/components/PartnerChatModal', () => ({
   default: () => <div data-testid="partner-chat-modal" />,
 }));
