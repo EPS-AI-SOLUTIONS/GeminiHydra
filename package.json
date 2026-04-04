@@ -71,11 +71,11 @@
   },
   "lint-staged": {
     "*.{ts,tsx}": [
-      "bun ./node_modules/@biomejs/biome/bin/biome check --write",
-      "bun ./node_modules/@biomejs/biome/bin/biome format --write"
+      "bunx biome check --write",
+      "bunx biome format --write"
     ],
     "*.css": [
-      "bun ./node_modules/@biomejs/biome/bin/biome format --write"
+      "bunx biome format --write"
     ]
   },
   "description": "GeminiHydra - Part of the Jaskier Workspace Enterprise Ecosystem",

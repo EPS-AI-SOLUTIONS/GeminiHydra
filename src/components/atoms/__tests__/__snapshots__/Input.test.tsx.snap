@@ -6,17 +6,16 @@ exports[`Input > matches snapshot 1`] = `
     class="flex flex-col gap-1.5"
   >
     <label
-      class="text-xs font-medium text-[var(--matrix-text-secondary)]"
-      for="_r_1_"
+      class="text-sm font-medium text-current/70"
+      for="search"
     >
       Search
     </label>
     <div
-      class="relative"
+      class="relative flex items-center"
     >
       <span
-        aria-hidden="true"
-        class="absolute top-1/2 -translate-y-1/2 text-[var(--matrix-text-secondary)] pointer-events-none left-3 [&>svg]:w-4 [&>svg]:h-4"
+        class="absolute left-2.5 flex items-center pointer-events-none text-current/40"
       >
         <svg
           aria-hidden="true"
@@ -42,16 +41,17 @@ exports[`Input > matches snapshot 1`] = `
         </svg>
       </span>
       <input
-        aria-describedby="_r_1_-error"
+        aria-describedby="search-error"
         aria-invalid="true"
-        class="glass-input w-full rounded-lg font-mono text-[var(--matrix-text-primary)] placeholder:text-[var(--matrix-text-secondary)]/60 outline-none transition-all duration-200 focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--matrix-bg-primary)] disabled:opacity-50 disabled:cursor-not-allowed border-red-500 focus-visible:border-red-500 focus-visible:ring-red-500/30 px-3 py-2 text-sm pl-9"
-        id="_r_1_"
+        class="w-full rounded-lg border bg-white/5 text-current placeholder:text-current/40 px-3 py-2 text-sm pl-8 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-transparent border-[var(--matrix-error,#ef4444)] focus:ring-[var(--matrix-error,#ef4444)]/40 disabled:opacity-50 disabled:cursor-not-allowed"
+        id="search"
         placeholder="Search..."
+        type="text"
       />
     </div>
     <p
-      class="text-xs text-red-500 font-mono"
-      id="_r_1_-error"
+      class="text-xs text-[var(--matrix-error,#ef4444)]"
+      id="search-error"
       role="alert"
     >
       Invalid input

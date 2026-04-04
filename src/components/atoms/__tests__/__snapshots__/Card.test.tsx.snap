@@ -1,0 +1,31 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`Card > matches snapshot with composition API 1`] = `
+<div>
+  <div
+    class="rounded-xl border border-white/10 bg-black/40 backdrop-blur-xl shadow-lg p-5"
+  >
+    <div
+      class="px-5 py-4 border-b border-white/10"
+    >
+      <h3>
+        Title
+      </h3>
+    </div>
+    <div
+      class="px-5 py-4"
+    >
+      Body
+    </div>
+    <div
+      class="px-5 py-4 border-t border-white/10 flex items-center gap-2"
+    >
+      <button
+        type="button"
+      >
+        Save
+      </button>
+    </div>
+  </div>
+</div>
+`;

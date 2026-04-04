@@ -260,10 +260,14 @@ fn build_config(state: AppState) -> jaskier_core::router_builder::HydraRouterCon
 
         // OpenAPI spec
         openapi: ApiDoc::openapi(),
-        // B13: Override primary auth with jaskier-auth routes
-        primary_auth_override: Some(
+        // B13: primary_auth_override is unused — jaskier_auth_routes below takes precedence
+        primary_auth_override: None,
+        // B13: Mount jaskier-auth unified auth routes at /api/auth/*
+        jaskier_auth_routes: Some(
             Router::new().nest("/api/auth", jaskier_auth::auth_router::<AppState>()),
         ),
+        // B13: Skip legacy Google/GitHub/Vercel OAuth routes — jaskier-auth handles all auth
+        skip_provider_oauth: true,
     }
 }
 
