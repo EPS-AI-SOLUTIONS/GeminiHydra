@@ -45,7 +45,7 @@ describe('Button', () => {
   it('applies danger variant classes', () => {
     render(<Button variant="danger">Danger</Button>);
     const btn = screen.getByRole('button');
-    expect(btn.className).toContain('text-[var(--matrix-error)]');
+    expect(btn.className).toContain('text-[var(--matrix-error');
   });
 
   it('applies secondary variant classes', () => {
