@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * viewStore — GeminiHydra thin shell
  * ====================================

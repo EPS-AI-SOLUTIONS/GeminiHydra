@@ -5,4 +5,6 @@
 // Re-exports for backward compatibility with `use crate::prompt::*` callers.
 // ---------------------------------------------------------------------------
 
-pub use jaskier_core::prompt::{build_system_prompt, build_thinking_config, fetch_knowledge_context};
+pub use jaskier_core::prompt::{
+    build_system_prompt, build_thinking_config, fetch_knowledge_context,
+};

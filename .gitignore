@@ -49,3 +49,6 @@ nul
 
 # Stale .js build artifacts that shadow .tsx/.ts source files
 src/**/*.js
+
+.vercel
+.env*.local

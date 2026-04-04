@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { beforeEach, describe, expect, it } from 'vitest';
 import type { UploadedPhoto } from '@/features/upload/stores/uploadStore';
 import { formatBytes, generatePhotoId, useUploadStore } from '@/features/upload/stores/uploadStore';

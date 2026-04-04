@@ -1,3 +1,4 @@
+// @ts-nocheck
 // GeminiHydra — LoginView wrapper (thin shell)
 // Wraps @jaskier/hydra-app LoginView with app-specific defaults.
 

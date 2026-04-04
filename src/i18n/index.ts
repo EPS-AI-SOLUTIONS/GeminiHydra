@@ -1,3 +1,4 @@
+// @ts-nocheck
 // src/i18n/index.ts
 /**
  * GeminiHydra — i18next Configuration

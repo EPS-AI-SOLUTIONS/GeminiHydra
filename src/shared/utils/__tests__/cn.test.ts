@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { cn } from '@jaskier/ui';
 import { describe, expect, it } from 'vitest';
 

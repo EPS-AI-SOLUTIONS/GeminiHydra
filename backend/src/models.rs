@@ -9,9 +9,9 @@
 // ── Session/settings types from jaskier-core sessions module ──────────────
 pub use jaskier_core::sessions::models::{
     AddPromptRequest, AppSettings, ChatMessage, ChatMessageRow, CreateSessionRequest,
-    KnowledgeEdgeRow, KnowledgeNodeRow, MemoryRow, PromptHistoryRow, RatingRequest,
-    RatingResponse, Session, SessionRow, SessionSummary, SessionSummaryRow, SettingsRow,
-    UnlockAgentResponse, UpdateSessionRequest, UpdateWorkingDirectoryRequest,
+    KnowledgeEdgeRow, KnowledgeNodeRow, MemoryRow, PromptHistoryRow, RatingRequest, RatingResponse,
+    Session, SessionRow, SessionSummary, SessionSummaryRow, SettingsRow, UnlockAgentResponse,
+    UpdateSessionRequest, UpdateWorkingDirectoryRequest,
 };
 
 // ── Health types from jaskier-core handlers::system ───────────────────────

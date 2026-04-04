@@ -1,7 +1,7 @@
 version: 2
 updates:
-  # Frontend (npm/pnpm)
-  - package-ecosystem: "npm"
+  # Frontend (bun/bun)
+  - package-ecosystem: "bun"
     directory: "/"
     schedule:
       interval: "weekly"

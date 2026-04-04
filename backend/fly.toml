@@ -27,7 +27,8 @@ primary_region = 'arn'
       path = "/api/health"
 
 [env]
-  RUST_LOG = "info"
+  # QW67: Production log level — warn for third-party, info for jaskier crates
+  RUST_LOG = "warn,geminihydra=info,jaskier=info,tower_http=warn,axum=warn,sqlx=warn"
   RUST_LOG_FORMAT = "json"
 
 [[vm]]

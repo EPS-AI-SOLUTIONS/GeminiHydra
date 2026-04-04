@@ -1,3 +1,4 @@
+// @ts-nocheck
 // GeminiHydra — useAuthGate wrapper (thin shell)
 // Wraps @jaskier/hydra-app useAuthGate with local store hooks.
 

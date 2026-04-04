@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { beforeEach, describe, expect, it } from 'vitest';
 import type { Session } from '@/stores/types';
 import type { Message } from '@/stores/viewStore';

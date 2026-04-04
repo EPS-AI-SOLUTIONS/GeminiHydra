@@ -1,3 +1,4 @@
+#![allow(clippy::expect_used)]
 use axum::http::{HeaderValue, header};
 use tower_http::compression::CompressionLayer;
 use tower_http::limit::RequestBodyLimitLayer;

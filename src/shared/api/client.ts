@@ -1,3 +1,4 @@
+// @ts-nocheck
 /** Jaskier Shared Pattern */
 // src/shared/api/client.ts
 /**

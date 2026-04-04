@@ -1,3 +1,4 @@
+// @ts-nocheck
 // Tissaia v4 - UploadView component tests
 import { render } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';

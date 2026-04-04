@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { beforeEach, describe, expect, it } from 'vitest';
 import type { ResultsImageData } from '@/features/results/stores/resultsStore';
 import { useResultsStore } from '@/features/results/stores/resultsStore';

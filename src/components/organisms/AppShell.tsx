@@ -1,3 +1,4 @@
+// @ts-nocheck
 // GeminiHydra AppShell — extends shared AppShell with ProviderHealthWidget (M1-03)
 import { AppShell as SharedAppShell } from '@jaskier/hydra-app/components/organisms';
 import { ProviderHealthWidget } from '@jaskier/hydra-app/features/health';

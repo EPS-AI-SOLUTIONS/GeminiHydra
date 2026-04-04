@@ -1,5 +1,5 @@
 /// <reference types="vitest/config" />
-import { createViteConfig } from '@jaskier/core/vite';
+import { createViteConfig } from '../../packages/core/src/vite/createViteConfig.ts';
 
 export default createViteConfig({
   port: 5176,

@@ -4,7 +4,7 @@
 
 use crate::classify::{classify_agent_score, classify_prompt, keyword_match, strip_diacritics};
 use crate::models::WitcherAgent;
-use crate::models::{ExecuteRequest, ExecuteResponse, ExecutePlan, WsServerMessage};
+use crate::models::{ExecutePlan, ExecuteRequest, ExecuteResponse, WsServerMessage};
 use serde_json::json;
 
 /// Build a minimal set of test agents with keywords matching the DB seed.
@@ -126,8 +126,11 @@ fn test_unknown_prompt_falls_back_to_eskel() {
 #[test]
 fn test_backend_routes_to_eskel() {
     let agents = test_agents();
-    let (agent, confidence, _) =
-        classify_prompt("add a new api endpoint for user registration", &agents, "eskel");
+    let (agent, confidence, _) = classify_prompt(
+        "add a new api endpoint for user registration",
+        &agents,
+        "eskel",
+    );
     assert_eq!(agent, "eskel");
     assert!(confidence >= 0.7);
 }
@@ -172,7 +175,10 @@ fn execute_request_empty_prompt_detected() {
         "mode": "auto"
     }))
     .expect("should deserialize");
-    assert!(req.prompt.trim().is_empty(), "empty prompt should be detected");
+    assert!(
+        req.prompt.trim().is_empty(),
+        "empty prompt should be detected"
+    );
 }
 
 #[test]
@@ -227,7 +233,10 @@ fn execute_response_serialization_includes_duration() {
     let json_val = serde_json::to_value(&resp).expect("should serialize");
     assert_eq!(json_val["duration_ms"], 1500);
     assert_eq!(json_val["plan"]["agent"], "eskel");
-    assert_eq!(json_val["plan"]["steps"].as_array().expect("steps").len(), 2);
+    assert_eq!(
+        json_val["plan"]["steps"].as_array().expect("steps").len(),
+        2
+    );
     // files_loaded should be absent (skip_serializing_if = "Vec::is_empty")
     assert!(json_val.get("files_loaded").is_none());
 }
@@ -318,7 +327,9 @@ fn ws_server_token_streaming_format() {
     let tokens = vec!["Hello", " ", "World", "!"];
     let mut assembled = String::new();
     for tok in &tokens {
-        let msg = WsServerMessage::Token { content: tok.to_string() };
+        let msg = WsServerMessage::Token {
+            content: tok.to_string(),
+        };
         let v: serde_json::Value = serde_json::to_value(&msg).expect("should serialize");
         assert_eq!(v["type"], "token");
         assembled.push_str(v["content"].as_str().expect("content"));
@@ -331,7 +342,14 @@ fn ws_server_token_streaming_format() {
 #[test]
 fn ocr_request_valid_mime_types() {
     use crate::ocr::OcrRequest;
-    let allowed = ["image/png", "image/jpeg", "image/webp", "image/gif", "image/heic", "application/pdf"];
+    let allowed = [
+        "image/png",
+        "image/jpeg",
+        "image/webp",
+        "image/gif",
+        "image/heic",
+        "application/pdf",
+    ];
     for mime in &allowed {
         let req: OcrRequest = serde_json::from_value(json!({
             "data_base64": "dGVzdA==",
@@ -346,7 +364,14 @@ fn ocr_request_valid_mime_types() {
 fn ocr_request_rejects_invalid_mime_type_at_handler_level() {
     // The handler checks !ALLOWED_MIME_TYPES.contains() and returns 400
     let disallowed = ["text/plain", "video/mp4", "application/json", "image/bmp"];
-    let allowed = ["image/png", "image/jpeg", "image/webp", "image/gif", "image/heic", "application/pdf"];
+    let allowed = [
+        "image/png",
+        "image/jpeg",
+        "image/webp",
+        "image/gif",
+        "image/heic",
+        "application/pdf",
+    ];
     for mime in &disallowed {
         assert!(
             !allowed.contains(mime),

@@ -58,10 +58,7 @@ pub async fn pin_model(
     params(("use_case" = String, Path, description = "Use case to unpin")),
     responses((status = 200, description = "Model unpinned", body = Value))
 )]
-pub async fn unpin_model(
-    State(state): State<AppState>,
-    use_case: Path<String>,
-) -> Json<Value> {
+pub async fn unpin_model(State(state): State<AppState>, use_case: Path<String>) -> Json<Value> {
     jaskier_core::model_registry::unpin_model::<AppState>(State(state), use_case).await
 }
 

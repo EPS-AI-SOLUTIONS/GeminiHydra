@@ -33,9 +33,9 @@ jobs:
         run: biome check --diagnostic-level=error src/
 
       # TypeScript check is intentionally skipped — requires @jaskier/ui from
-      # the parent monorepo. Run locally with: pnpm typecheck
+      # the parent monorepo. Run locally with: bun typecheck
       # - name: Type check (skipped — requires monorepo workspace)
-      #   run: pnpm typecheck
+      #   run: bun typecheck
 
   # ────────────────────────────────────────────────────────────────────────────
   # Backend: Rust checks with shared crate setup

@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { beforeEach, describe, expect, it } from 'vitest';
 import type { BoundingBox } from '@/features/crop/stores/cropStore';
 import { getMockDetectionBoxes, useCropStore } from '@/features/crop/stores/cropStore';

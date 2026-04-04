@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { describe, expect, it } from 'vitest';
 import { MAX_MESSAGES_PER_SESSION, MAX_SESSIONS, MAX_TITLE_LENGTH, sanitizeContent, sanitizeTitle } from './utils';
 

@@ -84,7 +84,7 @@ call :smoke_test
 :: [#3] Build frontend with timing
 echo !CYAN![BUILD]!RESET! Building frontend...
 set "_fe_t0=%time%"
-call npm run build
+call bun run build
 if errorlevel 1 goto :abort
 call :elapsed_between "!_fe_t0!" "!time!" "_fe_dur"
 echo !GREEN![BUILD]!RESET! Frontend built in !_fe_dur!s
@@ -92,7 +92,7 @@ echo !GREEN![BUILD]!RESET! Frontend built in !_fe_dur!s
 :: Start preview (BEFORE Chrome â€” so port is ready)
 echo !CYAN![PREVIEW]!RESET! Starting preview on port 4176...
 call "%LIB%" :log_rotate "jaskier-geminihydra-preview"
-powershell -NoProfile -WindowStyle Hidden -Command "Start-Process cmd -ArgumentList '/c cd /d %~dp0 && npm run preview > \"%TEMP%\jaskier-geminihydra-preview.log\" 2>&1' -WindowStyle Hidden"
+powershell -NoProfile -WindowStyle Hidden -Command "Start-Process cmd -ArgumentList '/c cd /d %~dp0 && bun run preview > \"%TEMP%\jaskier-geminihydra-preview.log\" 2>&1' -WindowStyle Hidden"
 %SYSTEMROOT%\System32\timeout.exe /t 2 /nobreak >nul
 call "%LIB%" :port_validate 4176 10
 

@@ -16,12 +16,13 @@ use crate::state::AppState;
 // ── Re-exports from shared crate ────────────────────────────────────────────
 
 pub use jaskier_core::handlers::gemini_streaming::{
-    // Public handler entry points (used in lib.rs routes)
-    ws_execute,
-    swarm_sse_handler,
+    GeminiInlineData,
+    GeminiToolOutput,
     // Trait + types (used in trait impl below)
     HasGeminiStreamingState,
-    GeminiToolOutput, GeminiInlineData,
+    swarm_sse_handler,
+    // Public handler entry points (used in lib.rs routes)
+    ws_execute,
 };
 
 // ── HasGeminiStreamingState trait impl for GeminiHydra ──────────────────────
@@ -114,11 +115,7 @@ impl HasGeminiStreamingState for AppState {
         }
     }
 
-    async fn execute_agent_call(
-        &self,
-        args: &Value,
-        call_depth: u32,
-    ) -> Result<String, String> {
+    async fn execute_agent_call(&self, args: &Value, call_depth: u32) -> Result<String, String> {
         crate::a2a::execute_agent_call(self, args, call_depth).await
     }
 
@@ -128,17 +125,16 @@ impl HasGeminiStreamingState for AppState {
         prompt: &str,
     ) -> (String, f64, String) {
         // Check if session has a locked agent
-        if let Some(aid) = sqlx::query_as::<_, (Option<String>,)>(
-            "SELECT agent_id FROM gh_sessions WHERE id = $1",
-        )
-        .bind(session_id)
-        .fetch_optional(&self.db)
-        .await
-        .map_err(|e| tracing::error!("Failed to resolve session agent: {}", e))
-        .ok()
-        .flatten()
-        .and_then(|(a,)| a)
-        .filter(|s| !s.is_empty())
+        if let Some(aid) =
+            sqlx::query_as::<_, (Option<String>,)>("SELECT agent_id FROM gh_sessions WHERE id = $1")
+                .bind(session_id)
+                .fetch_optional(&self.db)
+                .await
+                .map_err(|e| tracing::error!("Failed to resolve session agent: {}", e))
+                .ok()
+                .flatten()
+                .and_then(|(a,)| a)
+                .filter(|s| !s.is_empty())
         {
             return (aid, 0.95, "Locked".into());
         }

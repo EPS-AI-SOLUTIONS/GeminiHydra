@@ -64,7 +64,6 @@ Used sparingly for decorative elements:
 | `--font-mono`  | `'JetBrains Mono', 'Fira Code', 'Consolas', monospace` | Primary font (body, code, UI) |
 | `--font-sans`  | `'Inter', system-ui, -apple-system, sans-serif` | Fallback/headings |
 
-The entire UI uses monospace as the primary font family, reinforcing the terminal/hacker aesthetic.
 
 ---
 

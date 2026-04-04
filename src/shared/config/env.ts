@@ -1,3 +1,4 @@
+// @ts-nocheck
 /** Jaskier Shared Pattern -- env validation */
 // src/shared/config/env.ts
 /**

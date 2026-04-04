@@ -12,11 +12,14 @@ use jaskier_ai_modules::tool_defs as shared;
 /// Build the static (non-MCP) tool definitions in Gemini format.
 /// Result is cached in `state.tool_defs_cache` (OnceLock — computed once).
 pub fn build_tools(state: &crate::state::AppState) -> Value {
-    state.tool_defs_cache.get_or_init(|| {
-        // GeminiHydra supports all shared tools.
-        let tools = shared::all_tools();
-        shared::to_gemini_json(&tools)
-    }).clone()
+    state
+        .tool_defs_cache
+        .get_or_init(|| {
+            // GeminiHydra supports all shared tools.
+            let tools = shared::all_tools();
+            shared::to_gemini_json(&tools)
+        })
+        .clone()
 }
 
 /// Build tools including dynamically discovered MCP tools.

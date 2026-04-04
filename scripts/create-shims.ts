@@ -1,5 +1,5 @@
 /**
- * create-shims.js — Create stub @jaskier/* packages for Vercel deployment.
+ * create-shims.ts — Create stub @jaskier/* packages for Vercel deployment.
  *
  * On Vercel, the app is deployed from its own repo (not the monorepo),
  * so workspace:* dependencies can't resolve. This script creates minimal
@@ -11,11 +11,11 @@
 import fs from "fs";
 import path from "path";
 
-const basePath = path.join(process.cwd(), "node_modules");
+const basePath: string = path.join(process.cwd(), "node_modules");
 
 /** Create a shim package with the given name, exports map, and index code. */
-function createShim(name, indexCode, subpaths = {}) {
-  const dir = path.join(basePath, name);
+function createShim(name: string, indexCode: string, subpaths: Record<string, string> = {}): void {
+  const dir: string = path.join(basePath, name);
   if (!fs.existsSync(dir)) {
     fs.mkdirSync(dir, { recursive: true });
   }
@@ -24,7 +24,7 @@ function createShim(name, indexCode, subpaths = {}) {
   fs.writeFileSync(path.join(dir, "index.js"), indexCode);
 
   // package.json with exports map
-  const exports = { ".": "./index.js" };
+  const exports: Record<string, string> = { ".": "./index.js" };
   for (const [subpath, file] of Object.entries(subpaths)) {
     exports[subpath] = `./${file}`;
   }
@@ -46,8 +46,8 @@ function createShim(name, indexCode, subpaths = {}) {
 
   // Create subpath files
   for (const [, file] of Object.entries(subpaths)) {
-    const filePath = path.join(dir, file);
-    const fileDir = path.dirname(filePath);
+    const filePath: string = path.join(dir, file);
+    const fileDir: string = path.dirname(filePath);
     if (!fs.existsSync(fileDir)) {
       fs.mkdirSync(fileDir, { recursive: true });
     }
@@ -85,8 +85,27 @@ export class ErrorBoundary { constructor(p) { this.props = p; } render() { retur
 `,
 );
 
+// ── @jaskier/ui CSS stubs ──
+// Vercel build imports @jaskier/ui/styles/base.css and @jaskier/ui/styles/globals.css
+const uiStylesDir: string = path.join(basePath, "@jaskier/ui", "styles");
+if (!fs.existsSync(uiStylesDir)) {
+  fs.mkdirSync(uiStylesDir, { recursive: true });
+}
+// Empty CSS stubs — the real design system CSS lives in each app's local styles
+fs.writeFileSync(path.join(uiStylesDir, "base.css"), "/* @jaskier/ui base — stub for Vercel */\n");
+fs.writeFileSync(path.join(uiStylesDir, "globals.css"), "/* @jaskier/ui globals — stub for Vercel */\n");
+
+// Update @jaskier/ui package.json exports to include CSS subpaths
+const uiPkgPath: string = path.join(basePath, "@jaskier/ui", "package.json");
+const uiPkg: { exports: Record<string, string> } = JSON.parse(fs.readFileSync(uiPkgPath, "utf8"));
+uiPkg.exports["./styles/base.css"] = "./styles/base.css";
+uiPkg.exports["./styles/globals.css"] = "./styles/globals.css";
+uiPkg.exports["./styles/*"] = "./styles/*";
+fs.writeFileSync(uiPkgPath, JSON.stringify(uiPkg, null, 2));
+console.log("CSS stubs added to @jaskier/ui");
+
 // ── @jaskier/core ──
-const coreIndex = `export const cn = (...args) => args.filter(Boolean).join(' ');
+const coreIndex: string = `export const cn = (...args) => args.filter(Boolean).join(' ');
 export {};
 `;
 
@@ -120,8 +139,8 @@ export {};
 );
 
 // ── @jaskier/hydra-app ──
-const noop = "() => null";
-const hydraIndex = `export const AppShell = ${noop};
+const noop: string = "() => null";
+const hydraIndex: string = `export const AppShell = ${noop};
 export const Sidebar = ${noop};
 export const StatusFooter = ${noop};
 export const TabBar = ${noop};
@@ -131,7 +150,7 @@ export const fetchPartnerSession = async () => null;
 export {};
 `;
 
-const hydraSubpaths = {
+const hydraSubpaths: Record<string, string> = {
   "./features/chat": "features/chat/index.js",
   "./features/settings": "features/settings/index.js",
   "./features/agents": "features/agents/index.js",
@@ -161,7 +180,7 @@ const hydraSubpaths = {
 createShim("@jaskier/hydra-app", hydraIndex, hydraSubpaths);
 
 // Write richer stubs for heavily-used subpaths
-const featureStub = (exports) =>
+const featureStub = (exports: string[]): string =>
   exports.map((e) => `export const ${e} = () => null;`).join("\n") + "\nexport {};\n";
 
 fs.writeFileSync(
@@ -286,5 +305,49 @@ fs.writeFileSync(
   `export {};
 `,
 );
+
+// ── Vercel: rewrite vite.config.ts to be self-contained ──
+// The original imports createViteConfig from ../../packages/core/... which doesn't exist on Vercel.
+// We replace it with an inline config that uses locally-installed dependencies.
+const viteConfigPath: string = path.join(process.cwd(), "vite.config.ts");
+fs.writeFileSync(
+  viteConfigPath,
+  `/// <reference types="vitest/config" />
+import tailwindcss from '@tailwindcss/vite';
+import react from '@vitejs/plugin-react';
+import { resolve } from 'path';
+import { defineConfig, loadEnv } from 'vite';
+import { VitePWA } from 'vite-plugin-pwa';
+
+export default defineConfig(({ mode }) => {
+  const env = loadEnv(mode, process.cwd(), '');
+  const backendUrl = env.VITE_BACKEND_URL || 'http://localhost:8081';
+  return {
+    plugins: [
+      react(),
+      tailwindcss(),
+      VitePWA({
+        registerType: 'autoUpdate',
+        workbox: { globPatterns: ['**/*.{js,css,html,ico,png,svg}'] },
+      }),
+    ],
+    resolve: { alias: { '@': resolve(__dirname, './src') } },
+    clearScreen: false,
+    build: {
+      target: 'esnext',
+      sourcemap: mode !== 'production',
+      modulePreload: { polyfill: true },
+    },
+    test: {
+      globals: true,
+      environment: 'jsdom',
+      setupFiles: ['./src/test/setup.ts'],
+      include: ['src/**/*.test.{ts,tsx}'],
+    },
+  };
+});
+`,
+);
+console.log("vite.config.ts rewritten for Vercel (inline config)");
 
 console.log("All @jaskier/* shims created successfully.");

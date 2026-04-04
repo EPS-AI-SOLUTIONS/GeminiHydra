@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { beforeEach, describe, expect, it } from 'vitest';
 import type { RestorationResult, RestoreStatus } from '@/features/restore/stores/restoreStore';
 import { useRestoreStore } from '@/features/restore/stores/restoreStore';

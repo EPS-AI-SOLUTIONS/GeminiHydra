@@ -25,7 +25,8 @@ pub fn mcp_router(state: AppState) -> Router<AppState> {
         )
         .route(
             "/api/mcp/servers/{id}",
-            patch(config::mcp_server_update::<AppState>).delete(config::mcp_server_delete::<AppState>),
+            patch(config::mcp_server_update::<AppState>)
+                .delete(config::mcp_server_delete::<AppState>),
         )
         .route(
             "/api/mcp/servers/{id}/connect",
@@ -35,7 +36,10 @@ pub fn mcp_router(state: AppState) -> Router<AppState> {
             "/api/mcp/servers/{id}/disconnect",
             post(config::mcp_server_disconnect::<AppState>),
         )
-        .route("/api/mcp/servers/{id}/tools", get(config::mcp_server_tools::<AppState>))
+        .route(
+            "/api/mcp/servers/{id}/tools",
+            get(config::mcp_server_tools::<AppState>),
+        )
         .route("/api/mcp/tools", get(config::mcp_all_tools::<AppState>))
         .route_layer(middleware::from_fn_with_state(
             state.clone(),

@@ -101,7 +101,7 @@ echo.
 
 :: Start frontend dev server (foreground â€” endlocal FIRST)
 echo !CYAN![DEV]!RESET! Starting frontend dev server on port 5176...
-endlocal && cd /d "%~dp0" && npm run dev
+endlocal && cd /d "%~dp0" && bun run dev
 goto :eof
 
 :abort

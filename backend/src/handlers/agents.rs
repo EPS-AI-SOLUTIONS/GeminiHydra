@@ -6,6 +6,6 @@
 
 #[allow(unused_imports)]
 pub use jaskier_core::handlers::agents::{
-    classify_agent, create_agent, create_profile, delete_agent, list_agents, list_delegations,
-    list_profiles, stream_delegations, update_agent, HasAgentState,
+    HasAgentState, classify_agent, create_agent, create_profile, delete_agent, list_agents,
+    list_delegations, list_profiles, stream_delegations, update_agent,
 };

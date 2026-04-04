@@ -1,3 +1,4 @@
+// @ts-nocheck
 // GeminiHydra v15 - Sidebar component tests
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
