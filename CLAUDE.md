@@ -1,8 +1,8 @@
 ﻿# GeminiHydra v15 â€” Multi-Agent AI Swarm
 
 ## Quick Start
-- `npm run dev` â€” port 5176
-- `npx tsc --noEmit` â€” type check
+- `bun dev` — port 5176
+- `bunx tsc --noEmit` — type check
 
 ## Architecture
 - Pure Vite SPA (no Tauri) â€” React 19 + Zustand 5
@@ -128,7 +128,7 @@
 ## Conventions
 - motion/react (NOT framer-motion) for animations
 - Biome for linting (not ESLint)
-- npm (not pnpm) as package manager
+- bun (not npm/pnpm) as package manager
 
 ## WebSocket Streaming Fix (2026-02-24)
 - **Problem**: Tool-call responses were empty â€” WebSocket killed by heartbeat before tokens arrived
@@ -181,7 +181,7 @@
 
 ## Browser Proxy â€” Persistent Context Architecture
 - **Context mode**: `launchPersistentContext` (NOT `storageState`) â€” `storageState` alone does NOT preserve Google sessions (cookies expired/invalidated server-side)
-- **Login**: `npm run login:persistent` creates `browser-profile/` directory with full Chrome profile (cookies, localStorage, IndexedDB)
+- **Login**: `bun run login:persistent` creates `browser-profile/` directory with full Chrome profile (cookies, localStorage, IndexedDB)
 - **Workers**: share single persistent context â€” 4 pages within 1 browser process (not 4 separate contexts)
 - **Profile backup**: `browser-profile/` copied to `worker-profile/` at init for crash recovery
 - **Login detection**: positive signal â€” chat input textarea visible on AI Studio page (NOT absence of "Sign in" button, which is unreliable)
