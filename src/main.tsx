@@ -10,6 +10,7 @@
 
 import { type AuthConfig, AuthProvider, LoginButton, useAuth } from '@jaskier/auth';
 import { ApiClientProvider } from '@jaskier/core/api';
+import { ApprovalGate } from '@jaskier/hydra-app/components/molecules';
 import { ErrorBoundary } from '@jaskier/ui';
 import { QueryClientProvider, QueryErrorResetBoundary } from '@tanstack/react-query';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
@@ -179,7 +180,7 @@ function JaskierAuthGate({ children }: { children: React.ReactNode }) {
     );
   }
 
-  return <>{children}</>;
+  return <ApprovalGate appName="Gemini Hydra">{children}</ApprovalGate>;
 }
 
 function App() {
