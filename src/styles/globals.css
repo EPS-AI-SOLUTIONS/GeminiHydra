@@ -1,6 +1,7 @@
 /* GeminiHydra — app entry styles */
 @import "tailwindcss";
 @import "@jaskier/ui/styles/base.css";
+@import "@jaskier/ui/styles/globals.css";
 
 /* App-specific accent colors — dark theme (default) */
 :root {
@@ -17,5 +18,3 @@
   --matrix-accent-hover: #1b4332;
   --matrix-accent-glow: #2d6a4f;
 }
-
-@import "@jaskier/ui/styles/globals.css";
