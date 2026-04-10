@@ -55,9 +55,7 @@ glob = { workspace = true }
 dirs = { workspace = true }
 aes-gcm = { workspace = true }
 hex = { workspace = true }
-pdf-extract = { workspace = true }
 scraper = { workspace = true }
-zip = { workspace = true }
 ego-tree = { workspace = true }
 utoipa = { workspace = true }
 utoipa-swagger-ui = { workspace = true }
