@@ -25,7 +25,7 @@ import { ThemeProvider } from '@/contexts/ThemeContext';
 import { ChatViewWrapper } from '@/features/chat/components/ChatViewWrapper';
 import { apiDelete, apiGet, apiGetPolling, apiPatch, apiPost, apiPostFormData, BASE_URL } from '@/shared/api/client';
 import { queryClient } from '@/shared/api/queryClient';
-import { useAuthGate } from '@/shared/hooks/useAuthGate';
+import { useAuthGate } from '@jaskier/hydra-app';
 import { useViewStore } from '@/stores/viewStore';
 import '@/i18n';
 import './styles/globals.css';
