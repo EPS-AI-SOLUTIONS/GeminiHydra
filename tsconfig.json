@@ -21,9 +21,12 @@
     ],
     "skipLibCheck": true,
     "strict": true,
-    "noUncheckedIndexedAccess": true
+    "noUncheckedIndexedAccess": true,
+    "verbatimModuleSyntax": true,
+    "noEmit": true
   },
   "include": [
+    "../../packages/typescript-config/unplugin-icons.d.ts",
     "src",
     "vite-env.d.ts"
   ],
