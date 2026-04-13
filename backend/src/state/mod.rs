@@ -46,8 +46,11 @@ impl Deref for AppState {
 // ── Constructor ─────────────────────────────────────────────────────────────
 
 impl AppState {
-    pub async fn new(db: sqlx::PgPool, log_buffer: Arc<LogRingBuffer>) -> Self {
-        let db_for_auth = db.clone();
+    pub async fn new(
+        db: sqlx::PgPool,
+        auth_db: sqlx::PgPool,
+        log_buffer: Arc<LogRingBuffer>,
+    ) -> Self {
         let base = BaseHydraState::new(
             db,
             log_buffer,
@@ -65,7 +68,7 @@ impl AppState {
         .await;
 
         let auth_config = jaskier_auth::AuthConfig::from_env();
-        let auth = jaskier_auth::AuthState::new(db_for_auth, auth_config);
+        let auth = jaskier_auth::AuthState::new(auth_db, auth_config);
 
         Self { base, auth }
     }
@@ -173,11 +176,11 @@ impl jaskier_auth::HasAuthState for AppState {
     }
 
     fn jwt_secret(&self) -> &[u8] {
-        self.base
-            .auth_secret
-            .as_deref()
-            .unwrap_or("geminihydra-default-dev-secret-change-me")
-            .as_bytes()
+        // SECURITY: Never fall back to a hardcoded secret. If AUTH_SECRET is not
+        // configured, return an empty slice — jaskier-auth will reject all JWT
+        // validation attempts, forcing the server to surface a 500 rather than
+        // silently accept tokens signed with a well-known default key.
+        self.base.auth_secret.as_deref().unwrap_or("").as_bytes()
     }
 
     fn db(&self) -> &sqlx::PgPool {
