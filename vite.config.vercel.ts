@@ -4,11 +4,6 @@ import react from '@vitejs/plugin-react';
 import type { Plugin } from 'vite';
 import { defineConfig } from 'vite';
 
-/**
- * Shim for ~icons/* virtual module imports from unplugin-icons.
- * On Vercel the plugin is unavailable, so we replace every icon import
- * with a tiny React functional component that renders null.
- */
 function iconsMockPlugin(): Plugin {
   return {
     name: 'icons-mock',
@@ -27,7 +22,14 @@ export default function MockIcon(props) { return createElement('span', props); }
   };
 }
 
+// Vite 8 builds both client + SSR environments by default.
+// GeminiHydra is a client-only SPA — skip the SSR environment build.
 export default defineConfig({
+  builder: {
+    async buildApp(builder) {
+      await builder.build(builder.environments.client);
+    },
+  },
   clearScreen: false,
   plugins: [
     iconsMockPlugin(),
