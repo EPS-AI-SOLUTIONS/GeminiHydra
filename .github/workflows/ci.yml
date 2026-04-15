@@ -198,12 +198,33 @@ jobs:
           # Desktop / native (cfg-gated)
           rfd             = "0.15"
           tauri-winrt-notification = "0.7"
+          winrt-toast-reborn = "0.3"
+          win32_notif     = "0.15"
           windows         = { version = "0.62", features = ["Win32_Security_Cryptography", "Win32_Foundation", "Win32_System_Memory", "Win32_System_Threading", "Win32_System_Console", "Win32_UI_WindowsAndMessaging", "Win32_UI_Shell", "Win32_System_Com", "Win32_Storage_FileSystem"] }
           windows-sys     = "0.62"
 
           # Async extras
           async-trait     = "0.1"
           futures         = "0.3"
+
+          # Browser automation (CDP)
+          chromiumoxide   = { version = "0.9", default-features = false }
+
+          # CRDT
+          yrs             = "0.21"
+
+          # Misc utilities
+          dunce           = "1"
+          rustls          = "0.23"
+          tokio-rustls    = "0.26"
+          aho-corasick    = "1.1"
+          nom             = "7"
+          itertools       = "0.13"
+          libc            = "0.2"
+          strum           = "0.26"
+          socket2         = "0.5"
+          spki            = "0.7"
+          spin            = "0.9"
 
           # Testing
           wiremock        = "0.6"
