@@ -1,0 +1,18 @@
+# nektos/act configuration for GeminiHydra
+# Użycie: act push (w katalogu apps/GeminiHydra)
+# Instalacja: choco install act-cli (Windows) lub: winget install nektos.act
+
+# Używaj slim Ubuntu image zamiast full (szybszy download ~270MB vs 20GB)
+-P ubuntu-latest=ghcr.io/catthehacker/ubuntu:act-22.04
+
+# Ładuj sekrety z pliku (skopiuj .act.secrets.example → .act.secrets i wypełnij)
+--secret-file .act.secrets
+
+# Env vars dla local CI (nie w secrets)
+--env SQLX_OFFLINE=true
+--env CI_LOCAL=true
+--env CARGO_TERM_COLOR=never
+--env CARGO_TERM_PROGRESS_WHEN=never
+
+# Nie pull images za każdym razem (szybciej)
+--pull=false

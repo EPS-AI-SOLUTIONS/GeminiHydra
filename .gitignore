@@ -47,6 +47,10 @@ structure_analysis.txt
 # Windows artifacts
 nul
 
+# nektos/act local secrets (never commit real tokens)
+.act.secrets
+.actrc.local
+
 # Stale .js build artifacts that shadow .tsx/.ts source files
 src/**/*.js
 
