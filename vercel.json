@@ -1,7 +1,7 @@
 {
   "framework": "vite",
   "installCommand": "bun scripts/strip-workspace-deps.ts && bun install --no-save && bun scripts/create-shims.ts",
-  "buildCommand": "bun x vite build -c vite.config.vercel.ts",
+  "buildCommand": "vite build -c vite.config.vercel.ts",
   "outputDirectory": "dist",
   "regions": ["cdg1", "fra1", "iad1"],
   "headers": [
