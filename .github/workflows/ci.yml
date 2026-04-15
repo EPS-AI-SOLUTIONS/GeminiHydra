@@ -23,7 +23,7 @@ jobs:
     name: Frontend Checks
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - uses: biomejs/setup-biome@v2
         with:
@@ -60,7 +60,7 @@ jobs:
       CRATES_SOURCE_REPO: https://x-access-token:${{ secrets.GH_PAT }}@github.com/EPS-AI-SOLUTIONS/JaskierWorkspace.git
       SQLX_OFFLINE: 'true'
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Install Rust toolchain
         uses: actions-rust-lang/setup-rust-toolchain@v1
@@ -302,7 +302,7 @@ jobs:
     runs-on: ubuntu-latest
     if: github.event_name == 'workflow_dispatch'
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Remind about full workspace check
         run: |
           echo "For full workspace checks (all 13 crates), run locally:"
