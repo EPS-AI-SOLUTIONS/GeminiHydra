@@ -75,7 +75,10 @@ jobs:
       # So we clone crates/ into: /home/runner/work/crates/
       - name: Set up shared workspace crates
         run: |
-          PARENT_DIR="$(dirname "$GITHUB_WORKSPACE")"
+          # GITHUB_WORKSPACE = /home/runner/work/GeminiHydra/GeminiHydra (2 levels deep)
+          # backend path: ../../../crates => 3 levels up from backend/ = /home/runner/work/
+          # So PARENT_DIR must be 2 levels up from GITHUB_WORKSPACE.
+          PARENT_DIR="$(dirname "$(dirname "$GITHUB_WORKSPACE")")"
           CRATES_TARGET="$PARENT_DIR/crates"
 
           echo "App checkout   : $GITHUB_WORKSPACE"
@@ -110,7 +113,7 @@ jobs:
             cat > "$PARENT_DIR/Cargo.toml" << 'CARGO_TOML'
           [workspace]
           resolver = "2"
-          members = ["crates/*", "GeminiHydra/backend"]
+          members = ["crates/*", "GeminiHydra/GeminiHydra/backend"]
 
           [workspace.dependencies]
           # Axum / Tower stack
