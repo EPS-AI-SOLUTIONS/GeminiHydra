@@ -4,9 +4,10 @@
 // ---------------------------------------------------------------------------
 
 use axum::Json;
-use axum::extract::State;
+use axum::extract::{ConnectInfo, State};
 use axum::http::StatusCode;
 use serde_json::Value;
+use std::net::SocketAddr;
 
 use crate::models::{ExecuteRequest, ExecuteResponse};
 use crate::state::AppState;
@@ -18,10 +19,12 @@ use jaskier_core::error::ApiError;
 
 /// POST /api/internal/tool — Internal tool execution bridge for ADK sidecar.
 pub async fn internal_tool_execute(
+    connect_info: ConnectInfo<SocketAddr>,
     state: State<AppState>,
     body: Json<Value>,
 ) -> Result<Json<Value>, ApiError> {
-    jaskier_core::handlers::execute::internal_tool_execute::<AppState>(state, body).await
+    jaskier_core::handlers::execute::internal_tool_execute::<AppState>(connect_info, state, body)
+        .await
 }
 
 // ---------------------------------------------------------------------------

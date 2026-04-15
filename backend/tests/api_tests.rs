@@ -32,7 +32,7 @@ async fn try_test_state() -> Option<AppState> {
         return None;
     }
     let log_buffer = std::sync::Arc::new(LogRingBuffer::new(1000));
-    Some(AppState::new(pool, log_buffer).await)
+    Some(AppState::new(pool.clone(), pool, log_buffer).await)
 }
 
 /// Convenience macro: skip the test when DATABASE_URL is absent.
