@@ -1,6 +1,12 @@
 // @ts-nocheck
 import * as matchers from '@testing-library/jest-dom/matchers';
-import { expect, vi } from 'vitest';
+import { afterAll, afterEach, beforeAll, expect, vi } from 'vitest';
+import { server } from '../mocks/server';
+
+// ── MSW: intercept HTTP requests in Node.js/Vitest (B1142-T09) ───────────────
+beforeAll(() => server.listen({ onUnhandledRequest: 'warn' }));
+afterEach(() => server.resetHandlers());
+afterAll(() => server.close());
 
 process.on('unhandledRejection', () => {});
 
