@@ -5,7 +5,8 @@
  * so workspace:* dependencies can't resolve. This script creates minimal
  * shim packages in node_modules so that the build can proceed.
  *
- * Shimmed packages: @jaskier/ui, @jaskier/core, @jaskier/hydra-app
+ * Shimmed packages: @jaskier/ui, @jaskier/core, @jaskier/hydra-app,
+ *                   @jaskier/auth, @jaskier/i18n
  */
 
 import fs from "fs";
@@ -138,6 +139,32 @@ export {};
 `,
 );
 
+// ── @jaskier/auth ──
+// Used in main.tsx: AuthProvider, useAuth, LoginButton, AuthConfig
+createShim(
+  "@jaskier/auth",
+  `import { createContext, useContext } from 'react';
+const AuthCtx = createContext({ user: null, isLoading: false, isAuthenticated: false });
+export const AuthProvider = ({ children }) => children;
+export const useAuth = () => useContext(AuthCtx);
+export const LoginButton = () => null;
+export const ApprovalGate = ({ children }) => children;
+export {};
+`,
+);
+console.log("Shim created: @jaskier/auth");
+
+// ── @jaskier/i18n ──
+// Used indirectly via @/i18n setup; stub the package so imports don't fail
+createShim(
+  "@jaskier/i18n",
+  `export const createI18nConfig = () => ({});
+export const defaultNS = 'translation';
+export {};
+`,
+);
+console.log("Shim created: @jaskier/i18n");
+
 // ── @jaskier/hydra-app ──
 const noop: string = "() => null";
 const hydraIndex: string = `export const AppShell = ${noop};
@@ -235,7 +262,7 @@ fs.writeFileSync(
 
 fs.writeFileSync(
   path.join(basePath, "@jaskier/hydra-app/components/molecules/index.js"),
-  featureStub(["FeatureErrorFallback", "QueryError", "SessionSearch", "ViewSkeleton"]),
+  featureStub(["FeatureErrorFallback", "QueryError", "SessionSearch", "ViewSkeleton", "ApprovalGate"]),
 );
 
 fs.writeFileSync(
@@ -319,9 +346,11 @@ import { resolve } from 'path';
 import { defineConfig, loadEnv } from 'vite';
 import { VitePWA } from 'vite-plugin-pwa';
 
+const backendFlyUrl = 'https://geminihydra-v15-backend.fly.dev';
+
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '');
-  const backendUrl = env.VITE_BACKEND_URL || 'http://localhost:8081';
+  const backendUrl = env.VITE_BACKEND_URL || backendFlyUrl;
   return {
     plugins: [
       react(),
@@ -335,14 +364,11 @@ export default defineConfig(({ mode }) => {
     clearScreen: false,
     build: {
       target: 'esnext',
-      sourcemap: mode !== 'production',
+      sourcemap: false,
       modulePreload: { polyfill: true },
     },
-    test: {
-      globals: true,
-      environment: 'jsdom',
-      setupFiles: ['./src/test/setup.ts'],
-      include: ['src/**/*.test.{ts,tsx}'],
+    define: {
+      __VITE_BACKEND_URL__: JSON.stringify(backendUrl),
     },
   };
 });

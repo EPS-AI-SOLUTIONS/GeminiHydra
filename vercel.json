@@ -1,6 +1,7 @@
 {
   "framework": "vite",
-  "buildCommand": "bun run build",
+  "installCommand": "bun x tsx scripts/strip-workspace-deps.ts && bun install --ignore-workspace && bun x tsx scripts/create-shims.ts",
+  "buildCommand": "vite build",
   "outputDirectory": "dist",
   "regions": ["cdg1", "fra1", "iad1"],
   "ignoreCommand": "git diff --quiet HEAD^ HEAD -- . ':!docs' ':!*.md' ':!scripts' ':!.claude'",
