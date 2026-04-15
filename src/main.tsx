@@ -10,6 +10,7 @@
 
 import { type AuthConfig, AuthProvider, LoginButton, useAuth } from '@jaskier/auth';
 import { ApiClientProvider } from '@jaskier/core/api';
+import { useAuthGate } from '@jaskier/hydra-app';
 import { ApprovalGate } from '@jaskier/hydra-app/components/molecules';
 import { ErrorBoundary } from '@jaskier/ui';
 import { QueryClientProvider, QueryErrorResetBoundary } from '@tanstack/react-query';
@@ -25,7 +26,6 @@ import { ThemeProvider } from '@/contexts/ThemeContext';
 import { ChatViewWrapper } from '@/features/chat/components/ChatViewWrapper';
 import { apiDelete, apiGet, apiGetPolling, apiPatch, apiPost, apiPostFormData, BASE_URL } from '@/shared/api/client';
 import { queryClient } from '@/shared/api/queryClient';
-import { useAuthGate } from '@jaskier/hydra-app';
 import { useViewStore } from '@/stores/viewStore';
 import '@/i18n';
 import './styles/globals.css';
