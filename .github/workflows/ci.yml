@@ -113,31 +113,95 @@ jobs:
           members = ["crates/*"]
 
           [workspace.dependencies]
+          # Axum / Tower stack
           axum            = "0.8"
           axum-extra      = { version = "0.10", features = ["typed-header"] }
           tokio           = { version = "1", features = ["full"] }
-          tower           = "0.5"
-          tower-http      = { version = "0.6", features = ["cors", "compression-gzip", "trace", "fs"] }
-          serde           = { version = "1.0", features = ["derive"] }
+          tower           = { version = "0.5", features = ["util"] }
+          tower-http      = { version = "0.6", features = ["cors", "compression-gzip", "trace", "fs", "limit", "set-header"] }
+          tower_governor  = "0.8"
+
+          # Serialization
+          serde           = { version = "1.0", default-features = false, features = ["std", "derive"] }
           serde_json      = "1.0"
-          sqlx            = { version = "0.8", features = ["runtime-tokio-rustls", "postgres", "chrono", "uuid", "migrate"] }
+
+          # Database
+          sqlx            = { version = "0.8", default-features = false, features = ["runtime-tokio", "tls-native-tls", "postgres", "chrono", "uuid", "migrate", "macros", "json"] }
+
+          # Logging / Tracing
           tracing         = "0.1"
-          tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
-          reqwest         = { version = "0.13", features = ["json", "multipart", "query"] }
-          chrono          = { version = "0.4", features = ["serde"] }
-          uuid            = { version = "1", features = ["v4", "serde"] }
+          tracing-subscriber = { version = "0.3", features = ["env-filter", "json", "registry"] }
+
+          # HTTP client
+          reqwest         = { version = "0.13", default-features = false, features = ["rustls", "json", "multipart", "query", "stream", "form", "gzip"] }
+
+          # Utilities
+          chrono          = { version = "0.4", default-features = false, features = ["clock", "std", "serde"] }
+          uuid            = { version = "1", default-features = false, features = ["v4", "serde"] }
           anyhow          = "1.0"
           thiserror       = "2.0"
-          regex           = "1"
-          streaming-iterator = "0.1"
+          dotenvy         = "0.15"
+          sysinfo         = "=0.38.4"
+          subtle          = "2"
+
+          # Async / streaming
           futures-util    = "0.3"
-          tokio-stream    = "0.1"
-          tree-sitter     = "0.26"
+          tokio-stream    = { version = "0.1", features = ["sync"] }
+          tokio-util      = "0.7"
+          async-stream    = "0.3"
+
+          # Crypto / encoding
+          sha2            = { version = "0.10", default-features = false, features = ["std"] }
+          base64          = "0.22"
+          rand            = "0.9"
+          aes-gcm         = "0.10"
+          hex             = "0.4"
+
+          # Web / parsing
+          url             = { version = "2", default-features = false }
+          http            = "1"
+          http-body-util  = "0.1"
+          glob            = "0.3"
+          dirs            = "6"
+          regex           = "1"
+          scraper         = "0.25"
+          ego-tree        = "0.11"
+
+          # OpenAPI / docs
+          utoipa          = { version = "5", features = ["axum_extras", "uuid", "chrono"] }
+          utoipa-swagger-ui = { version = "9", features = ["axum"] }
+
+          # Code analysis (tree-sitter)
+          streaming-iterator     = "0.1"
+          tree-sitter            = "0.26"
           tree-sitter-rust       = "0.24"
           tree-sitter-typescript = "0.23"
           tree-sitter-javascript = "0.25"
           tree-sitter-python     = "0.25"
           tree-sitter-go         = "0.25"
+
+          # Testing
+          wiremock        = "0.6"
+
+          [workspace.lints.clippy]
+          unwrap_used = "warn"
+          expect_used = "warn"
+          panic = "warn"
+          todo = "warn"
+          dbg_macro = "warn"
+          print_stdout = "warn"
+          print_stderr = "warn"
+          unnecessary_wraps = "warn"
+          redundant_closure_for_method_calls = "warn"
+          manual_let_else = "allow"
+          too_many_arguments = "allow"
+          manual_clamp = "allow"
+          manual_strip = "allow"
+          items_after_test_module = "allow"
+          expect_fun_call = "allow"
+          single_match = "allow"
+          needless_borrows_for_generic_args = "allow"
+          manual_abs_diff = "allow"
           CARGO_TOML
             echo "✓ Workspace Cargo.toml stub created at $PARENT_DIR/Cargo.toml"
           fi
