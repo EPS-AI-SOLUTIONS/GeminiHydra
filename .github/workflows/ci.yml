@@ -110,7 +110,7 @@ jobs:
             cat > "$PARENT_DIR/Cargo.toml" << 'CARGO_TOML'
           [workspace]
           resolver = "2"
-          members = ["crates/*"]
+          members = ["crates/*", "GeminiHydra/backend"]
 
           [workspace.dependencies]
           # Axum / Tower stack
