@@ -30,7 +30,7 @@ jobs:
           version: latest
 
       - name: Biome lint
-        run: biome check --diagnostic-level=error src/
+        run: biome ci src/
 
       # TypeScript check is intentionally skipped — requires @jaskier/ui from
       # the parent monorepo. Run locally with: bun typecheck
@@ -58,13 +58,15 @@ jobs:
       # Sparse-clone source for shared crates.
       # Override via repo secret CRATES_SOURCE_REPO if the monorepo is private.
       CRATES_SOURCE_REPO: https://x-access-token:${{ secrets.GH_PAT }}@github.com/EPS-AI-SOLUTIONS/JaskierWorkspace.git
+      SQLX_OFFLINE: 'true'
     steps:
       - uses: actions/checkout@v4
 
       - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
+        uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
           components: clippy, rustfmt
+          matcher: true
 
       # ── Workspace crate setup ───────────────────────────────────────────────
       # Sparse-clone the shared `crates/` directory from the monorepo into
@@ -100,7 +102,7 @@ jobs:
 
           cd "$PARENT_DIR/_ws_tmp"
           git sparse-checkout init --cone
-          git sparse-checkout set crates
+          git sparse-checkout set crates ci
           git checkout
 
           mv "$PARENT_DIR/_ws_tmp/crates" "$CRATES_TARGET"
@@ -109,7 +111,10 @@ jobs:
           # Workspace Cargo.toml stub so `{ workspace = true }` deps resolve.
           # The stub only needs to declare workspace.dependencies matching
           # the full monorepo Cargo.toml — it does NOT need to list all members.
-          if [ ! -f "$PARENT_DIR/Cargo.toml" ]; then
+          if [ -f "$PARENT_DIR/_ws_tmp/ci/workspace-cargo-stub.toml" ]; then
+            cp "$PARENT_DIR/_ws_tmp/ci/workspace-cargo-stub.toml" "$PARENT_DIR/Cargo.toml"
+            echo "✓ Workspace Cargo.toml stub: skopiowany z ci/workspace-cargo-stub.toml"
+          elif [ ! -f "$PARENT_DIR/Cargo.toml" ]; then
             cat > "$PARENT_DIR/Cargo.toml" << 'CARGO_TOML'
           [workspace]
           resolver = "2"
@@ -262,11 +267,19 @@ jobs:
       - uses: Swatinem/rust-cache@v2
         with:
           workspaces: backend
+          shared-key: hydra-backend-${{ runner.os }}
+          save-if: ${{ github.ref == 'refs/heads/master' }}
 
       # ── Rust checks ─────────────────────────────────────────────────────────
       - name: cargo fmt
         working-directory: backend
         run: cargo fmt --check
+
+      - name: cargo check
+        working-directory: backend
+        run: cargo check
+        env:
+          SQLX_OFFLINE: 'true'
 
       - name: cargo clippy
         working-directory: backend
