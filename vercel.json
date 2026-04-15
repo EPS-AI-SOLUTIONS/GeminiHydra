@@ -4,8 +4,7 @@
   "buildCommand": "vite build",
   "outputDirectory": "dist",
   "regions": ["cdg1", "fra1", "iad1"],
-  "ignoreCommand": "git diff --quiet HEAD^ HEAD -- . ':!docs' ':!*.md' ':!.claude'",
-  "_triggered": "2026-04-15",
+  "_lastFixed": "2026-04-15",
   "headers": [
     {
       "source": "/(.*)",
@@ -26,6 +25,6 @@
     }
   ],
   "rewrites": [
-    { "source": "/((?!assets/).*)", "destination": "/index.html" }
+    { "source": "/((?!assets/)(.*))" , "destination": "/index.html" }
   ]
 }
