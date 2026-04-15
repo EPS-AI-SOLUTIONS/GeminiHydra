@@ -180,6 +180,31 @@ jobs:
           tree-sitter-python     = "0.25"
           tree-sitter-go         = "0.25"
 
+          # PDF / archive
+          pdf-extract     = "0.10"
+          zip             = { version = "2", default-features = false, features = ["deflate"] }
+
+          # Auth / security extras
+          jsonwebtoken    = { version = "10.3.0", features = ["rust_crypto"] }
+          rusqlite        = { version = "0.32", features = ["bundled"] }
+
+          # Caching
+          moka            = { version = "0.12", default-features = false, features = ["future"] }
+
+          # Observability
+          sentry          = { version = "0.35", default-features = false, features = ["backtrace", "contexts", "panic", "reqwest", "rustls"] }
+          sentry-tracing  = "0.35"
+
+          # Desktop / native (cfg-gated)
+          rfd             = "0.15"
+          tauri-winrt-notification = "0.7"
+          windows         = { version = "0.62", features = ["Win32_Security_Cryptography", "Win32_Foundation", "Win32_System_Memory", "Win32_System_Threading", "Win32_System_Console", "Win32_UI_WindowsAndMessaging", "Win32_UI_Shell", "Win32_System_Com", "Win32_Storage_FileSystem"] }
+          windows-sys     = "0.62"
+
+          # Async extras
+          async-trait     = "0.1"
+          futures         = "0.3"
+
           # Testing
           wiremock        = "0.6"
 
