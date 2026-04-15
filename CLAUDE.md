@@ -184,7 +184,45 @@
 - **Login**: `bun run login:persistent` creates `browser-profile/` directory with full Chrome profile (cookies, localStorage, IndexedDB)
 - **Workers**: share single persistent context â€” 4 pages within 1 browser process (not 4 separate contexts)
 - **Profile backup**: `browser-profile/` copied to `worker-profile/` at init for crash recovery
-- **Login detection**: positive signal â€” chat input textarea visible on AI Studio page (NOT absence of "Sign in" button, which is unreliable)
+- **Login detection**: positive signal â€” chat input textarea visible on AI Studio page (NOT absence of “Sign in” button, which is unreliable)
 - **Session check**: Windows Task Scheduler `GeminiProxySessionCheck` runs every 6h to verify session validity
 - **Why persistent context**: Google sets `httpOnly` + `secure` + `SameSite` cookies that `storageState` JSON export cannot fully capture; persistent context keeps the actual Chrome cookie DB intact
+
+## Local CI (B1142)
+
+### Szybka weryfikacja przed pushowaniem
+```bash
+# Pelna symulacja GitHub Actions ci.yml (z GithubSimulator + VercelSimulator):
+bash JaskierWorkspace/scripts/hydra-ci-all.sh gemini
+
+# Tylko frontend (biome lint):
+cd apps/GeminiHydra && bunx biome ci src/
+
+# Tylko backend:
+bash JaskierWorkspace/scripts/local-ci-backend.sh gemini
+```
+
+### Simulatory (bez prawdziwych credentiali)
+- **GithubSimulator:** port 3001 | `GITHUB_API_BASE_URL=http://localhost:3001`
+- **VercelSimulator:** port 3000 | `VERCEL_API_BASE_URL=http://localhost:3000`
+- Uruchamiane automatycznie przez `hydra-ci-all.sh`
+
+### SQLx offline (bez zywej bazy do kompilacji)
+```bash
+SQLX_OFFLINE=true cargo check   # kompilacja bez DB
+SQLX_OFFLINE=true cargo clippy  # lint bez DB
+# Regeneracja .sqlx/ (wymaga zywej bazy z pgvector):
+DATABASE_URL=”postgresql://gemini:gemini_local@localhost:5432/geminihydra” cargo sqlx prepare --workspace
+```
+
+### nektos/act — GitHub Actions lokalnie w Dockerze
+```bash
+# Wymagania: Docker Desktop + act (choco install act-cli)
+# Konfiguracja: skopiuj .act.secrets.example -> .act.secrets i wypelnij GH_PAT
+act push --job frontend   # tylko frontend job
+act push --job backend    # tylko backend job
+act push                  # wszystkie joby
+# Lub przez skrypt:
+bash JaskierWorkspace/scripts/run-ci-local-act.sh gemini
+```
 
