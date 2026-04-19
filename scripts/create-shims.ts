@@ -156,9 +156,12 @@ console.log("Shim created: @jaskier/auth");
 
 // ── @jaskier/i18n ──
 // Used indirectly via @/i18n setup; stub the package so imports don't fail
+// Must export a default — src/i18n/index.ts does `export { default } from '@jaskier/i18n'`
 createShim(
   "@jaskier/i18n",
-  `export const createI18nConfig = () => ({});
+  `const i18nStub = { t: (k) => k, changeLanguage: async () => {}, language: 'pl', on: () => {}, off: () => {}, use: function () { return this; }, init: async function () { return this; } };
+export default i18nStub;
+export const createI18nConfig = () => ({});
 export const defaultNS = 'translation';
 export {};
 `,
@@ -174,6 +177,7 @@ export const TabBar = ${noop};
 export const CommandPalette = ${noop};
 export const fetchPartnerSessions = async () => [];
 export const fetchPartnerSession = async () => null;
+export const useAuthGate = () => ({ isAuthenticated: true, isLoading: false });
 export {};
 `;
 
@@ -288,13 +292,24 @@ export {};
 fs.writeFileSync(
   path.join(basePath, "@jaskier/hydra-app/shared/api/client.js"),
   `export const initApiClient = () => ({});
+export const BASE_URL = '';
+export const getBaseUrl = () => '';
+export const apiGet = async () => ({});
+export const apiPost = async () => ({});
+export const apiPatch = async () => ({});
+export const apiDelete = async () => ({});
+export const apiGetPolling = async () => ({});
+export const apiPostFormData = async () => ({});
+export const checkHealth = async () => ({});
+export class ApiError extends Error { constructor(m) { super(m); } }
 export {};
 `,
 );
 
 fs.writeFileSync(
   path.join(basePath, "@jaskier/hydra-app/shared/api/queryClient.js"),
-  `export {};
+  `export const queryClient = { getQueryData: () => undefined, setQueryData: () => undefined, invalidateQueries: async () => undefined, prefetchQuery: async () => undefined };
+export {};
 `,
 );
 
@@ -329,7 +344,9 @@ export {};
 
 fs.writeFileSync(
   path.join(basePath, "@jaskier/hydra-app/contexts/ThemeContext.js"),
-  `export {};
+  `export const ThemeProvider = ({ children }) => children;
+export const useTheme = () => ({ theme: 'dark', resolvedTheme: 'dark', setTheme: () => {} });
+export {};
 `,
 );
 
