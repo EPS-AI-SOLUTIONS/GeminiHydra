@@ -15,6 +15,8 @@ import { ApprovalGate } from '@jaskier/hydra-app/components/molecules';
 import { ErrorBoundary } from '@jaskier/ui';
 import { QueryClientProvider, QueryErrorResetBoundary } from '@tanstack/react-query';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
+import { Analytics } from '@vercel/analytics/react';
+import { SpeedInsights } from '@vercel/speed-insights/react';
 import { AnimatePresence, motion } from 'motion/react';
 import { lazy, StrictMode, Suspense } from 'react';
 import { createRoot } from 'react-dom/client';
@@ -235,6 +237,8 @@ if (root) {
   appRoot.render(
     <StrictMode>
       <App />
+      <Analytics />
+      <SpeedInsights />
     </StrictMode>,
   );
 
